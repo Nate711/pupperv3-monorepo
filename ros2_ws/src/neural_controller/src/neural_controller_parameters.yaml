@@ -1,0 +1,147 @@
+neural_controller:
+  repeat_action:
+    {
+      type: int,
+      default_value: 10,
+      description: "Number of times to repeat the same action before querying the policy again",
+    }
+
+  model_path:
+    {
+      type: string,
+      default_value: "",
+      description: "Path to the model weights",
+    }
+
+  use_imu:
+    {
+      type: bool,
+      default_value: true,
+      description: "Whether to use the IMU sensor",
+    }
+
+  imu_sensor_name:
+    {
+      type: string,
+      default_value: "imu_sensor",
+      description: "Name of the IMU sensor",
+    }
+
+  joint_names:
+    {
+      type: string_array,
+      default_value: [],
+      description: "Names of the joints to control, in the order expected by the policy observation/action spaces",
+    }
+
+  default_joint_pos:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Default joint positions. Added to policy output to get command. Subtracted from read motor angles to get observation, e.g. commanded_motor_angles = scaled_action + default_joint_pos",
+    }
+
+  kps:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Position gains for the joints",
+    }
+
+  kds:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Velocity gains for the joints",
+    }
+
+  gain_multiplier:
+    {
+      type: double,
+      default_value: 1.0,
+      description: "Multiplier for the position control gains",
+    }
+
+  init_kps:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Position gains for the joints during initialization (return to default position)",
+    }
+
+  init_kds:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Velocity gains for the joints during initialization (return to default position)",
+    }
+
+  init_duration:
+    {
+      type: double,
+      default_value: 2.0,
+      description: "Time to return to the default position on startup",
+    }
+
+  fade_in_duration:
+    {
+      type: double,
+      default_value: 2.0,
+      description: "Time to gradually fade in the policy actions on startup",
+    }
+
+  action_scales:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Scaling factor for the actions",
+    }
+
+  action_types:
+    {
+      type: string_array,
+      default_value: [],
+      description: "Type of action for each joint: position or velocity",
+    }
+
+  joint_lower_limits:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Lower limits for the joint positions",
+    }
+
+  joint_upper_limits:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Upper limits for the joint positions",
+    }
+
+  observation_history:
+    {
+      type: int,
+      default_value: 1,
+      description: "Number of previous observations to include in the observation space",
+    }
+
+  observation_limit:
+    {
+      type: double,
+      default_value: 100.0,
+      description: "Maximum observation value before scaling",
+    }
+
+  max_body_angle:
+    {
+      type: double,
+      default_value: 0.52,
+      description: "Maximum body angle (rad) allowed before the controller is reset",
+    }
+
+  estop_kd:
+    {
+      type: double,
+      default_value: 0.1,
+      description: "Velocity gain for the joints during emergency stop",
+    }

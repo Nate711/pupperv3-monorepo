@@ -1,0 +1,135 @@
+real2sim_controller:
+  joint_names:
+    {
+      type: string_array,
+      default_value: [],
+      description: "Names of the joints to control, in the order expected by the policy observation/action spaces",
+    }
+
+  default_joint_pos:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Default joint positions to use when the controller is reset",
+    }
+
+  kps:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Position gains for the joints",
+    }
+
+  kds:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Velocity gains for the joints",
+    }
+
+  init_kps:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Position gains for the joints during initialization (return to default position)",
+    }
+
+  init_kds:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Velocity gains for the joints during initialization (return to default position)",
+    }
+
+  init_duration:
+    {
+      type: double,
+      default_value: 2.0,
+      description: "Time to return to the default position on startup",
+    }
+
+  fade_in_duration:
+    {
+      type: double,
+      default_value: 2.0,
+      description: "Time to gradually fade in the policy actions on startup",
+    }
+
+  action_scales:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Scaling factor for the actions",
+    }
+
+  action_types:
+    {
+      type: string_array,
+      default_value: [],
+      description: "Type of action for each joint: position or velocity",
+    }
+
+  action_limit:
+    {
+      type: double,
+      default_value: 1.0,
+      description: "Maximum action value before scaling",
+    }
+
+  test_frequency:
+    {
+      type: double,
+      default_value: 1.0,
+      description: "Frequency of test motion in Hz",
+    }
+
+  test_amplitude:
+    {
+      type: double,
+      default_value: 0.0,
+      description: "Amplitude of test motion in radians",
+    }
+
+  test_motor_index:
+    {
+      type: int,
+      default_value: 2,
+      description: "Index of motor to use for test",
+    }
+
+  do_sweep:
+    {
+      type: bool,
+      default_value: false,
+      description: "whether to do frequency sweep",
+    }
+
+  sweep_min_frequency:
+    { type: double, default_value: 1.0, description: "Min frequency in Hz" }
+
+  sweep_max_frequency:
+    { type: double, default_value: 20.0, description: "Max frequency in Hz" }
+
+  sweep_frequency_step:
+    { type: int, default_value: 1, description: "Frequency step in Hz" }
+
+  sweep_secs_per_frequency:
+    {
+      type: double,
+      default_value: 1.0,
+      description: "Seconds at each frequency",
+    }
+
+  square_wave:
+    {
+      type: bool,
+      default_value: false,
+      description: "Whether to use square wave rather than sinusoid",
+    }
+
+  save_filename:
+    {
+      type: string,
+      default_value: "real2sim_controller_data.csv",
+      description: "Name of file to which to write data",
+    }

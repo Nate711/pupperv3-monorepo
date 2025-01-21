@@ -1,0 +1,12 @@
+brax
+jax
+mujoco
+mujoco_mjx
+matplotlib
+plotly
+ml_collections
+etils
+numpy
+scipy
+mediapy
+wandb

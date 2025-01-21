@@ -1,0 +1,316 @@
+<robot name="pupper_v3" version="1.0">
+
+  <mujoco><compiler meshdir="../meshes/stl/" discardvisual="false" /></mujoco><joint name="leg_front_r_1" type="revolute">
+    <limit lower="-1.22000" upper="2.51000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="1.57080 0.00000 0.00000" xyz="0.07500 -0.08350 0.00000" />
+    <parent link="base_link" />
+    <child link="leg_front_r_1" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_front_r_2" type="revolute">
+    <limit lower="-0.42000" upper="3.14000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="1.49199 -1.57080 -1.49198" xyz="0.00000 0.00000 0.00000" />
+    <parent link="leg_front_r_1" />
+    <child link="leg_front_r_2" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_front_r_3" type="revolute">
+    <limit lower="-2.79000" upper="0.71000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="-0.00000 1.57080 0.00000" xyz="0.00000 -0.04940 0.06850" />
+    <parent link="leg_front_r_2" />
+    <child link="leg_front_r_3" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+
+  <joint name="leg_front_l_1" type="revolute">
+    <limit lower="-2.51000" upper="1.22000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="-1.57080 0.00000 0.00000" xyz="0.07500 0.08350 0.00000" />
+    <parent link="base_link" />
+    <child link="leg_front_l_1" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_front_l_2" type="revolute">
+    <limit lower="-3.14000" upper="0.42000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="1.57080 1.57080 -1.57080" xyz="0.00000 0.00000 0.00000" />
+    <parent link="leg_front_l_1" />
+    <child link="leg_front_l_2" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_front_l_3" type="revolute">
+    <limit lower="-0.71000" upper="+2.79000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="-0.00000 1.57080 3.14159" xyz="0.00000 -0.04940 0.06850" />
+    <parent link="leg_front_l_2" />
+    <child link="leg_front_l_3" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+
+
+  <joint name="leg_back_r_1" type="revolute">
+    <limit lower="-1.22000" upper="2.51000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="1.57080 0.00000 0.00000" xyz="-0.07500 -0.07250 0.00000" />
+    <parent link="base_link" />
+    <child link="leg_back_r_1" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_back_r_2" type="revolute">
+    <limit lower="-0.42000" upper="3.14000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="1.49199 -1.57080 -1.49198" xyz="0.00000 0.00000 0.00000" />
+    <parent link="leg_back_r_1" />
+    <child link="leg_back_r_2" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_back_r_3" type="revolute">
+    <limit lower="-2.79000" upper="0.71000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="-0.00000 1.57080 0.00000" xyz="0.00000 -0.04940 0.06850" />
+    <parent link="leg_back_r_2" />
+    <child link="leg_back_r_3" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+
+  <joint name="leg_back_l_1" type="revolute">
+    <limit lower="-2.51000" upper="1.22000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="-1.57080 0.00000 0.00000" xyz="-0.07500 0.07250 0.00000" />
+    <parent link="base_link" />
+    <child link="leg_back_l_1" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_back_l_2" type="revolute">
+    <limit lower="-3.14000" upper="0.42000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="1.57080 1.57080 -1.57080" xyz="0.00000 0.00000 0.00000" />
+    <parent link="leg_back_l_1" />
+    <child link="leg_back_l_2" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+  <joint name="leg_back_l_3" type="revolute">
+    <limit lower="-0.71000" upper="+2.79000" effort="3.00000" velocity="100.00000" />
+    <origin rpy="-0.00000 1.57080 3.14159" xyz="0.00000 -0.04940 0.06850" />
+    <parent link="leg_back_l_2" />
+    <child link="leg_back_l_3" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
+
+
+  <link name="base_link">
+    <collision name="body_collision">
+      <origin rpy="-1.57080 -0.00000 1.57080" xyz="0.02146 -0.00000 0.03345" />
+      <geometry>
+        <box size="0.09014 0.12758 0.25943" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.00240" ixy="0.000000" ixz="-0.0005" iyy="0.00850" iyz="0.00000" izz="0.00850" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.02500 0.00000 0.01500" />
+      <mass value="1.506" />
+    </inertial>
+    <visual name="body">
+      <origin rpy="-1.57080 -0.00000 1.57080" xyz="0.00000 0.00000 0.00000" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/BodyV4v70_001.stl" scale="1.00000 1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_front_r_1">
+    <inertial>
+      <inertia ixx="0.000074" ixy="0.0" ixz="0.0" iyy="0.000058" iyz="0.0" izz="0.000048" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.0 0.0 0.0" />
+      <mass value="0.18000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.001">
+      <origin rpy="0.00000 0.00000 3.14159" xyz="0.00000 0.00000 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_001.stl" scale="1.00000 1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_front_r_2">
+    <collision name="Cylinder">
+      <origin rpy="-0.00000 1.57080 0.00000" xyz="0.00000 -0.04940 0.06850" />
+      <geometry>
+        <cylinder radius="0.02500" length="0.03000" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.000113" ixy="0.0" ixz="0.0" iyy="0.000067" iyz="0.000025" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.0 -0.03340 0.05419" />
+      <mass value="0.18600" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.002">
+      <origin rpy="0.26213 -1.57080 2.87947" xyz="-0.02800 -0.00000 -0.00000" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_002.stl" scale="1.00000 1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_front_r_3">
+    <collision name="Leg Assembly For Flanged v26.007">
+      <origin rpy="-0.00000 0.00000 3.14159" xyz="0.06231 -0.06216 0.01800" />
+      <geometry>
+        <sphere radius="0.01995" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.0000405" ixy="0.000035" ixz="0.0" iyy="0.0000405" iyz="0.0" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.03866 -0.03585 0.01833" />
+      <mass value="0.05000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.003">
+      <origin rpy="-0.00000 0.00000 3.14159" xyz="0.06850 0.04940 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_003.stl" scale="1.00000 1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_front_l_1">
+    <inertial>
+      <inertia ixx="0.000074" ixy="0.0" ixz="0.0" iyy="0.000058" iyz="0.0" izz="0.000048" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.0 0.0 0.0" />
+      <mass value="0.18000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.009">
+      <origin rpy="0.00000 0.00000 3.14159" xyz="0.00000 0.00000 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_010.stl" scale="1.00000 -1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_front_l_2">
+    <collision name="Cylinder.002">
+      <origin rpy="-0.00000 1.57080 0.00000" xyz="0.00000 -0.04940 0.06850" />
+      <geometry>
+        <cylinder radius="0.02500" length="0.03000" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.000113" ixy="0.0" ixz="0.0" iyy="0.000067" iyz="0.000025" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0 -0.03340 0.05419" />
+      <mass value="0.18600" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.010">
+      <origin rpy="0.26213 -1.57080 2.87947" xyz="+0.02800 -0.00000 -0.00000" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_011.stl" scale="1.00000 1.00000 -1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_front_l_3">
+    <collision name="Leg Assembly For Flanged v26.015">
+      <origin rpy="-0.00000 0.00000 3.14159" xyz="0.06231 0.06216 0.01800" />
+      <geometry>
+        <sphere radius="0.01995" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.0000405" ixy="-0.000035" ixz="0.0" iyy="0.0000405" iyz="0.0" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.03866 0.03585 0.01833" />
+      <mass value="0.05000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.011">
+      <origin rpy="3.14159 0.00000 3.14159" xyz="0.06850 -0.04940 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_012.stl" scale="1.00000 1.00000 -1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_back_r_1">
+    <inertial>
+      <inertia ixx="0.000074" ixy="0.0" ixz="0.0" iyy="0.000058" iyz="0.0" izz="0.000048" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.0 0.0 0.0" />
+      <mass value="0.18000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.004">
+      <origin rpy="0.00000 0.00000 3.14159" xyz="0.00000 0.00000 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_005.stl" scale="1.00000 1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_back_r_2">
+    <collision name="Cylinder.001">
+      <origin rpy="-0.00000 1.57080 0.00000" xyz="0.00000 -0.04940 0.06850" />
+      <geometry>
+        <cylinder radius="0.02500" length="0.03000" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.000113" ixy="0.0" ixz="0.0" iyy="0.000067" iyz="0.000025" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.0 -0.03340 0.05419" />
+      <mass value="0.18600" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.005">
+      <origin rpy="0.26213 -1.57080 2.87947" xyz="-0.02800 -0.00000 -0.00000" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_006.stl" scale="1.00000 1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_back_r_3">
+    <collision name="Leg Assembly For Flanged v26.008">
+      <origin rpy="-0.00000 0.00000 3.14159" xyz="0.06231 -0.06216 0.01800" />
+      <geometry>
+        <sphere radius="0.01995" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.0000405" ixy="0.000035" ixz="0.0" iyy="0.0000405" iyz="0.0" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.03866 -0.03585 0.01833" />
+      <mass value="0.05000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.006">
+      <origin rpy="-0.00000 0.00000 3.14159" xyz="0.06850 0.04940 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_007.stl" scale="1.00000 1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_back_l_1">
+    <inertial>
+      <inertia ixx="0.000074" ixy="0.0" ixz="0.0" iyy="0.000058" iyz="0.0" izz="0.000048" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.0 0.0 0.0" />
+      <mass value="0.18000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.012">
+      <origin rpy="0.00000 0.00000 3.14159" xyz="0.00000 0.00000 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_013.stl" scale="1.00000 -1.00000 1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_back_l_2">
+    <collision name="Cylinder.003">
+      <origin rpy="-0.00000 1.57080 0.00000" xyz="0.00000 -0.04940 0.06850" />
+      <geometry>
+        <cylinder radius="0.02500" length="0.03000" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.000113" ixy="0.0" ixz="0.0" iyy="0.000067" iyz="0.000025" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.0 -0.03340 0.05419" />
+      <mass value="0.18600" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.013">
+      <origin rpy="0.26213 -1.57080 2.87947" xyz=" +0.02800 -0.00000 -0.00000" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_014.stl" scale="1.00000 1.00000 -1.00000" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="leg_back_l_3">
+    <collision name="Leg Assembly For Flanged v26.016">
+      <origin rpy="-0.00000 0.00000 3.14159" xyz="0.06231 0.06216 0.01800" />
+      <geometry>
+        <sphere radius="0.01995" />
+      </geometry>
+    </collision>
+    <inertial>
+      <inertia ixx="0.0000405" ixy="-0.000035" ixz=" 0.0" iyy=" 0.0000405" iyz=" 0.0" izz="0.000077" />
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.03866 0.03585 0.01833" />
+      <mass value="0.05000" />
+    </inertial>
+    <visual name="Leg Assembly For Flanged v26.014">
+      <origin rpy="3.14159 0.00000 3.14159" xyz="0.06850 -0.04940 -0.02800" />
+      <geometry>
+        <mesh filename="package://pupper_v3_description/description/meshes/stl/LegAssemblyForFlangedv26_015.stl" scale="1.00000 1.00000 -1.00000" />
+      </geometry>
+    </visual>
+  </link>
+<joint name="world_to_body" type="floating"><parent link="world" /><child link="base_link" /></joint><link name="world" /></robot>

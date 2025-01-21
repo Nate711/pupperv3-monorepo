@@ -1,0 +1,375 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="define_components">
+
+
+        <joint name="leg_front_r_1">
+            <param name="can_channel">2</param>
+            <param name="can_id">1</param>
+
+            <param name="homing_stage">2</param>
+            <param name="homing_velocity">-1.5</param>
+            <param name="homed_position">-1.22</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-1.12</param>
+            <param name="position_max">2.41</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_front_r_2">
+            <param name="can_channel">2</param>
+            <param name="can_id">2</param>
+
+            <param name="homing_stage">1</param>
+            <param name="homing_velocity">-1.5</param>
+            <param name="homed_position">-0.42</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-0.32</param>
+            <param name="position_max">3.04</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_front_r_3">
+            <param name="can_channel">2</param>
+            <param name="can_id">3</param>
+
+            <param name="homing_stage">0</param>
+            <param name="homing_velocity">1.5</param>
+            <param name="homed_position">0.71</param>
+            <param name="post_homing_position">0.71</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-2.69</param>
+            <param name="position_max">0.61</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_front_l_1">
+            <param name="can_channel">1</param>
+            <param name="can_id">1</param>
+
+            <param name="homing_stage">2</param>
+            <param name="homing_velocity">1.5</param>
+            <param name="homed_position">1.22</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-2.41</param>
+            <param name="position_max">1.12</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_front_l_2">
+            <param name="can_channel">1</param>
+            <param name="can_id">2</param>
+
+            <param name="homing_stage">1</param>
+            <param name="homing_velocity">1.5</param>
+            <param name="homed_position">0.42</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-3.04</param>
+            <param name="position_max">0.32</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_front_l_3">
+            <param name="can_channel">1</param>
+            <param name="can_id">3</param>
+
+            <param name="homing_stage">0</param>
+            <param name="homing_velocity">-1.5</param>
+            <param name="homed_position">-0.71</param>
+            <param name="post_homing_position">-0.71</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-0.61</param>
+            <param name="position_max">2.69</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_back_r_1">
+            <param name="can_channel">4</param>
+            <param name="can_id">1</param>
+
+            <param name="homing_stage">2</param>
+            <param name="homing_velocity">-1.5</param>
+            <param name="homed_position">-1.22</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-1.12</param>
+            <param name="position_max">2.41</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_back_r_2">
+            <param name="can_channel">4</param>
+            <param name="can_id">2</param>
+
+            <param name="homing_stage">1</param>
+            <param name="homing_velocity">-1.5</param>
+            <param name="homed_position">-0.42</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-0.32</param>
+            <param name="position_max">3.04</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_back_r_3">
+            <param name="can_channel">4</param>
+            <param name="can_id">3</param>
+
+            <param name="homing_stage">0</param>
+            <param name="homing_velocity">1.5</param>
+            <param name="homed_position">0.71</param>
+            <param name="post_homing_position">0.71</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-2.69</param>
+            <param name="position_max">0.61</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_back_l_1">
+            <param name="can_channel">3</param>
+            <param name="can_id">1</param>
+
+            <param name="homing_stage">2</param>
+            <param name="homing_velocity">1.5</param>
+            <param name="homed_position">1.22</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-2.41</param>
+            <param name="position_max">1.12</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_back_l_2">
+            <param name="can_channel">3</param>
+            <param name="can_id">2</param>
+
+            <param name="homing_stage">1</param>
+            <param name="homing_velocity">1.5</param>
+            <param name="homed_position">0.42</param>
+            <param name="post_homing_position">0.0</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-3.04</param>
+            <param name="position_max">0.32</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="leg_back_l_3">
+            <param name="can_channel">3</param>
+            <param name="can_id">3</param>
+
+            <param name="homing_stage">0</param>
+            <param name="homing_velocity">-1.5</param>
+            <param name="homed_position">-0.71</param>
+            <param name="post_homing_position">-0.71</param>
+            <param name="homing_kp">5.5</param>
+            <param name="homing_kd">0.2</param>
+            <param name="homing_torque_threshold">2.0</param>
+
+            <param name="position_min">-0.61</param>
+            <param name="position_max">2.69</param>
+            <param name="velocity_max">30.0</param>
+            <param name="effort_max">3.0</param>
+            <param name="kp_max">10.0</param>
+            <param name="kd_max">1.0</param>
+
+            <command_interface name="position"/>
+            <command_interface name="velocity"/>
+            <command_interface name="effort"/>
+            <command_interface name="kp"/>
+            <command_interface name="kd"/>
+
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+
+        <sensor name="imu_sensor">
+            <param name="yaw">0</param>
+            <param name="pitch">-2.35619</param>
+            <param name="roll">0</param>
+
+            <state_interface name="orientation.x"/>
+            <state_interface name="orientation.y"/>
+            <state_interface name="orientation.z"/>
+            <state_interface name="orientation.w"/>
+            <state_interface name="angular_velocity.x"/>
+            <state_interface name="angular_velocity.y"/>
+            <state_interface name="angular_velocity.z"/>
+            <state_interface name="linear_acceleration.x"/>
+            <state_interface name="linear_acceleration.y"/>
+            <state_interface name="linear_acceleration.z"/>
+        </sensor>
+
+    </xacro:macro>
+
+</robot>

@@ -1,0 +1,15 @@
+<mujoco model="home_keyframe">
+    <keyframe>
+        <key name="home"
+            qpos="0 0 0.28
+            1 0 0 0
+            0.0 0.0 0.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0"
+            ctrl="0.0 0.0 0.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0
+            0.0 0.0 0.0" />
+    </keyframe>
+</mujoco>

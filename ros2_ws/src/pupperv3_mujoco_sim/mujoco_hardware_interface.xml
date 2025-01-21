@@ -1,0 +1,11 @@
+<library path="mujoco_hardware_interface">
+
+    <class name="mujoco_hardware_interface/MujocoHardwareInterface"
+        type="mujoco_hardware_interface::MujocoHardwareInterface"
+        base_class_type="hardware_interface::SystemInterface">
+        <description>
+            mujoco hardware interface
+        </description>
+    </class>
+
+</library>

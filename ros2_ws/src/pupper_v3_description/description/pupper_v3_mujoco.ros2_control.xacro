@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:include filename="$(find pupper_v3_description)/description/components.xacro" />
+    <xacro:macro name="pupper_v3_system">
+        <ros2_control name="mujoco_hardware_interface" type="system">
+            <hardware>
+                <plugin>mujoco_hardware_interface/MujocoHardwareInterface</plugin>
+                <param name="fixed_base">0</param>
+                <param name="timestep">0.0001</param>
+                <param name="bus_voltage">24.0</param>
+                <param name="kt">0.04</param>
+                <param name="phase_resistance">0.7</param>
+                <param name="saturation_torque">4.5</param>
+                <param name="software_torque_limit">3.0</param>
+                <!-- <param name="use_imu">false</param> -->
+
+                <!-- uncomment this block to simulate backlash and latency -->
+                <param name="backlash">true</param>
+                <param name="imu_latency_timesteps">10</param>
+                <param name="command_latency_timesteps">8</param>
+
+                <!-- uncomment this block to use no backlash or latency -->
+                <!-- <param name="backlash">false</param>
+                <param name="imu_latency_timesteps">0</param>
+                <param name="command_latency_timesteps">0</param> -->
+            </hardware>
+            <xacro:define_components />
+        </ros2_control>
+    </xacro:macro>
+</robot>

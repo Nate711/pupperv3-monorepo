@@ -1,0 +1,19 @@
+<mujoco model="settings">
+    <option cone="elliptic" impratio="100" />
+    <default>
+        <general forcerange="-3 3" forcelimited="true" biastype="affine" gainprm="1 0 0"
+            biasprm="0 0 0" />
+
+        <!-- By default, geometry will not collide with anything -->
+        <geom condim="6" contype="0" conaffinity="0" />
+
+        <!-- Collision objects will collide with contype=1 objects but not with other collision
+        objects. -->
+        <default class="collision">
+            <geom group="3" contype="0" conaffinity="1" solimp="0.015 1 0.015"
+                friction="0.8 0.02 0.01" />
+        </default>
+
+        <joint armature="0.0016" type="hinge" damping="0.01" frictionloss="0.01" limited="true" />
+    </default>
+</mujoco>

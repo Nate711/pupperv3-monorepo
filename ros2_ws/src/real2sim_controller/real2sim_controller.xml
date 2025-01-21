@@ -1,0 +1,9 @@
+<library path="real2sim_controller">
+  <class name="real2sim_controller/Real2SimController"
+    type="real2sim_controller::Real2SimController"
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Neural controller
+    </description>
+  </class>
+</library>

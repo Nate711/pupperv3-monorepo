@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="pupper_v3">
+
+  <xacro:include filename="$(find pupper_v3_description)/description/urdf/pupper_v3.edited.fixed.urdf" />
+
+  <xacro:include filename="$(find pupper_v3_description)/description/pupper_v3.ros2_control.xacro" />
+
+  <pupper_v3/>
+
+  <xacro:pupper_v3_system/>
+
+</robot>

@@ -1,0 +1,96 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 250 # Hz
+
+    real2sim_controller:
+      type: real2sim_controller/Real2SimController
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+real2sim_controller:
+  ros__parameters:
+    test_amplitude: 0.5
+    test_frequency: 2.0
+    test_motor_index: 2
+    do_sweep: false
+    square_wave: true
+    sweep_min_frequency: 1.0
+    sweep_max_frequency: 20.0
+    sweep_secs_per_frequency: 1.0
+
+    joint_names:
+      [
+        "leg_front_r_1",
+        "leg_front_r_2",
+        "leg_front_r_3",
+        "leg_front_l_1",
+        "leg_front_l_2",
+        "leg_front_l_3",
+        "leg_back_r_1",
+        "leg_back_r_2",
+        "leg_back_r_3",
+        "leg_back_l_1",
+        "leg_back_l_2",
+        "leg_back_l_3",
+      ]
+
+    default_joint_pos:
+      [0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0]
+    kps: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+    kds:
+      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+
+    init_kps: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+    init_kds:
+      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+
+    init_duration: 2.0
+    fade_in_duration: 2.0
+
+    action_types:
+      [
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+        "position",
+      ]
+
+    action_scales: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+    action_limit: 1.5
+
+teleop_twist_joy_node:
+  ros__parameters:
+    axis_linear:
+      x: 1
+      y: 0
+    scale_linear:
+      x: 0.75
+      y: 0.5
+
+    axis_angular:
+      yaw: 3
+    scale_angular:
+      yaw: 2.0
+
+    require_enable_button: false
+
+joy_node:
+  ros__parameters:
+    dev: "/dev/input/js0"
+    autorepeat_rate: 50.0
+    coalesce_interval: 0.02
+
+joint_state_broadcaster:
+  ros__parameters:
+    update_rate: 250
+    use_local_topics: false

@@ -1,0 +1,8 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+ColumnLimit: 100
+AllowShortFunctionsOnASingleLine: Empty
+PointerAlignment: Left
+ReferenceAlignment: Left
+InsertBraces: true

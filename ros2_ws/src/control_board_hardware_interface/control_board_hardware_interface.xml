@@ -1,0 +1,9 @@
+<library path="control_board_hardware_interface">
+
+  <class name="control_board_hardware_interface/ControlBoardHardwareInterface" type="control_board_hardware_interface::ControlBoardHardwareInterface" base_class_type="hardware_interface::SystemInterface">
+    <description>
+      control board interface
+    </description>
+  </class>
+
+</library>
