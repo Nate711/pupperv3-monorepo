@@ -1,0 +1,31 @@
+#cloud-config
+hostname: pupper
+manage_etc_hosts: true
+
+ssh_pwauth: true
+
+groups:
+- realtime
+
+users:
+- name: pi
+  groups: users,adm,dialout,audio,netdev,video,plugdev,cdrom,games,input,gpio,spi,i2c,render,sudo,realtime
+  shell: /bin/bash
+  lock_passwd: false
+  passwd: $5$BLNMiSCqTv$Z63o/QZDIqwP/MeWctC4/LFFDbQ5qwhADJGH5IJow.D
+
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: true
+      optional: true
+
+runcmd:
+  - echo '@realtime soft rtprio 99\n@realtime soft priority 99\n@realtime soft memlock 102400\n@realtime hard rtprio 99\n@realtime hard priority 99\n@realtime hard memlock 102400' | sudo tee -a /etc/security/limits.conf
+  - chown -R pi /home/pi
+  - yes | sudo dpkg -i /home/pi/resources/hailort-pcie-driver_4.19.0_all.deb
+  - yes | sudo dpkg -i /home/pi/resources/hailort_4.19.0_arm64.deb
+  - sudo systemctl disable NetworkManager-wait-online.service
+  - sudo /home/pi/resources/set_autologin.sh

@@ -1,0 +1,4 @@
+# Ignore ROS2 workspace build, log, and install directories
+ros2_ws/build/
+ros2_ws/log/
+ros2_ws/install/

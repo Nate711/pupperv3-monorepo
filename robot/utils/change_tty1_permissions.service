@@ -1,0 +1,11 @@
+[Unit]
+Description=Change Permissions of /dev/tty1
+Before=robot.service
+After=sys-subsystem-net-devices-wlan0.device
+
+[Service]
+Type=oneshot
+ExecStart=/bin/chmod 666 /dev/tty1
+
+[Install]
+WantedBy=multi-user.target

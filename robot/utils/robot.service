@@ -1,0 +1,13 @@
+[Unit]
+Description=robot
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/home/pi/utils/robot.sh
+CapabilityBoundingSet=CAP_SYS_NICE
+LimitRTPRIO=infinity
+LimitCPU=infinity
+
+[Install]
+WantedBy=multi-user.target

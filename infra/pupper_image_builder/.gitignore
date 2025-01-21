@@ -1,0 +1,5 @@
+.packer_cache
+.packer_plugins
+*.img
+random
+.DS_Store

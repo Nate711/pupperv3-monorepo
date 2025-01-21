@@ -21,14 +21,19 @@ find_package(hardware_interface REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/lib)
 
-# Set the path to the library and include directories
-set(MUJOCO_LIB_DIR third_party/mujoco-2.3.1/lib)
+# Determine architecture-specific library folder
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+  set(MUJOCO_LIB_DIR third_party/mujoco-2.3.1/lib_arm)
+else()
+  set(MUJOCO_LIB_DIR third_party/mujoco-2.3.1/lib_x86)
+endif()
+
 set(MUJOCO_INCLUDE_DIR third_party/mujoco-2.3.1/include)
 
 # Add the library path
 link_directories(${MUJOCO_LIB_DIR})
 
-# # Add the include directory
+# Add the include directory
 include_directories(${MUJOCO_INCLUDE_DIR})
 
 add_executable(simulate src/simulate.cc src/uitools.c)
