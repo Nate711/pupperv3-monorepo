@@ -91,9 +91,19 @@ controller_interface::CallbackReturn NeuralController::on_init() {
       }
     };
 
-    set_param_from_json_scalar("action_scale", params_.action_scales, kActionSize);
+    auto set_param_from_json_mixed = [&](const std::string &key, auto &param, int size) {
+      if (j.find(key) != j.end()) {
+        if (j[key].is_array()) {
+          set_param_from_json_vector(key, param);
+        } else {
+          set_param_from_json_scalar(key, param, size);
+        }
+      }
+    };
+
     set_param_from_json_scalar("kp", params_.kps, kActionSize);
     set_param_from_json_scalar("kd", params_.kds, kActionSize);
+    set_param_from_json_mixed("action_scale", params_.action_scales, kActionSize);
     set_param_from_json_vector("default_joint_pos", params_.default_joint_pos);
     set_param_from_json_vector("joint_lower_limits", params_.joint_lower_limits);
     set_param_from_json_vector("joint_upper_limits", params_.joint_upper_limits);
