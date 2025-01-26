@@ -22,7 +22,7 @@ find_package(hardware_interface REQUIRED)
 include_directories(${CMAKE_SOURCE_DIR}/lib)
 
 # Determine architecture-specific library folder
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm|aarch64)$")
   set(MUJOCO_LIB_DIR third_party/mujoco-2.3.1/lib_arm)
 else()
   set(MUJOCO_LIB_DIR third_party/mujoco-2.3.1/lib_x86)
