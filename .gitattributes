@@ -1,3 +1,7 @@
+ros2_ws/src/neural_controller/launch/policy_ancient-surf-216_max_reward_20.27.json filter=lfs diff=lfs merge=lfs -text
+ros2_ws/src/neural_controller/launch/policy_latest.json filter=lfs diff=lfs merge=lfs -text
+ros2_ws/src/neural_controller/launch/policy_rich-donkey-233_max_reward_19.16.json filter=lfs diff=lfs merge=lfs -text
+ros2_ws/src/neural_controller/launch/policy.json filter=lfs diff=lfs merge=lfs -text
 *.json filter=lfs diff=lfs merge=lfs -text
 *.dae filter=lfs diff=lfs merge=lfs -text
 *.stl filter=lfs diff=lfs merge=lfs -text
