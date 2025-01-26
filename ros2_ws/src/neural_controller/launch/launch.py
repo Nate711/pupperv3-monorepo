@@ -99,6 +99,13 @@ def generate_launch_description():
         ],
     )
 
+    joy_util_node = Node(
+        package="joy_utils",  
+        executable="estop_controller",
+        parameters=[robot_controllers],
+        output="both",
+    )
+
     nodes = [
         robot_state_publisher,
         # imu_sensor_broadcaster_spawner,
@@ -107,6 +114,7 @@ def generate_launch_description():
         joint_state_broadcaster_spawner,
         joy_node,
         teleop_twist_joy_node,
+        joy_util_node,
     ]
 
     return LaunchDescription(nodes)
