@@ -26,10 +26,5 @@ install(TARGETS estop_controller
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Install launch files (if any)
-install(DIRECTORY launch/
-  DESTINATION share/${PROJECT_NAME}/launch
-)
-
 # Export package
 ament_package()
