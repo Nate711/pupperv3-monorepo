@@ -1,6 +1,4 @@
 from launch import LaunchDescription
-from launch.actions import RegisterEventHandler
-from launch.event_handlers import OnProcessExit
 from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.actions import Node
@@ -75,6 +73,19 @@ def generate_launch_description():
         ],
     )
 
+    three_legged_robot_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "neural_controller_three_legged",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
@@ -100,7 +111,7 @@ def generate_launch_description():
     )
 
     joy_util_node = Node(
-        package="joy_utils",  
+        package="joy_utils",
         executable="estop_controller",
         parameters=[robot_controllers],
         output="both",
@@ -111,6 +122,7 @@ def generate_launch_description():
         # imu_sensor_broadcaster_spawner,
         control_node,
         robot_controller_spawner,
+        three_legged_robot_controller_spawner,
         joint_state_broadcaster_spawner,
         joy_node,
         teleop_twist_joy_node,

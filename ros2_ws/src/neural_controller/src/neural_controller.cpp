@@ -164,20 +164,28 @@ controller_interface::InterfaceConfiguration NeuralController::state_interface_c
 
 controller_interface::CallbackReturn NeuralController::on_activate(
     const rclcpp_lifecycle::State & /*previous_state*/) {
+  // Clear command buffers to ignore pre-activation commands
   rt_cmd_vel_ptr_ =
       realtime_tools::RealtimeBuffer<std::shared_ptr<geometry_msgs::msg::Twist>>(nullptr);
   rt_cmd_pose_ptr_ =
       realtime_tools::RealtimeBuffer<std::shared_ptr<geometry_msgs::msg::Pose>>(nullptr);
 
   // Populate the command interfaces map
+  RCLCPP_INFO(get_node()->get_logger(), "Populating command interfaces map");
   for (auto &command_interface : command_interfaces_) {
-    command_interfaces_map_[command_interface.get_prefix_name()].emplace(
+    RCLCPP_INFO(get_node()->get_logger(), "Prefix %s. Adding command interface %s",
+                command_interface.get_prefix_name().c_str(),
+                command_interface.get_interface_name().c_str());
+    command_interfaces_map_[command_interface.get_prefix_name()].insert_or_assign(
         command_interface.get_interface_name(), std::ref(command_interface));
   }
 
   // Populate the state interfaces map
   for (auto &state_interface : state_interfaces_) {
-    state_interfaces_map_[state_interface.get_prefix_name()].emplace(
+    RCLCPP_INFO(get_node()->get_logger(), "Prefix %s. Adding state interface %s",
+                state_interface.get_prefix_name().c_str(),
+                state_interface.get_interface_name().c_str());
+    state_interfaces_map_[state_interface.get_prefix_name()].insert_or_assign(
         state_interface.get_interface_name(), std::ref(state_interface));
   }
 
@@ -266,7 +274,19 @@ controller_interface::CallbackReturn NeuralController::on_deactivate(
   for (auto &command_interface : command_interfaces_) {
     command_interface.set_value(0.0);
   }
-  RCLCPP_INFO(get_node()->get_logger(), "deactivate successful");
+
+  // Clear command and state interfaces maps
+  command_interfaces_map_.clear();
+  state_interfaces_map_.clear();
+
+  // Release underlying command and state interfaces
+  command_interfaces_.clear();
+  state_interfaces_.clear();
+
+  // Release command and state interfaces from superclass
+  release_interfaces();
+
+  RCLCPP_INFO(get_node()->get_logger(), "Deactivate successful");
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -461,7 +481,8 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
   auto end_time = std::chrono::high_resolution_clock::now();
   auto inference_duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-  RCLCPP_INFO(get_node()->get_logger(), "Policy inference time: %.2f ms", inference_duration / 1000.0);
+  RCLCPP_INFO(get_node()->get_logger(), "Policy inference time: %.2f ms",
+              inference_duration / 1000.0);
 
   // Shift the observation history to the right by kSingleObservationSize for the next control
   // step https://en.cppreference.com/w/cpp/algorithm/rotate

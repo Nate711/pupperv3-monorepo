@@ -1,3 +1,8 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
 sudo apt update
 
 # Install ROS2
@@ -14,29 +19,29 @@ source /opt/ros/jazzy/setup.bash
 # install pip
 sudo apt install -y python3-pip libglfw3-dev
 
-pip install wandb glfw
+pip install wandb glfw --break-system-packages
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Install dependencies
 cd $SCRIPT_DIR/ros2_ws
 sudo apt install -y python3-colcon-common-extensions python3-rosdep
-sudo rosdep init
+sudo rosdep init || true
 rosdep update
 rosdep install --from-paths src -y --ignore-src --skip-keys=libcamera
 
 # Install additional ROS2 packages
-sudo apt install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-teleop-twist-joy ros-jazzy-foxglove-bridge ros-jazzy-xacro
+sudo apt install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-teleop-twist-joy ros-jazzy-foxglove-bridge ros-jazzy-xacro ros-jazzy-hardware-interface
 sudo apt install -y ros-jazzy-vision-msgs ros-jazzy-camera-calibration ros-jazzy-image-transport-plugins ros-jazzy-theora-image-transport ros-jazzy-compressed-depth-image-transport ros-jazzy-compressed-image-transport
+sudo apt install -y ros-jazzy-foxglove-bridge
 
 # Upgrade packages near the end since it takes a long time
 sudo apt upgrade -y
 
 # Build ROS2 workspace
-cd $SCRIPT_DIR/ros2_ws & colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
+source /opt/ros/jazzy/setup.bash
+bash $SCRIPT_DIR/ros2_ws/build.sh
 
-# TODO replace build alias with script to be more portable
-echo 'source ~/pupperv3/ros2_ws/install/setup.bash' >> $HOME/.bashrc
-# echo 'alias build="cd $HOME/pupperv3/ros2_ws && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cd -"' >> $HOME/.bashrc
+echo "source $SCRIPT_DIR/ros2_ws/install/setup.bash" >> $HOME/.bashrc
 echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> $HOME/.bashrc
-source $SCRIPT_DIR/ros2_ws/install/setup.bash
+source $HOME/.bashrc

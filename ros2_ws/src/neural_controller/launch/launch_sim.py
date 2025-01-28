@@ -59,7 +59,7 @@ def generate_launch_description():
         executable="ros2_control_node",
         parameters=[robot_controllers],
         output="both",
-        # prefix="xterm -e gdb -ex run --args",
+        # prefix="gnome-terminal -- gdb -ex run --args",
     )
 
     robot_controller_spawner = Node(
@@ -71,6 +71,19 @@ def generate_launch_description():
             "/controller_manager",
             "--controller-manager-timeout",
             "30",
+        ],
+    )
+
+    three_legged_robot_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "neural_controller_three_legged",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
         ],
     )
 
@@ -105,7 +118,7 @@ def generate_launch_description():
     )
 
     joy_util_node = Node(
-        package="joy_utils",  
+        package="joy_utils",
         executable="estop_controller",
         parameters=[robot_controllers],
         output="both",
@@ -116,6 +129,7 @@ def generate_launch_description():
         # imu_sensor_broadcaster_spawner,
         control_node,
         robot_controller_spawner,
+        three_legged_robot_controller_spawner,
         joint_state_broadcaster_spawner,
         joy_node,
         teleop_twist_joy_node,
