@@ -13,7 +13,7 @@ source "arm" "ubuntu" {
   file_target_extension = "img"
   image_build_method    = "resize"
   image_path            = "pupOS_ubuntu_desktop_full.img"
-  image_size            = "12G"
+  image_size            = "14G"
   image_type            = "dos"
   image_partitions {
     name         = "boot"
@@ -47,9 +47,9 @@ build {
   # Add temporary DNS for internet
   provisioner "shell" {
     inline = [
-      "sudo mv /etc/resolv.conf /etc/resolv.conf.bk",
-      "sudo echo 'nameserver 8.8.8.8' > /etc/resolv.conf",
-      "sudo echo 'nameserver 1.1.1.1' > /etc/resolv.conf",
+        "sudo mv /etc/resolv.conf /etc/resolv.conf.bk",
+        "echo 'nameserver 8.8.8.8' | sudo tee /etc/resolv.conf",
+        "echo 'nameserver 1.1.1.1' | sudo tee -a /etc/resolv.conf",
     ]
   }
 

@@ -132,9 +132,9 @@ pip install rosdep
 # sudo apt install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-teleop-twist-joy ros-jazzy-foxglove-bridge ros-jazzy-xacro
 
 # Build ROS2 workspace
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
-echo 'source ~/ros2_ws/install/setup.bash' >> /home/$DEFAULT_USER/.bashrc
-source /home/$DEFAULT_USER/ros2_ws/install/setup.bash
+# colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
+# echo 'source ~/ros2_ws/install/setup.bash' >> /home/$DEFAULT_USER/.bashrc
+# source /home/$DEFAULT_USER/ros2_ws/install/setup.bash
 
 # Finally update packages since this step takes a long time
 sudo apt upgrade -y

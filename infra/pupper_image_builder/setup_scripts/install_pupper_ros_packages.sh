@@ -43,7 +43,8 @@ retry_command "git clone https://github.com/christianrauch/camera_ros.git" 20
 
 # Install wandb for neural controller
 sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install wandb
+pip install --ignore-installed typing_extensions
+pip install --upgrade wandb
 
 # Install dependencies
 cd /home/$DEFAULT_USER/ros2_ws
