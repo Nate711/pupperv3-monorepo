@@ -31,7 +31,6 @@ public:
 
     // Publishers
     pub_estop_ = this->create_publisher<std_msgs::msg::Empty>("/emergency_stop", 10);
-    pub_estop_release_ = this->create_publisher<std_msgs::msg::Empty>("/emergency_stop_reset", 10);
 
     // Subscriber to /joy
     joy_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(
@@ -50,8 +49,9 @@ private:
     bool estop_pressed = msg->buttons.size() > estop_index_ && msg->buttons[estop_index_] == 1;
     if (estop_pressed && !prev_estop_state_)
     {
-      // auto empty_msg = std_msgs::msg::Empty();
-      // pub_estop_->publish(empty_msg);
+      // Send a estop message as well as service call for redundancy
+      auto empty_msg = std_msgs::msg::Empty();
+      pub_estop_->publish(empty_msg);
       RCLCPP_INFO(this->get_logger(), "Button %d pressed: Published to estop topic", estop_index_);
       std::thread(&EStopController::switch_controllers_sync, this, std::vector<std::string>{}, controller_names_, /*strict=*/false).detach();
     }
@@ -61,8 +61,6 @@ private:
     bool estop_release_pressed = msg->buttons.size() > estop_release_index_ && msg->buttons[estop_release_index_] == 1;
     if (estop_release_pressed && !prev_estop_release_state_)
     {
-      // auto empty_msg = std_msgs::msg::Empty();
-      // pub_estop_release_->publish(empty_msg);
       RCLCPP_INFO(this->get_logger(), "Button %d pressed: Published to estop release topic", estop_release_index_);
       std::thread(&EStopController::switch_controllers_sync, this, controller_names_, std::vector<std::string>{}, /*strict=*/false).detach();
     }
@@ -149,7 +147,6 @@ private:
 
   // ROS 2 publishers
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pub_estop_;
-  rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pub_estop_release_;
 
   // ROS 2 subscriber
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
