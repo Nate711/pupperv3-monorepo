@@ -172,6 +172,7 @@ controller_interface::CallbackReturn NeuralController::on_activate(
 
   // Populate the command interfaces map
   RCLCPP_INFO(get_node()->get_logger(), "Populating command interfaces map");
+  command_interfaces_map_.clear();
   for (auto &command_interface : command_interfaces_) {
     RCLCPP_INFO(get_node()->get_logger(), "Prefix %s. Adding command interface %s",
                 command_interface.get_prefix_name().c_str(),
@@ -181,6 +182,7 @@ controller_interface::CallbackReturn NeuralController::on_activate(
   }
 
   // Populate the state interfaces map
+  state_interfaces_map_.clear();
   for (auto &state_interface : state_interfaces_) {
     RCLCPP_INFO(get_node()->get_logger(), "Prefix %s. Adding state interface %s",
                 state_interface.get_prefix_name().c_str(),
@@ -194,6 +196,9 @@ controller_interface::CallbackReturn NeuralController::on_activate(
     init_joint_pos_.at(i) =
         state_interfaces_map_.at(params_.joint_names.at(i)).at("position").get().get_value();
   }
+
+  // Reset estop caused by falling over
+  estop_active_ = false;
 
   init_time_ = get_node()->now();
   repeat_action_counter_ = -1;
@@ -230,15 +235,15 @@ controller_interface::CallbackReturn NeuralController::on_activate(
         RCLCPP_INFO(get_node()->get_logger(), "Emergency stop triggered");
       });
 
-  emergency_stop_reset_subscriber_ = get_node()->create_subscription<std_msgs::msg::Empty>(
-      "/emergency_stop_reset", rclcpp::SystemDefaultsQoS(),
-      [this](const std_msgs::msg::Empty::SharedPtr /*msg*/) {
-        if (estop_active_) {
-          estop_active_ = false;
-          on_activate(rclcpp_lifecycle::State());
-          RCLCPP_INFO(get_node()->get_logger(), "Emergency stop released");
-        }
-      });
+  // emergency_stop_reset_subscriber_ = get_node()->create_subscription<std_msgs::msg::Empty>(
+  //     "/emergency_stop_reset", rclcpp::SystemDefaultsQoS(),
+  //     [this](const std_msgs::msg::Empty::SharedPtr /*msg*/) {
+  //       if (estop_active_) {
+  //         estop_active_ = false;
+  //         on_activate(rclcpp_lifecycle::State());
+  //         RCLCPP_INFO(get_node()->get_logger(), "Emergency stop released");
+  //       }
+  //     });
 
   // Initialize the publishers
   policy_output_publisher_ =

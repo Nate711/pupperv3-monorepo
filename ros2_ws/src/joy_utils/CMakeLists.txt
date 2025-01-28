@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(controller_manager_msgs REQUIRED)
 
 # Add the executable
 add_executable(estop_controller src/estop_controller.cpp)
@@ -19,6 +20,7 @@ ament_target_dependencies(estop_controller
   rclcpp
   sensor_msgs
   std_msgs
+  controller_manager_msgs
 )
 
 # Install the executable
