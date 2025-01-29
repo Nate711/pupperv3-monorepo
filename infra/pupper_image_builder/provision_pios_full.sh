@@ -41,22 +41,21 @@ sudo apt install -y hailo-all
 
 source /opt/ros/jazzy/setup.bash
 
+# Prepare monorepo
 apt install git-lfs -y
-git lfs install
+cd /home/$DEFAULT_USER
 retry_command "git clone https://github.com/Nate711/pupperv3-monorepo.git --recurse-submodules"
+cd /home/$DEFAULT_USER/pupperv3-monorepo/
+git lfs install
+git lfs pull
 
-# Install dependencies
+# Move other ros2 packages to monorepo workspace
 cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws
 mv /home/$DEFAULT_USER/ros2_ws/src/* /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/
 rm -rf /home/$DEFAULT_USER/ros2_ws
 
+# Build monorepo ros2 code
 ./build.sh
-
-
-# pip install rosdep
-# sudo rosdep init && rosdep update
-# rosdep install --from-paths src -y --ignore-src
-
 
 # # Install utils
 # cd /home/$DEFAULT_USER
