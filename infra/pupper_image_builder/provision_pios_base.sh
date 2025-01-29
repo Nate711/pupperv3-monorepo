@@ -106,6 +106,9 @@ cd /home/$DEFAULT_USER/ros2_ws/src
 # install libcap-dev
 sudo apt install -y libcap-dev
 
+# install websocketapp
+sudo apt-get install -y libwebsocketpp-dev
+
 pip install typeguard
 pip uninstall em
 pip install empy==3.3.4
@@ -120,7 +123,8 @@ retry_command "git clone -b ros2 https://github.com/ros-drivers/joystick_drivers
 retry_command "git clone -b ros2 https://github.com/ros/xacro.git --recurse-submodules"
 retry_command "git clone https://github.com/ros-controls/ros2_control.git --recurse-submodules"
 retry_command "git clone https://github.com/PickNikRobotics/cpp_polyfills.git --recurse-submodules"
-
+retry_command "git clone https://github.com/facontidavide/rosx_introspection.git --recurse-submodules"
+retry_command "git clone https://github.com/foxglove/ros-foxglove-bridge.git --recurse-submodules"
 
 # Install dependencies
 cd /home/$DEFAULT_USER/ros2_ws
