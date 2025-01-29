@@ -109,8 +109,8 @@ cd /home/$DEFAULT_USER/ros2_ws/src
 # install libcap-dev
 sudo apt install -y libcap-dev
 
-# install websocketapp
-sudo apt-get install -y libwebsocketpp-dev
+# install dependencies for foxglove-bridge
+sudo apt-get install -y libwebsocketpp-dev nlohmann-json3-dev
 
 pip install typeguard
 pip uninstall em
