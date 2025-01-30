@@ -72,6 +72,9 @@ XKBOPTIONS=""
 KBEOF
    dpkg-reconfigure -f noninteractive keyboard-configuration
 fi
-# rm -f /boot/firstrun.sh
+
+chown -R pi /home/pi
+
+rm -f /boot/firstrun.sh
 sed -i 's| systemd.run.*||g' /boot/cmdline.txt
 exit 0
