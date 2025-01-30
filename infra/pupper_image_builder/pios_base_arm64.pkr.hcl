@@ -77,6 +77,11 @@ build {
 #     destination = "/boot/firmware/user-data"
 #   }
 
+  provisioner "file" {
+    source      = "resources/firstrun.sh"
+    destination = "/boot/firstrun.sh"
+  }
+
   provisioner "shell" {
     script = "provision_pios_base.sh"
   }
