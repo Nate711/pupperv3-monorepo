@@ -77,7 +77,7 @@ repos=(
     "https://github.com/pal-robotics/backward_ros.git"
     "https://github.com/PickNikRobotics/RSL.git"
     "https://github.com/PickNikRobotics/generate_parameter_library.git"
-    "https://github.com/ros-controls/realtime_tools.git"
+    "https://github.com/ros-controls/realtime_tools.git -b jazzy"
     "https://github.com/ros-controls/control_msgs.git"
     "https://github.com/ros/diagnostics.git"
     "https://github.com/ros2/teleop_twist_joy.git"
