@@ -99,49 +99,8 @@ sudo apt install -y bluez
 sudo apt install -y portaudio19-dev python3-pyaudio alsa-utils
 pip install --upgrade pyaudio deepgram-sdk
 
-# Install ROS2
+# Install some useful tools
 sudo apt install -y software-properties-common
-
-# Create ROS2 workspace
-mkdir -p /home/$DEFAULT_USER/ros2_ws/src
-cd /home/$DEFAULT_USER/ros2_ws/src
-
-# install libcap-dev
-sudo apt install -y libcap-dev
-
-# install dependencies for foxglove-bridge
-sudo apt-get install -y libwebsocketpp-dev nlohmann-json3-dev
-
-pip install typeguard
-pip uninstall em
-pip install empy==3.3.4
-retry_command "git clone https://github.com/pal-robotics/backward_ros.git --recurse-submodules"
-retry_command "git clone https://github.com/PickNikRobotics/RSL.git --recurse-submodules"
-retry_command "git clone https://github.com/PickNikRobotics/generate_parameter_library.git --recurse-submodules"
-retry_command "git clone https://github.com/ros-controls/realtime_tools.git --recurse-submodules"
-retry_command "git clone https://github.com/ros-controls/control_msgs.git --recurse-submodules"
-retry_command "git clone https://github.com/ros/diagnostics.git --recurse-submodules"
-retry_command "git clone https://github.com/ros2/teleop_twist_joy.git --recurse-submodules"
-retry_command "git clone -b ros2 https://github.com/ros-drivers/joystick_drivers.git --recurse-submodules"
-retry_command "git clone -b ros2 https://github.com/ros/xacro.git --recurse-submodules"
-retry_command "git clone https://github.com/ros-controls/ros2_control.git --recurse-submodules"
-retry_command "git clone https://github.com/PickNikRobotics/cpp_polyfills.git --recurse-submodules"
-retry_command "git clone https://github.com/facontidavide/rosx_introspection.git --recurse-submodules"
-retry_command "git clone https://github.com/foxglove/ros-foxglove-bridge.git --recurse-submodules"
-
-# Install dependencies
-cd /home/$DEFAULT_USER/ros2_ws
-pip install rosdep
-# sudo rosdep init && rosdep update
-# rosdep install --from-paths src -y --ignore-src
-
-# Install additional ROS2 packages
-# sudo apt install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-teleop-twist-joy ros-jazzy-foxglove-bridge ros-jazzy-xacro
-
-# Build ROS2 workspace
-# colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
-# echo 'source ~/ros2_ws/install/setup.bash' >> /home/$DEFAULT_USER/.bashrc
-# source /home/$DEFAULT_USER/ros2_ws/install/setup.bash
 
 # Finally update packages since this step takes a long time
 sudo apt upgrade -y
