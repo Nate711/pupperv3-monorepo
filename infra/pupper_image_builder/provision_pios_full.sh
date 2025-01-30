@@ -102,6 +102,10 @@ done
 # Build monorepo ros2 code
 bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
 
+############### AUTOMATICALLY SOURCE ROS2 WORKSPACE IN BASHRC ################################
+echo "source /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/install/setup.bash" >> /home/$DEFAULT_USER/.bashrc
+echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/$DEFAULT_USER/.bashrc
+
 # # Install utils
 # cd /home/$DEFAULT_USER
 # rm -rf utils
