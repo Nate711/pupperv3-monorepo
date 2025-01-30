@@ -36,6 +36,7 @@ hostname
 
 DEFAULT_USER=pi
 mkdir -p /home/$DEFAULT_USER
+chown -R $DEFAULT_USER /home/$DEFAULT_USER
 
 # PiOS debian ros2
 sudo apt update

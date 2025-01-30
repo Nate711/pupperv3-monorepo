@@ -28,6 +28,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 DEFAULT_USER=pi
 mkdir -p /home/$DEFAULT_USER
+chown -R $DEFAULT_USER /home/$DEFAULT_USER
 
 sudo apt update
 sudo apt upgrade -y
