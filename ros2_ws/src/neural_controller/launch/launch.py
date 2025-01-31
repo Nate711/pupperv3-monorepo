@@ -64,7 +64,9 @@ def generate_launch_description():
     # 5. Common controller parameters
     #
     robot_controllers = ParameterFile(
-        PathJoinSubstitution([FindPackageShare("neural_controller"), "launch", "config.yaml"]),
+        PathJoinSubstitution(
+            [FindPackageShare("neural_controller"), "launch", "config.yaml"]
+        ),
         allow_substs=True,
     )
 
@@ -172,12 +174,14 @@ def generate_launch_description():
         joint_state_broadcaster_spawner,
         # Comment/uncomment as needed:
         # imu_sensor_broadcaster_spawner,
-        # camera_node,
         joy_node,
         teleop_twist_joy_node,
         foxglove_bridge,
         joy_util_node,
     ]
+
+    if PythonExpression(LaunchConfiguration("sim")):
+        nodes.append(camera_node)
 
     #
     # 8. Return the LaunchDescription with the declared arg + all nodes
