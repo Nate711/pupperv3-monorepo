@@ -64,9 +64,7 @@ def generate_launch_description():
     # 5. Common controller parameters
     #
     robot_controllers = ParameterFile(
-        PathJoinSubstitution(
-            [FindPackageShare("neural_controller"), "launch", "config.yaml"]
-        ),
+        PathJoinSubstitution([FindPackageShare("neural_controller"), "launch", "config.yaml"]),
         allow_substs=True,
     )
 
@@ -180,7 +178,7 @@ def generate_launch_description():
         joy_util_node,
     ]
 
-    if PythonExpression(LaunchConfiguration("sim")):
+    if not PythonExpression(LaunchConfiguration("sim")):
         nodes.append(camera_node)
 
     #
