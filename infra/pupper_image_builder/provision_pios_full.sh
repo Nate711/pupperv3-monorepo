@@ -91,6 +91,10 @@ repos=(
     "https://github.com/christianrauch/camera_ros.git -b no_switch_error"
     "https://github.com/ros-perception/image_common.git -b jazzy"
     "https://github.com/ros2/message_filters.git -b jazzy"
+    "https://github.com/ros/angles.git"
+    "https://github.com/ros-controls/ros2_controllers.git"
+    "https://github.com/ros-drivers/ackermann_msgs.git -b ros2"
+    "https://github.com/ros/filters.git -b ros2"
 )
 
 for repo in "${repos[@]}"; do
