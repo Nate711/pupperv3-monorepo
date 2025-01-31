@@ -64,9 +64,7 @@ def generate_launch_description():
     # 5. Common controller parameters
     #
     robot_controllers = ParameterFile(
-        PathJoinSubstitution(
-            [FindPackageShare("neural_controller"), "launch", "config.yaml"]
-        ),
+        PathJoinSubstitution([FindPackageShare("neural_controller"), "launch", "config.yaml"]),
         allow_substs=True,
     )
 
@@ -156,6 +154,13 @@ def generate_launch_description():
         output="both",
     )
 
+    camera_node = Node(
+        package="camera_ros",
+        executable="camera_node",
+        output="both",
+        parameters=[{"format": "RGB888", "width": 1400, "height": 1050}],
+    )
+
     #
     # 7. Put them all together
     #
@@ -167,6 +172,7 @@ def generate_launch_description():
         joint_state_broadcaster_spawner,
         # Comment/uncomment as needed:
         # imu_sensor_broadcaster_spawner,
+        # camera_node,
         joy_node,
         teleop_twist_joy_node,
         foxglove_bridge,
