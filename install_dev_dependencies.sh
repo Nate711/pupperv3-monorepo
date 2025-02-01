@@ -19,7 +19,7 @@ source /opt/ros/jazzy/setup.bash
 # install pip
 sudo apt install -y python3-pip libglfw3-dev
 
-pip install wandb glfw --break-system-packages
+pip install wandb glfw openai[realtime] pyaudio pydub numpy sounddevice --break-system-packages
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
