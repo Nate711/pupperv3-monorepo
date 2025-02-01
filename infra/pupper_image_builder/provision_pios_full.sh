@@ -96,6 +96,7 @@ repos=(
     "https://github.com/ros-drivers/ackermann_msgs.git -b ros2"
     "https://github.com/ros/filters.git -b ros2"
     "https://github.com/ros-controls/control_toolbox.git"
+    "https://github.com/ros-controls/kinematics_interface.git"
 )
 
 for repo in "${repos[@]}"; do
