@@ -60,7 +60,8 @@ class RealtimeAPIClient:
 
     async def handle_realtime_connection(self) -> None:
         async with self.client.beta.realtime.connect(
-            model="gpt-4o-realtime-preview"
+            model="gpt-4o-mini-realtime-preview",
+            instructions="You are a robot dog named Fido",
         ) as conn:
             self.connection = conn
             self.connected.set()
@@ -142,7 +143,9 @@ class RealtimeAPIClient:
 
                 connection = await self._get_connection()
                 if not sent_audio:
-                    asyncio.create_task(connection.send({"type": "response.cancel"}))
+                    asyncio.create_task(
+                        connection.send({"type": "response.cancel"})
+                    )
                     sent_audio = True
 
                 await connection.input_audio_buffer.append(
