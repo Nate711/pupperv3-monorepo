@@ -50,6 +50,9 @@ def main():
         action="store_true",
         help="check voltage every 10s and display warning to all screens if less than threshold",
     )
+    parser.add_argument(
+        "--percentage_only",
+        action="store_true")
     args = parser.parse_args()
     i2c = busio.I2C(board.SCL, board.SDA)
     NUM_CELLS = 5
@@ -92,6 +95,8 @@ def main():
                 )
                 os.system("sudo shutdown -h +1")
 
+    elif args.percentage_only:
+        print(f"{int(cell_percentage)}")
     else:
         print(f"Battery:\t{int(cell_percentage)}%\t{bat_voltage:0.2f}V")
 

@@ -65,8 +65,17 @@ def open_desktop_terminal():
             "-hold",
             "-title",
             "Pupper Feelings",
-            "-geometry",
-            "80x24",
+            # "-geometry",
+            # "116x48",
+            # "-fn",
+            # "20x40",
+            "-bg",
+            "black",
+            "-fa",
+            "Monospace",
+            "-fs",
+            "9",
+            "-maximized",
             "-e",
             "cat {}".format(PIPE_PATH),
         ],
@@ -132,18 +141,18 @@ class JoyListener(Node):
     def display_ip_battery_voltage(self, color_code=Colors.BLUE):
         ip_addr = check_output(["hostname", "-I"]).decode("utf-8").strip()
         battery_voltage = (
-            check_output(["python3", "/home/pi/utils/check_batt_voltage.py"])
+            check_output(["python3", "/home/pi/pupperv3-monorepo/robot/utils/check_batt_voltage.py", "--percentage_only"])
             .decode("utf-8")
             .strip()
         )
         # Write info to our pipe (the new terminal)
         self.terminal.write(
+            "\n"+
             color_code
             + "IP address: "
             + str(ip_addr)
-            + "\t"
-            + str(battery_voltage)
-            + "\t press again to refresh"
+            + "\nBattery percentage: "
+            + str(battery_voltage) + "%"
             + Colors.END
             + "\n"
         )
