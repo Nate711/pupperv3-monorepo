@@ -4,7 +4,7 @@ Description=robot
 [Service]
 User=pi
 WorkingDirectory=/home/pi
-ExecStart=/home/pi/utils/robot.sh
+ExecStart=/home/pi/pupperv3-monorepo/robot/utils/robot.sh
 CapabilityBoundingSet=CAP_SYS_NICE
 LimitRTPRIO=infinity
 LimitCPU=infinity
