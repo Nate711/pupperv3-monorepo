@@ -83,6 +83,17 @@ build {
   }
 
   provisioner "shell" {
+    inline = [
+        "mkdir -p /home/pi/resources",
+    ]
+  }
+
+  provisioner "file" {
+    source      = "resources/ros-jazzy-desktop-0.3.2_20250202_arm64.deb"
+    destination = "/home/pi/resources/ros.deb"
+  }
+
+  provisioner "shell" {
     script = "provision_pios_base.sh"
   }
 

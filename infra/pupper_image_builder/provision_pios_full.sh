@@ -33,6 +33,8 @@ chown -R $DEFAULT_USER /home/$DEFAULT_USER
 sudo apt update
 sudo apt upgrade -y
 
+sudo apt install -y vim
+
 sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 pip install wandb
 
@@ -74,29 +76,9 @@ pip uninstall em
 pip install empy==3.3.4
 
 repos=(
-    "https://github.com/pal-robotics/backward_ros.git"
-    "https://github.com/PickNikRobotics/RSL.git"
-    "https://github.com/PickNikRobotics/generate_parameter_library.git"
-    "https://github.com/ros-controls/realtime_tools.git -b jazzy"
-    "https://github.com/ros-controls/control_msgs.git"
-    "https://github.com/ros/diagnostics.git"
-    "https://github.com/ros2/teleop_twist_joy.git"
-    "https://github.com/ros-drivers/joystick_drivers.git -b ros2"
-    "https://github.com/ros/xacro.git -b ros2"
-    "https://github.com/ros-controls/ros2_control.git"
-    "https://github.com/PickNikRobotics/cpp_polyfills.git"
     "https://github.com/facontidavide/rosx_introspection.git"
     "https://github.com/foxglove/ros-foxglove-bridge.git"
-    "https://github.com/ros-perception/vision_opencv.git"
     "https://github.com/christianrauch/camera_ros.git -b no_switch_error"
-    "https://github.com/ros-perception/image_common.git -b jazzy"
-    "https://github.com/ros2/message_filters.git -b jazzy"
-    "https://github.com/ros/angles.git"
-    "https://github.com/ros-controls/ros2_controllers.git"
-    "https://github.com/ros-drivers/ackermann_msgs.git -b ros2"
-    "https://github.com/ros/filters.git -b ros2"
-    "https://github.com/ros-controls/control_toolbox.git"
-    "https://github.com/ros-controls/kinematics_interface.git"
 )
 
 for repo in "${repos[@]}"; do

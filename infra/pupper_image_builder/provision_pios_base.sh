@@ -40,8 +40,10 @@ chown -R $DEFAULT_USER /home/$DEFAULT_USER
 
 # PiOS debian ros2
 sudo apt update
-retry_command "wget https://s3.ap-northeast-1.wasabisys.com/download-raw/dpkg/ros2-desktop/debian/bookworm/ros-jazzy-desktop-0.3.2_20240525_arm64.deb"
-sudo apt install -y ./ros-jazzy-desktop-0.3.2_20240525_arm64.deb
+# retry_command "wget https://s3.ap-northeast-1.wasabisys.com/download-raw/dpkg/ros2-desktop/debian/bookworm/ros-jazzy-desktop-0.3.2_20240525_arm64.deb"
+# sudo apt install -y ./ros-jazzy-desktop-0.3.2_20240525_arm64.deb
+sudo apt install -y /home/pi/resources/ros.deb
+
 sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 sudo pip install vcstool colcon-common-extensions
 echo 'source /opt/ros/jazzy/setup.bash' >> /home/$DEFAULT_USER/.bashrc
@@ -88,7 +90,7 @@ sudo apt install -y portaudio19-dev python3-pyaudio alsa-utils
 pip install --upgrade pyaudio deepgram-sdk
 
 # Install some useful tools
-sudo apt install -y software-properties-common
+sudo apt install -y software-properties-common vim
 
 # Finally update packages since this step takes a long time
 sudo apt upgrade -y
