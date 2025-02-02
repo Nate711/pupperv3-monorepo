@@ -2,7 +2,7 @@
 Description=Battery Monitor Service
 
 [Service]
-ExecStart=/usr/bin/python3 /home/pi/utils/check_batt_voltage.py --service_mode
+ExecStart=/usr/bin/python3 /home/pi/pupperv3-monorepo/robot/utils/check_batt_voltage.py --service_mode
 Restart=always
 User=root
 Group=root
