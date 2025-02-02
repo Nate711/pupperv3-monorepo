@@ -50,9 +50,7 @@ def main():
         action="store_true",
         help="check voltage every 10s and display warning to all screens if less than threshold",
     )
-    parser.add_argument(
-        "--percentage_only",
-        action="store_true")
+    parser.add_argument("--percentage_only", action="store_true")
     args = parser.parse_args()
     i2c = busio.I2C(board.SCL, board.SDA)
     NUM_CELLS = 5
@@ -65,17 +63,23 @@ def main():
     CELL_PERCENTAGES = [100, 66, 33, 0]
 
     bat_voltage = get_battery_voltage(i2c)
-    cell_voltage = max(min(bat_voltage / NUM_CELLS, CELL_VOLTAGES[0]), CELL_VOLTAGES[-1])
+    cell_voltage = max(
+        min(bat_voltage / NUM_CELLS, CELL_VOLTAGES[0]), CELL_VOLTAGES[-1]
+    )
     cell_percentage = 100
-    for i in range(len(CELL_VOLTAGES) - 1):
-        if CELL_VOLTAGES[i + 1] < cell_voltage < CELL_VOLTAGES[i]:
-            proportion = (cell_voltage - CELL_VOLTAGES[i + 1]) / (
-                CELL_VOLTAGES[i] - CELL_VOLTAGES[i + 1] + 1e-6
-            )
-            cell_percentage = (
-                proportion * CELL_PERCENTAGES[i] + (1 - proportion) * CELL_PERCENTAGES[i + 1]
-            )
-            break
+    if cell_voltage < CELL_VOLTAGES[-1]:
+        cell_percentage = CELL_PERCENTAGES[-1]
+    else:
+        for i in range(len(CELL_VOLTAGES) - 1):
+            if CELL_VOLTAGES[i + 1] < cell_voltage < CELL_VOLTAGES[i]:
+                proportion = (cell_voltage - CELL_VOLTAGES[i + 1]) / (
+                    CELL_VOLTAGES[i] - CELL_VOLTAGES[i + 1] + 1e-6
+                )
+                cell_percentage = (
+                    proportion * CELL_PERCENTAGES[i]
+                    + (1 - proportion) * CELL_PERCENTAGES[i + 1]
+                )
+                break
 
     if args.service_mode:
         while True:
