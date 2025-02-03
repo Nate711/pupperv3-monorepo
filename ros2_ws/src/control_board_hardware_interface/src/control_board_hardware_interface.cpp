@@ -279,7 +279,7 @@ hardware_interface::return_type ControlBoardHardwareInterface::read(
 
   if (imu_manager_.enabled) {
     // TODO: put this functionality into the imu_manager
-    BNO055::Output imu_output = imu_manager_.imu_data;
+    BNO055::Output imu_output = imu_manager_.get_imu_data();
 
     // Represent IMU orientation as quaternion
     tf2::Quaternion imu_quat(imu_output.quat.x(), imu_output.quat.y(), imu_output.quat.z(),
