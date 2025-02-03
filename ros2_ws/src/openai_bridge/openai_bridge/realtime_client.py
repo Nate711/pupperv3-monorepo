@@ -31,7 +31,14 @@ from openai_bridge.audio_util import CHANNELS, SAMPLE_RATE, AudioPlayerAsync
 
 from openai import AsyncOpenAI
 from openai.types.beta.realtime.session import Session
-from openai.resources.beta.realtime.realtime import AsyncRealtimeConnection
+from openai.types.beta.realtime import (
+    ConversationItemCreateEvent,
+    ConversationItem,
+)
+from openai.resources.beta.realtime.realtime import (
+    AsyncRealtimeConnection,
+    RealtimeClientEvent,
+)
 
 
 class RealtimeAPIClient:
@@ -70,7 +77,19 @@ class RealtimeAPIClient:
             await conn.session.update(
                 session={
                     "turn_detection": {"type": "server_vad"},
-                    "instructions": "You are a robot dog named Fido and your sole purpose in life is to make your owner happy and eat treats. You don't know anything that a dog wouldn't know. If a person talks to you, tell them about your favorite treat.",
+                    "instructions": "You are a robot dog named Fido and your sole purpose in life is to make your owner happy and eat treats. You don't know anything that a dog wouldn't know. Call functions whenever you can.",
+                    "tools": [
+                        {
+                            "type": "function",
+                            "name": "get_favorite_treat",
+                            "description": "Gets a description of your favorite treat...",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"mood": {"type": "string"}},
+                                "required": ["mood"],
+                            },
+                        }
+                    ],
                 },
             )
             # await conn.session.update(session={"turn_detection": None})
@@ -109,6 +128,25 @@ class RealtimeAPIClient:
                     print("Transcript: ", acc_items[event.item_id])
                     continue
 
+                if event.type == "response.done":
+                    print("Response done")
+                    for output in event.response.output:
+                        if output.type == "function_call":
+                            await self.connection.conversation.item.create(
+                                item=ConversationItem(
+                                    type="function_call_output",
+                                    call_id=output.call_id,
+                                    output="Your favorite treat is salmon",
+                                )
+                            )
+                            await conn.response.create()
+
+                if event.type == "response.function_call_arguments.done":
+                    print("Function call arguments done")
+                    print(event.name, event.arguments)
+
+                print("Unhandled event type: ", event.type)
+
     async def _get_connection(self) -> AsyncRealtimeConnection:
         await self.connected.wait()
         assert self.connection is not None
@@ -117,6 +155,7 @@ class RealtimeAPIClient:
     async def send_mic_audio(self) -> None:
         import sounddevice as sd  # type: ignore
 
+        # Don't get a response from openai until we have sent audio
         sent_audio = False
 
         device_info = sd.query_devices()
@@ -191,8 +230,9 @@ async def get_input(client) -> None:
 
 if __name__ == "__main__":
     client = RealtimeAPIClient()
-    # use asyncio to run an event loop and start it by calling client.send_mic_audio and client.handle_realtime_connection
+    client.start_recording()
 
+    # use asyncio to run an event loop and start it by calling client.send_mic_audio and client.handle_realtime_connection
     async def together():
         await asyncio.gather(
             client.run(),
