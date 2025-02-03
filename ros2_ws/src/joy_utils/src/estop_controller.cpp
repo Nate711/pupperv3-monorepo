@@ -61,8 +61,8 @@ private:
     bool estop_release_pressed = msg->buttons.size() > estop_release_index_ && msg->buttons[estop_release_index_] == 1;
     if (estop_release_pressed && !prev_estop_release_state_)
     {
-      RCLCPP_INFO(this->get_logger(), "Button %d pressed: Published to estop release topic", estop_release_index_);
-      std::thread(&EStopController::switch_controllers_sync, this, controller_names_, std::vector<std::string>{}, /*strict=*/false).detach();
+      RCLCPP_INFO(this->get_logger(), "Button %d pressed: Published to estop release topic. Activating controller 0.", estop_release_index_);
+      std::thread(&EStopController::switch_controllers_sync, this, {controller_names_.at(0)}, std::vector<std::string>{}, /*strict=*/false).detach();
     }
     prev_estop_release_state_ = estop_release_pressed;
 
@@ -104,6 +104,10 @@ private:
     if (service_call_in_progress_)
     {
       RCLCPP_WARN(this->get_logger(), "Service call already in progress");
+      return;
+    }
+    if (activate_controllers.size() > 1) {
+      RCLCPP_WARN(this->get_logger(), "Only one controller can be activated at a time! Skipping switch.");
       return;
     }
     service_call_in_progress_ = true;
