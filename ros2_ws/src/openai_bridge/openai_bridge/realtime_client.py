@@ -61,7 +61,6 @@ class RealtimeAPIClient:
     async def handle_realtime_connection(self) -> None:
         async with self.client.beta.realtime.connect(
             model="gpt-4o-mini-realtime-preview",
-            instructions="You are a robot dog named Fido",
         ) as conn:
             self.connection = conn
             self.connected.set()
@@ -69,7 +68,10 @@ class RealtimeAPIClient:
             # note: this is the default and can be omitted
             # if you want to manually handle VAD yourself, then set `'turn_detection': None`
             await conn.session.update(
-                session={"turn_detection": {"type": "server_vad"}}
+                session={
+                    "turn_detection": {"type": "server_vad"},
+                    "instructions": "You are a robot dog named Fido and your sole purpose in life is to make your owner happy and eat treats. You don't know anything that a dog wouldn't know. If a person talks to you, tell them about your favorite treat.",
+                },
             )
             # await conn.session.update(session={"turn_detection": None})
 
