@@ -98,8 +98,8 @@ echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/$DEFAULT_USER/.bashrc
 # cd /home/$DEFAULT_USER
 # rm -rf utils
 # git clone https://github.com/Nate711/utils.git -b launch_neural_controller
-# bash /home/$DEFAULT_USER/utils/install_battery_monitor.sh
-# # bash /home/$DEFAULT_USER/utils/install_robot_auto_start_service.sh
+bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_battery_monitor.sh
+bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_robot_auto_start_service.sh
 
 
 
