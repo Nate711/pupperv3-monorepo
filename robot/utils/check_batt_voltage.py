@@ -91,11 +91,11 @@ def main():
 
             if bat_voltage < MIN_VOLTAGE:
                 broadcast_message(
-                    f"\033[91mWARNING: Battery voltage {bat_voltage:0.2f} is below threshold {MIN_VOLTAGE}!\033[0m"
+                    f"********WARNING: Battery voltage {bat_voltage:0.2f} is below threshold {MIN_VOLTAGE}!********"
                 )
             if bat_voltage < SHUTDOWN_VOLTAGE:
                 broadcast_message(
-                    f"\033[91mWARNING: Battery voltage {bat_voltage:0.2f} is below threshold {SHUTDOWN_VOLTAGE}! Scheduling a shutdown for 60 seconds from now...\033[0m"
+                    f"********WARNING: Battery voltage {bat_voltage:0.2f} is below threshold {SHUTDOWN_VOLTAGE}! Scheduling a shutdown for 60 seconds from now...********"
                 )
                 os.system("sudo shutdown -h +1")
 
