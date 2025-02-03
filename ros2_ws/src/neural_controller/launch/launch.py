@@ -64,7 +64,9 @@ def generate_launch_description():
     # 5. Common controller parameters
     #
     robot_controllers = ParameterFile(
-        PathJoinSubstitution([FindPackageShare("neural_controller"), "launch", "config.yaml"]),
+        PathJoinSubstitution(
+            [FindPackageShare("neural_controller"), "launch", "config.yaml"]
+        ),
         allow_substs=True,
     )
 
@@ -101,6 +103,7 @@ def generate_launch_description():
             "/controller_manager",
             "--controller-manager-timeout",
             "30",
+            "--inactive",
         ],
     )
 
