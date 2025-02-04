@@ -89,7 +89,7 @@ build {
   }
 
   provisioner "file" {
-    source      = "resources/ros-jazzy-desktop-0.3.2_20250202_arm64.deb"
+    source      = "resources/ros-jazzy-desktop-0.3.2_20250203_arm64.deb"
     destination = "/home/pi/resources/ros.deb"
   }
 
