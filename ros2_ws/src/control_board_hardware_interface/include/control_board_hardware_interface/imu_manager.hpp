@@ -40,6 +40,9 @@ class IMUManager {
   // Stop reading threads
   void stop();
 
+  // Thread-safe get imu data
+  BNO055::Output get_imu_data();
+
  private:
   bool contains_nan(const Eigen::Quaternionf &q);
 
@@ -47,6 +50,7 @@ class IMUManager {
                                                                                   int delay_ms);
 
   void poll_imu();
+
 
   void imu_read_thread_fn();
 

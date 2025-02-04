@@ -48,6 +48,11 @@ void IMUManager::poll_imu() {
   }
 }
 
+BNO055::Output IMUManager::get_imu_data() {
+    std::lock_guard<std::mutex> lock(imu_mutex_);
+    return imu_data;
+}
+
 void IMUManager::imu_read_thread_fn() {
   while (!stop_imu_read_thread_) {
     poll_imu();
