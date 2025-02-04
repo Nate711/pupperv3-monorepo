@@ -329,7 +329,6 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
   // Only get a new action from the policy when repeat_action_counter_ is 0
   repeat_action_counter_ += 1;
   repeat_action_counter_ %= params_.repeat_action;
-  RCLCPP_INFO(get_node()->get_logger(), "repeat_action_counter_: %d. params_.repeat_action: %d", repeat_action_counter_, params_.repeat_action);
   if (repeat_action_counter_ != 0) {
     return controller_interface::return_type::OK;
   }
