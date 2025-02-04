@@ -276,8 +276,15 @@ controller_interface::CallbackReturn NeuralController::on_deactivate(
       realtime_tools::RealtimeBuffer<std::shared_ptr<geometry_msgs::msg::Twist>>(nullptr);
   rt_cmd_pose_ptr_ =
       realtime_tools::RealtimeBuffer<std::shared_ptr<geometry_msgs::msg::Pose>>(nullptr);
+
   for (auto &command_interface : command_interfaces_) {
     command_interface.set_value(0.0);
+  }
+  for (int i = 0; i < kActionSize; i++) {
+    command_interfaces_map_.at(params_.joint_names.at(i))
+        .at("kd")
+        .get()
+        .set_value(params_.estop_kd);
   }
 
   // Clear command and state interfaces maps
