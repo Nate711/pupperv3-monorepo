@@ -21,7 +21,7 @@ source "arm" "raspbian" {
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
   image_path            = "pupOS_pios_base.img"
-  image_size            = "14G"
+  image_size            = "12G"
   image_type            = "dos"
   image_partitions {
     name         = "boot"
