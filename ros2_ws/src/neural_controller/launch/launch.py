@@ -12,6 +12,7 @@ from launch.substitutions import (
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
+from launch.conditions import IfCondition, UnlessCondition
 
 
 def generate_launch_description():
@@ -24,6 +25,15 @@ def generate_launch_description():
         description=(
             "Run `ros2 launch neural_controller launch.py sim:=True` to run the robot "
             "in the Mujoco simulator, otherwise the default value of False will run the real robot."
+        ),
+    )
+
+    declare_teleop_arg = DeclareLaunchArgument(
+        name="teleop",
+        default_value="True",
+        description=(
+            "Run `ros2 launch neural_controller launch.py teleop:=True` to enable teleop, "
+            "otherwise the default value of False will not run teleop."
         ),
     )
 
@@ -85,6 +95,7 @@ def generate_launch_description():
         executable="teleop_node",
         parameters=[robot_controllers],
         output="both",
+        condition=IfCondition(LaunchConfiguration("teleop")),
     )
 
     control_node = Node(
@@ -162,6 +173,7 @@ def generate_launch_description():
         executable="camera_node",
         output="both",
         parameters=[{"format": "RGB888", "width": 1400, "height": 1050}],
+        condition=UnlessCondition(LaunchConfiguration("sim")),
     )
 
     #
@@ -175,16 +187,14 @@ def generate_launch_description():
         joint_state_broadcaster_spawner,
         # Comment/uncomment as needed:
         # imu_sensor_broadcaster_spawner,
-        joy_node,
-        teleop_twist_joy_node,
         foxglove_bridge,
         joy_util_node,
+        joy_node,
+        teleop_twist_joy_node,
+        camera_node,
     ]
-
-    if not PythonExpression(LaunchConfiguration("sim")):
-        nodes.append(camera_node)
 
     #
     # 8. Return the LaunchDescription with the declared arg + all nodes
     #
-    return LaunchDescription([declare_sim_arg, *nodes])
+    return LaunchDescription([declare_sim_arg, declare_teleop_arg, *nodes])

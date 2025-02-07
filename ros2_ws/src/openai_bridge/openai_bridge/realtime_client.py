@@ -113,8 +113,11 @@ class RealtimeAPIClient:
                         self.last_audio_item_id = event.item_id
 
                     bytes_data = base64.b64decode(event.delta)
-                    self.audio_player.add_data(bytes_data)
+                    self.audio_player.add_data(
+                        {"data": bytes_data, "item_id": event.item_id}
+                    )
                     # print("AUDIO DELTA", event.item_id)
+                    # Note: the audio delta typically contains a 0.5 to 2 seconds of audio!
                     continue
 
                 if event.type == "response.audio_transcript.delta":

@@ -38,6 +38,7 @@ from openai.resources.beta.realtime.realtime import (
     AsyncRealtimeConnection,
     RealtimeClientEvent,
 )
+import json
 
 
 class RealtimeAPIClient:
@@ -82,11 +83,26 @@ class RealtimeAPIClient:
 
             # note: this is the default and can be omitted
             # if you want to manually handle VAD yourself, then set `'turn_detection': None`
+            print(self.instructions)
+            print(self.tools)
             await conn.session.update(
                 session={
                     "turn_detection": {"type": "server_vad"},
                     "instructions": self.instructions,
                     "tools": self.tools,
+                    # "instructions": "You are a robot dog named Fido and your sole purpose in life is to make your owner happy and eat treats. You don't know anything that a dog wouldn't know. Call functions whenever you can.",
+                    # "tools": [
+                    #     {
+                    #         "type": "function",
+                    #         "name": "get_favorite_treat",
+                    #         "description": "Gets a description of your favorite treat...",
+                    #         "parameters": {
+                    #             "type": "object",
+                    #             "properties": {"mood": {"type": "string"}},
+                    #             "required": ["mood"],
+                    #         },
+                    #     }
+                    # ],
                 },
             )
             # await conn.session.update(session={"turn_detection": None})
@@ -109,9 +125,14 @@ class RealtimeAPIClient:
                         self.audio_player.reset_frame_count()
                         self.last_audio_item_id = event.item_id
 
-                    bytes_data = base64.b64decode(event.delta)
-                    self.audio_player.add_data(bytes_data)
+                    bytes_data = base64.b64decode(
+                        event.delta
+                    )  # typically 1200 to 18,000
+                    self.audio_player.add_data(
+                        {"data": bytes_data, "item_id": event.item_id}
+                    )
                     # print("AUDIO DELTA", event.item_id)
+                    # Notes: This will be sent multiple times with the same item id!
                     continue
 
                 if event.type == "response.audio_transcript.delta":
@@ -122,14 +143,20 @@ class RealtimeAPIClient:
                         acc_items[event.item_id] = event.delta
                     else:
                         acc_items[event.item_id] = text + event.delta
-                    print("Transcript: ", acc_items[event.item_id])
+                    # print("Transcript: ", acc_items[event.item_id], end="")
+                    print(event.delta, end="", flush=True)
                     continue
 
                 if event.type == "response.done":
                     print("Response done")
                     for output in event.response.output:
                         if output.type == "function_call":
-                            tool_output = self.tool_map[output.name](output.arguments)
+                            # convert output.arguments from json string to dict
+                            func_arguments = json.loads(output.arguments)
+                            print(
+                                f"\n****Calling function: {output.name} *******\narguments: {func_arguments}\n"
+                            )
+                            tool_output = self.tool_map[output.name](**func_arguments)
                             if tool_output is not None:
                                 await self.connection.conversation.item.create(
                                     item=ConversationItem(
@@ -140,11 +167,31 @@ class RealtimeAPIClient:
                                 )
                                 await conn.response.create()
 
+                if event.type == "input_audio_buffer.speech_started":
+                    print("\n*****Detected user began speaking*****\n")
+                    self.audio_player.truncate()
+                    if (
+                        self.audio_player.latest_played_item_id is not None
+                        and self.audio_player.is_playing()
+                    ):
+                        print("*********Truncating*********")
+                        audio_end_ms = int(
+                            self.audio_player.get_frame_count() / SAMPLE_RATE * 1000
+                        )
+                        print(
+                            f"{self.audio_player.latest_played_item_id=} {audio_end_ms=}"
+                        )
+                        await self.connection.conversation.item.truncate(
+                            item_id=self.audio_player.latest_played_item_id,
+                            content_index=0,
+                            audio_end_ms=audio_end_ms,
+                        )
+
                 if event.type == "response.function_call_arguments.done":
                     print("Function call arguments done")
                     print(event.name, event.arguments)
 
-                print("Unhandled event type: ", event.type)
+                # print("Unhandled event type: ", event.type)
 
     async def _get_connection(self) -> AsyncRealtimeConnection:
         await self.connected.wait()

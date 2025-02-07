@@ -4,7 +4,7 @@ import io
 import base64
 import asyncio
 import threading
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Dict
 
 import numpy as np
 import pyaudio
@@ -50,26 +50,47 @@ class AudioPlayerAsync:
         )
         self.playing = False
         self._frame_count = 0
+        self.latest_played_item_id = None
+
+    def latest_played_item_id(self):
+        return self.latest_played_item_id
+
+    def truncate(self):
+        with self.lock:
+            self.queue = []
+
+    def is_playing(self):
+        with self.lock:
+            return len(self.queue) > 0
 
     def callback(self, outdata, frames, time, status):  # noqa
-        with self.lock:
-            data = np.empty(0, dtype=np.int16)
+        # print(f"callback: {frames=}")
+        data = np.empty(0, dtype=np.int16)
 
-            # get next item from queue if there is still space in the buffer
-            while len(data) < frames and len(self.queue) > 0:
-                item = self.queue.pop(0)
+        # get next item from queue if there is still space in the buffer
+        while len(data) < frames:
+            with self.lock:
+                if not self.queue:
+                    break
+                item_dict = self.queue.pop(0)
+                item = item_dict["data"]
+                item_id = item_dict["item_id"]
+                self.latest_played_item_id = item_id
+                # print(f"item: {len(item)}")  # usually 1,200 to 18,000
+                # print(f"{len(self.queue)=} {self.latest_played_item_id=}")
                 frames_needed = frames - len(data)
                 data = np.concatenate((data, item[:frames_needed]))
                 if len(item) > frames_needed:
-                    self.queue.insert(0, item[frames_needed:])
+                    self.queue.insert(
+                        0, {"data": item[frames_needed:], "item_id": item_id}
+                    )
 
-            self._frame_count += len(data)
+        self._frame_count += len(data)
+        # print(f"{self._frame_count=}")
 
-            # fill the rest of the frames with zeros if there is no more data
-            if len(data) < frames:
-                data = np.concatenate(
-                    (data, np.zeros(frames - len(data), dtype=np.int16))
-                )
+        # fill the rest of the frames with zeros if there is no more data
+        if len(data) < frames:
+            data = np.concatenate((data, np.zeros(frames - len(data), dtype=np.int16)))
 
         outdata[:] = data.reshape(-1, 1)
 
@@ -79,11 +100,12 @@ class AudioPlayerAsync:
     def get_frame_count(self):
         return self._frame_count
 
-    def add_data(self, data: bytes):
+    def add_data(self, data: Dict):
         with self.lock:
+            # print(f"add_data: {len(data['data'])}")
             # bytes is pcm16 single channel audio data, convert to numpy array
-            np_data = np.frombuffer(data, dtype=np.int16)
-            self.queue.append(np_data)
+            np_data = np.frombuffer(data["data"], dtype=np.int16)
+            self.queue.append({"data": np_data, "item_id": data["item_id"]})
             if not self.playing:
                 self.start()
 
