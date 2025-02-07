@@ -25,14 +25,13 @@ from __future__ import annotations
 
 import base64
 import asyncio
-from typing import Any, cast
+from typing import Any, Callable, Dict, List, cast
 
 from openai_bridge.audio_util import CHANNELS, SAMPLE_RATE, AudioPlayerAsync
 
 from openai import AsyncOpenAI
 from openai.types.beta.realtime.session import Session
 from openai.types.beta.realtime import (
-    ConversationItemCreateEvent,
     ConversationItem,
 )
 from openai.resources.beta.realtime.realtime import (
@@ -49,8 +48,13 @@ class RealtimeAPIClient:
     connection: AsyncRealtimeConnection | None
     session: Session | None
     connected: asyncio.Event
+    instructions: str
+    tools: List[Dict]
+    tool_map: Dict[str, Callable]
 
-    def __init__(self) -> None:
+    def __init__(
+        self, instructions: str, tools: List[Dict], tool_map: Dict[str, Callable]
+    ) -> None:
         super().__init__()
         self.connection = None
         self.session = None
@@ -59,6 +63,10 @@ class RealtimeAPIClient:
         self.last_audio_item_id = None
         self.should_send_audio = asyncio.Event()
         self.connected = asyncio.Event()
+
+        self.instructions = instructions
+        self.tools = tools
+        self.tool_map = tool_map
 
     async def on_mount(self) -> None:
         # TODO replace run_worker
@@ -77,19 +85,8 @@ class RealtimeAPIClient:
             await conn.session.update(
                 session={
                     "turn_detection": {"type": "server_vad"},
-                    "instructions": "You are a robot dog named Fido and your sole purpose in life is to make your owner happy and eat treats. You don't know anything that a dog wouldn't know. Call functions whenever you can.",
-                    "tools": [
-                        {
-                            "type": "function",
-                            "name": "get_favorite_treat",
-                            "description": "Gets a description of your favorite treat...",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {"mood": {"type": "string"}},
-                                "required": ["mood"],
-                            },
-                        }
-                    ],
+                    "instructions": self.instructions,
+                    "tools": self.tools,
                 },
             )
             # await conn.session.update(session={"turn_detection": None})
@@ -132,15 +129,16 @@ class RealtimeAPIClient:
                     print("Response done")
                     for output in event.response.output:
                         if output.type == "function_call":
-                            print(output)
-                            await self.connection.conversation.item.create(
-                                item=ConversationItem(
-                                    type="function_call_output",
-                                    call_id=output.call_id,
-                                    output="Your favorite treat is salmon",
+                            tool_output = self.tool_map[output.name](output.arguments)
+                            if tool_output is not None:
+                                await self.connection.conversation.item.create(
+                                    item=ConversationItem(
+                                        type="function_call_output",
+                                        call_id=output.call_id,
+                                        output=tool_output,
+                                    )
                                 )
-                            )
-                            await conn.response.create()
+                                await conn.response.create()
 
                 if event.type == "response.function_call_arguments.done":
                     print("Function call arguments done")

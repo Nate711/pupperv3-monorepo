@@ -25,6 +25,8 @@ setup(
     license="TODO: License declaration",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": [],
+        "console_scripts": [
+            "ros_node = openai_bridge.ros_node:main",
+        ],
     },
 )
