@@ -94,10 +94,7 @@ bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
 echo "source /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/install/setup.bash" >> /home/$DEFAULT_USER/.bashrc
 echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/$DEFAULT_USER/.bashrc
 
-# # Install utils
-# cd /home/$DEFAULT_USER
-# rm -rf utils
-# git clone https://github.com/Nate711/utils.git -b launch_neural_controller
+# Install utils
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_battery_monitor.sh
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_robot_auto_start_service.sh
 
