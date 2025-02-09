@@ -83,8 +83,9 @@ private:
 
   void joy_callback(const sensor_msgs::msg::Joy::SharedPtr msg) {
     // Check if estop button is pressed
-    bool estop_pressed =
-        msg->buttons.size() > estop_index_ && msg->buttons[estop_index_] == 1;
+    // TODO: Log warning if buttons is not the right size
+    bool estop_pressed = msg->buttons.size() > estop_index_ &&
+                         msg->buttons.at(estop_index_) == 1;
     if (estop_pressed && !prev_estop_state_) {
       deactivate_all_controllers_and_estop();
     }
@@ -92,7 +93,7 @@ private:
 
     // Check if estop release button is pressed
     bool estop_release_pressed = msg->buttons.size() > estop_release_index_ &&
-                                 msg->buttons[estop_release_index_] == 1;
+                                 msg->buttons.at(estop_release_index_) == 1;
     if (estop_release_pressed && !prev_estop_release_state_) {
       RCLCPP_INFO(this->get_logger(),
                   "Button %d pressed: Published to estop release topic. "
