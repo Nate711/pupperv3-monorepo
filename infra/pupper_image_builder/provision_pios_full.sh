@@ -36,10 +36,10 @@ sudo apt upgrade -y
 sudo apt install -y vim
 
 sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install wandb
+pip install wandb sounddevice openai[realtime] pydub pyaudio black
 
 # Install hailo
-sudo apt full-upgrade -y
+sudo DEBIAN_FRONTEND=noninteractive apt full-upgrade -y << "N"
 sudo apt install -y hailo-all
 
 # Source ros2
