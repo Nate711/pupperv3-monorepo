@@ -54,7 +54,10 @@ class RealtimeAPIClient:
     tool_map: Dict[str, Callable]
 
     def __init__(
-        self, instructions: str, tools: List[Dict], tool_map: Dict[str, Callable]
+        self,
+        instructions: str,
+        tools: List[Dict],
+        tool_map: Dict[str, Callable],
     ) -> None:
         super().__init__()
         self.connection = None
@@ -156,7 +159,9 @@ class RealtimeAPIClient:
                             print(
                                 f"\n****Calling function: {output.name} *******\narguments: {func_arguments}\n"
                             )
-                            tool_output = self.tool_map[output.name](**func_arguments)
+                            tool_output = self.tool_map[output.name](
+                                **func_arguments
+                            )
                             if tool_output is not None:
                                 await self.connection.conversation.item.create(
                                     item=ConversationItem(
@@ -169,23 +174,24 @@ class RealtimeAPIClient:
 
                 if event.type == "input_audio_buffer.speech_started":
                     print("\n*****Detected user began speaking*****\n")
-                    self.audio_player.truncate()
-                    if (
-                        self.audio_player.latest_played_item_id is not None
-                        and self.audio_player.is_playing()
-                    ):
-                        print("*********Truncating*********")
-                        audio_end_ms = int(
-                            self.audio_player.get_frame_count() / SAMPLE_RATE * 1000
-                        )
-                        print(
-                            f"{self.audio_player.latest_played_item_id=} {audio_end_ms=}"
-                        )
-                        await self.connection.conversation.item.truncate(
-                            item_id=self.audio_player.latest_played_item_id,
-                            content_index=0,
-                            audio_end_ms=audio_end_ms,
-                        )
+                    # TODO: fix bug in interruption code that would prevent openai from speaking back
+                    # self.audio_player.truncate()
+                    # if (
+                    #     self.audio_player.latest_played_item_id is not None
+                    #     and self.audio_player.is_playing()
+                    # ):
+                    #     print("*********Truncating*********")
+                    #     audio_end_ms = int(
+                    #         self.audio_player.get_frame_count() / SAMPLE_RATE * 1000
+                    #     )
+                    #     print(
+                    #         f"{self.audio_player.latest_played_item_id=} {audio_end_ms=}"
+                    #     )
+                    #     await self.connection.conversation.item.truncate(
+                    #         item_id=self.audio_player.latest_played_item_id,
+                    #         content_index=0,
+                    #         audio_end_ms=audio_end_ms,
+                    #     )
 
                 if event.type == "response.function_call_arguments.done":
                     print("Function call arguments done")
@@ -230,7 +236,9 @@ class RealtimeAPIClient:
 
                 connection = await self._get_connection()
                 if not sent_audio:
-                    asyncio.create_task(connection.send({"type": "response.cancel"}))
+                    asyncio.create_task(
+                        connection.send({"type": "response.cancel"})
+                    )
                     sent_audio = True
 
                 await connection.input_audio_buffer.append(

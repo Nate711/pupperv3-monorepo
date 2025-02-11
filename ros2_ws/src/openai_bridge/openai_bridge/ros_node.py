@@ -6,6 +6,7 @@ from controller_manager_msgs.srv import SwitchController
 import rclpy.executors
 from rclpy.node import Node
 from rclpy.client import Client
+import os
 
 # import publisher
 from rclpy.subscription import Subscription
@@ -20,8 +21,14 @@ CONTROLLER_NAME_MAP = {
 }
 
 INSTRUCTIONS = (
-    "You are a robot dog named Fido and your sole purpose in life is to make your owner happy "
-    "and eat treats. You don't know anything that a dog wouldn't know. Call functions whenever you can."
+    "You are a robot dog named Pupper and your sole purpose in life is to make your owner happy "
+    "and eat treats. "
+    "Your kid-like, high pitch voice reflects that you are always super excited and friendly. "
+    "If you want to say more than a short phrase, say one sentence of your message or story and then ask the user if they want you to continue. "
+    "Always repeat the user's request or question back before answering. "
+    "If the user says to stop moving, they mean to call the move function with all velocities set to 0. "
+    "If the user says to move or go somewhere, make sure to call the move function!! "
+    "Call the deactivate function if the user says to deactivate or e-stop or shut down the robot. "
 )
 
 TOOLS = [
@@ -53,7 +60,11 @@ TOOLS = [
                 "lateral_velocity": {"type": "number"},
                 "angular_velocity": {"type": "number"},
             },
-            "required": ["forward_velocity", "lateral_velocity", "angular_velocity"],
+            "required": [
+                "forward_velocity",
+                "lateral_velocity",
+                "angular_velocity",
+            ],
         },
     },
     {
@@ -70,7 +81,7 @@ TOOLS = [
         "type": "function",
         "name": "deactivate",
         "description": "Deactivate the robot. Call this function if the user says to deactivate or to e-stop estop the robot. "
-        "Don't call this function if the user wants to stop. Instead use the move function with zero velocity if the user says to stop.",
+        "Don't call this function if the user says to stop. Instead use the move function with zero velocity if the user says to stop.",
         "parameters": {},
     },
     {
@@ -79,6 +90,25 @@ TOOLS = [
         "description": "Activate the robot",
         "parameters": {},
     },
+    {
+        "type": "function",
+        "name": "get_battery_percentage_and_voltage",
+        "description": "Get the remaining battery capacity as a percentage and as a voltage.",
+        "parameters": {},
+    },
+    # TODO: figure out how to run without sudo permissions
+    # {
+    #     "type": "function",
+    #     "name": "stop_robot_service",
+    #     "description": "Stop the robot systemctl service",
+    #     "parameters": {},
+    # },
+    # {
+    #     "type": "function",
+    #     "name": "start_robot_service",
+    #     "description": "Start the robot systemctl service",
+    #     "parameters": {},
+    # },
 ]
 
 
@@ -110,7 +140,9 @@ def change_gait(node: Node, service_client: Client, gait: str):
         return
 
     req.activate_controllers = [controller_name]
-    req.deactivate_controllers = list(AVAILABLE_CONTROLLERS - {controller_name})
+    req.deactivate_controllers = list(
+        AVAILABLE_CONTROLLERS - {controller_name}
+    )
     req.strictness = 1
     fut = service_client.call_async(req)
     rclpy.spin_until_future_complete(node, fut, timeout_sec=1.0)
@@ -124,7 +156,9 @@ def deactivate(node: Node, service_client: Client):
     req.strictness = 1
     fut = service_client.call_async(req)
     rclpy.spin_until_future_complete(node, fut, timeout_sec=1.0)
-    return f"Successfully deactivated" if fut.done() else f"Failed to deactivate!"
+    return (
+        f"Successfully deactivated" if fut.done() else f"Failed to deactivate!"
+    )
 
 
 def activate(node: Node, service_client: Client):
@@ -133,6 +167,13 @@ def activate(node: Node, service_client: Client):
         service_client=service_client,
         gait=list(CONTROLLER_NAME_MAP.keys())[0],
     )
+
+
+def get_battery_percentage_and_voltage():
+    result = os.popen(
+        "python ~/pupperv3-monorepo/robot/utils/check_batt_voltage.py"
+    ).read()
+    return result
 
 
 if __name__ == "__main__":
@@ -158,6 +199,7 @@ if __name__ == "__main__":
         "activate": partial(
             activate, node=node, service_client=switch_controller_client
         ),
+        "get_battery_percentage_and_voltage": get_battery_percentage_and_voltage,
     }
 
     client = RealtimeAPIClient(
