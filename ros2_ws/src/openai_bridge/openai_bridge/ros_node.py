@@ -47,7 +47,7 @@ TOOLS = [
         "name": "move",
         "description": (
             "Move with a specific forward/backward [-0.75m/s (backwards) to 0.75m/s (forwards)], "
-            "lateral [-0.5m/s (right) to 0.5m/s (left)], and angular velocity [-4 rad/s (left) to 4 rad/s (right)]. "
+            "lateral [-0.5m/s (right) to 0.5m/s (left)], and angular velocity [-2 rad/s (left) to 2 rad/s (right)]. "
             "Forward/backward velocities less than 0.3m/s won't move the robot so please at a minimum use 0.3m/s "
             "unless specifically requested by the user to move at a certain meters per second. "
             "Moving left corresponds to positive lateral velocity and moving right corresponds to negative lateral velocity."
