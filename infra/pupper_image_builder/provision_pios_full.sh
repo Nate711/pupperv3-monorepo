@@ -36,10 +36,10 @@ sudo apt upgrade -y
 sudo apt install -y vim
 
 sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install wandb
+pip install wandb sounddevice openai[realtime] pydub pyaudio black
 
 # Install hailo
-sudo apt full-upgrade -y
+sudo DEBIAN_FRONTEND=noninteractive apt full-upgrade -y << "N"
 sudo apt install -y hailo-all
 
 # Source ros2
@@ -94,10 +94,7 @@ bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
 echo "source /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/install/setup.bash" >> /home/$DEFAULT_USER/.bashrc
 echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/$DEFAULT_USER/.bashrc
 
-# # Install utils
-# cd /home/$DEFAULT_USER
-# rm -rf utils
-# git clone https://github.com/Nate711/utils.git -b launch_neural_controller
+# Install utils
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_battery_monitor.sh
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_robot_auto_start_service.sh
 
