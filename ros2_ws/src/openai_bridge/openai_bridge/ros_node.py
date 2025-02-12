@@ -51,7 +51,8 @@ TOOLS = [
             "Forward/backward velocities less than 0.3m/s won't move the robot so please at a minimum use 0.3m/s "
             "unless specifically requested by the user to move at a certain meters per second. "
             "Moving left corresponds to positive lateral velocity and moving right corresponds to negative lateral velocity."
-            "If the user says to stop, then use this function with all velocities set to 0."
+            "If the user says to stop, then use this function with all velocities set to 0. "
+            "Even if you think you're stopped, if the user requests to stop you should still call this function and set zero velocities. "
         ),
         "parameters": {
             "type": "object",
@@ -80,14 +81,20 @@ TOOLS = [
     {
         "type": "function",
         "name": "deactivate",
-        "description": "Deactivate the robot. Call this function if the user says to deactivate or to e-stop estop the robot. "
-        "Don't call this function if the user says to stop. Instead use the move function with zero velocity if the user says to stop.",
+        "description": (
+            "Deactivate the robot. Call this function if the user says to deactivate or to e-stop estop the robot. "
+            "Don't call this function if the user says to stop. Instead use the move function with zero velocity if the user says to stop."
+            "Even if you think you're already deactivated, please still call this function."
+        ),
         "parameters": {},
     },
     {
         "type": "function",
         "name": "activate",
-        "description": "Activate the robot",
+        "description": (
+            "Activate the robot. Also known as turning on or starting to walk. "
+            "Even if you think you're already activated, please still call this function."
+        ),
         "parameters": {},
     },
     {
@@ -162,7 +169,7 @@ def deactivate(node: Node, service_client: Client):
 
 
 def activate(node: Node, service_client: Client):
-    change_gait(
+    return change_gait(
         node=node,
         service_client=service_client,
         gait=list(CONTROLLER_NAME_MAP.keys())[0],

@@ -79,7 +79,7 @@ class RealtimeAPIClient:
 
     async def handle_realtime_connection(self) -> None:
         async with self.client.beta.realtime.connect(
-            model="gpt-4o-mini-realtime-preview",
+            model="gpt-4o-realtime-preview",
         ) as conn:
             self.connection = conn
             self.connected.set()
@@ -197,7 +197,7 @@ class RealtimeAPIClient:
                     print("Function call arguments done")
                     print(event.name, event.arguments)
 
-                # print("Unhandled event type: ", event.type)
+                print("Unhandled event type: ", event.type)
 
     async def _get_connection(self) -> AsyncRealtimeConnection:
         await self.connected.wait()
