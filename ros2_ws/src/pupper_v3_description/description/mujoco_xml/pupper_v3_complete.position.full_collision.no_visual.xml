@@ -55,7 +55,7 @@
     </default>
     <option cone="elliptic" impratio="100" />
     <compiler angle="radian" meshdir="../meshes/stl/" autolimits="true" />
-    <asset>
+    <!-- <asset>
         <mesh name="BodyV4v70_001" file="BodyV4v70_001.stl" />
         <mesh name="LegAssemblyForFlangedv26_001" file="LegAssemblyForFlangedv26_001.stl" />
         <mesh name="LegAssemblyForFlangedv26_002" file="LegAssemblyForFlangedv26_002.stl" />
@@ -75,7 +75,7 @@
             scale="1 1 -1" />
         <mesh name="LegAssemblyForFlangedv26_015" file="LegAssemblyForFlangedv26_015.stl"
             scale="1 1 -1" />
-    </asset>
+    </asset> -->
     <worldbody>
         <body name="base_link" pos="0 0 0.13" gravcomp="0">
             <inertial pos="0.025 0 0.015" quat="0 0.677807 0 0.73524" mass="1.506"
