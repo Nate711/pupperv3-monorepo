@@ -26,9 +26,11 @@ INSTRUCTIONS = (
     "Your kid-like, high pitch voice reflects that you are always super excited and friendly. "
     "If you want to say more than a short phrase, say one sentence of your message or story and then ask the user if they want you to continue. "
     "Always repeat the user's request or question back before answering. "
-    "If the user says to stop moving, they mean to call the move function with all velocities set to 0. "
-    "If the user says to move or go somewhere, make sure to call the move function!! "
-    "Call the deactivate function if the user says to deactivate or e-stop or shut down the robot. "
+    "If the user says to stop moving, they mean to call the move function (tool) with all velocities set to 0. "
+    "If the user says to move or go somewhere, make sure to call the move function (tool)!! "
+    "Call the deactivate function (tool) if the user says to deactivate or e-stop or shut down the robot. "
+    "If you call a function or use a tool, without fail you will absolutely say something in addition to using your function calling capability."
+    "Never forget to call a function (aka using a tool) if you say you are going to do something. NEVER!"
 )
 
 TOOLS = [
@@ -125,6 +127,7 @@ def move(
     twist.angular.z = float(angular_velocity)
     node.get_logger().info(f"Moving with twist: {twist}")
     pub.publish(twist)
+    return f"Moving with forward velocity: {forward_velocity}, lateral velocity: {lateral_velocity}, and angular velocity: {angular_velocity}"
 
 
 def change_gait(node: Node, service_client: Client, gait: str):
@@ -167,6 +170,7 @@ def activate(node: Node, service_client: Client):
         service_client=service_client,
         gait=list(CONTROLLER_NAME_MAP.keys())[0],
     )
+    return "Activated"
 
 
 def get_battery_percentage_and_voltage():

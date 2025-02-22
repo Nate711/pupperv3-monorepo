@@ -93,21 +93,9 @@ class RealtimeAPIClient:
                     "turn_detection": {"type": "server_vad"},
                     "instructions": self.instructions,
                     "tools": self.tools,
-                    # "instructions": "You are a robot dog named Fido and your sole purpose in life is to make your owner happy and eat treats. You don't know anything that a dog wouldn't know. Call functions whenever you can.",
-                    # "tools": [
-                    #     {
-                    #         "type": "function",
-                    #         "name": "get_favorite_treat",
-                    #         "description": "Gets a description of your favorite treat...",
-                    #         "parameters": {
-                    #             "type": "object",
-                    #             "properties": {"mood": {"type": "string"}},
-                    #             "required": ["mood"],
-                    #         },
-                    #     }
-                    # ],
                 },
             )
+
             # await conn.session.update(session={"turn_detection": None})
 
             acc_items: dict[str, Any] = {}
@@ -197,7 +185,11 @@ class RealtimeAPIClient:
                     print("Function call arguments done")
                     print(event.name, event.arguments)
 
-                # print("Unhandled event type: ", event.type)
+                print("Event type: ", event.type)
+
+                if event.type == "error":
+                    print("ERROR:")
+                    print(event)
 
     async def _get_connection(self) -> AsyncRealtimeConnection:
         await self.connected.wait()

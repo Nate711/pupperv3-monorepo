@@ -186,7 +186,7 @@ def generate_launch_description():
         three_legged_robot_controller_spawner,
         joint_state_broadcaster_spawner,
         # Comment/uncomment as needed:
-        # imu_sensor_broadcaster_spawner,
+        imu_sensor_broadcaster_spawner,
         foxglove_bridge,
         joy_util_node,
         joy_node,
