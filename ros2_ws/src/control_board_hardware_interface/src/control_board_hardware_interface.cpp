@@ -157,12 +157,15 @@ ControlBoardHardwareInterface::export_state_interfaces() {
       "imu_sensor", "linear_acceleration.y", &hw_state_imu_linear_acceleration_[1]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
       "imu_sensor", "linear_acceleration.z", &hw_state_imu_linear_acceleration_[2]));
-  state_interfaces.emplace_back(
-      hardware_interface::StateInterface("imu_sensor", "packet_timestamp", &packet_timestamp_));
+
+  // TODO: Add once int64 type is supported
+  //   state_interfaces.emplace_back(
+  //       hardware_interface::StateInterface("imu_sensor", "imu_packet_timestamp",
+  //       &imu_packet_timestamp_micros_));
+  //   state_interfaces.emplace_back(hardware_interface::StateInterface(
+  //       "imu_sensor", "imu_measurement_timestamp", &imu_measurement_timestamp_micros_));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "measurement_timestamp", &measurement_timestamp_));
-  state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "microseconds_since_measurement", &microseconds_since_measurement_));
+      "imu_sensor", "time_since_measurement_seconds", &imu_time_since_measurement_seconds_));
 
   return state_interfaces;
 }
@@ -288,15 +291,22 @@ hardware_interface::return_type ControlBoardHardwareInterface::read(
     BNO055::Output imu_output = imu_manager_.get_imu_data();
     std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
-    imu_package_timestamp_micros_ = std::chrono::duration_cast<std::chrono::microseconds>(
-                                        imu_output.packet_timestamp.time_since_epoch())
-                                        .count();
+    imu_packet_timestamp_micros_ = std::chrono::duration_cast<std::chrono::microseconds>(
+                                       imu_output.packet_timestamp.time_since_epoch())
+                                       .count();
     imu_measurement_timestamp_micros_ = std::chrono::duration_cast<std::chrono::microseconds>(
                                             imu_output.measurement_timestamp.time_since_epoch())
                                             .count();
     imu_time_since_measurement_micros_ = std::chrono::duration_cast<std::chrono::microseconds>(
                                              now - imu_output.measurement_timestamp)
                                              .count();
+    imu_time_since_measurement_seconds_ = imu_time_since_measurement_micros_ / 1e6;
+
+    // Print imu timestamps and age
+    // RCLCPP_INFO(rclcpp::get_logger("ControlBoardHardwareInterface"),
+    //             "Packet: %ld us\tmesurement: %ldus\tage as of read(): %ldus = %fs",
+    //             imu_packet_timestamp_micros_, imu_measurement_timestamp_micros_,
+    //             imu_time_since_measurement_micros_, imu_time_since_measurement_seconds_);
 
     // Represent IMU orientation as quaternion
     tf2::Quaternion imu_quat(imu_output.quat.x(), imu_output.quat.y(), imu_output.quat.z(),

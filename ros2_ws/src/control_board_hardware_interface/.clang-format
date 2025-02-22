@@ -5,4 +5,4 @@ ColumnLimit: 100
 AllowShortFunctionsOnASingleLine: Empty
 PointerAlignment: Left
 ReferenceAlignment: Left
-InsertBraces: true
+# InsertBraces: true

@@ -374,8 +374,14 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
   }
 
   // Get the latest observation
-  double ang_vel_x, ang_vel_y, ang_vel_z, orientation_w, orientation_x, orientation_y,
-      orientation_z;
+  double ang_vel_x = 0;
+  double ang_vel_y = 0;
+  double ang_vel_z = 0;
+  double orientation_w = 0;
+  double orientation_x = 0;
+  double orientation_y = 0;
+  double orientation_z = 0;
+  double time_since_measurement_seconds = 0;
   try {
     // read IMU states from hardware interface
     ang_vel_x = state_interfaces_map_.at(params_.imu_sensor_name)
@@ -398,6 +404,11 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
         state_interfaces_map_.at(params_.imu_sensor_name).at("orientation.y").get().get_value();
     orientation_z =
         state_interfaces_map_.at(params_.imu_sensor_name).at("orientation.z").get().get_value();
+
+    time_since_measurement_seconds = state_interfaces_map_.at(params_.imu_sensor_name)
+                                         .at("time_since_measurement_seconds")
+                                         .get()
+                                         .get_value();
 
     // Check that the orientation is identity if we are not using the IMU. Use approximate checks
     // to avoid floating point errors
@@ -460,7 +471,7 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
     }
   } catch (const std::out_of_range &e) {
     RCLCPP_INFO(get_node()->get_logger(), "Failed to read joint states from hardware interface");
-    return controller_interface::return_type::OK;
+    return controller_interface::return_type::ERROR;
   }
 
   // Clip the observation vector
@@ -493,8 +504,9 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
   auto end_time = std::chrono::high_resolution_clock::now();
   auto inference_duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-  RCLCPP_INFO(get_node()->get_logger(), "Policy inference time: %.2f ms",
-              inference_duration / 1000.0);
+  RCLCPP_INFO(get_node()->get_logger(),
+              "Policy inference took %.2f ms\tIMU measurement age: %.3f ms",
+              inference_duration / 1000.0, time_since_measurement_seconds * 1000.0);
 
   // Shift the observation history to the right by kSingleObservationSize for the next control
   // step https://en.cppreference.com/w/cpp/algorithm/rotate

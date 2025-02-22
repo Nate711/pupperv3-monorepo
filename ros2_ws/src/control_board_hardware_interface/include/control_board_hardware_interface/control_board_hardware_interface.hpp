@@ -136,6 +136,7 @@ class ControlBoardHardwareInterface : public hardware_interface::SystemInterface
   int64_t imu_packet_timestamp_micros_;
   int64_t imu_measurement_timestamp_micros_;
   int64_t imu_time_since_measurement_micros_;
+  double imu_time_since_measurement_seconds_;
 };
 
 }  // namespace control_board_hardware_interface
