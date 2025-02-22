@@ -63,9 +63,7 @@ def main():
     CELL_PERCENTAGES = [100, 66, 33, 0]
 
     bat_voltage = get_battery_voltage(i2c)
-    cell_voltage = max(
-        min(bat_voltage / NUM_CELLS, CELL_VOLTAGES[0]), CELL_VOLTAGES[-1]
-    )
+    cell_voltage = bat_voltage / NUM_CELLS
     cell_percentage = 100
     if cell_voltage < CELL_VOLTAGES[-1]:
         cell_percentage = CELL_PERCENTAGES[-1]
