@@ -261,6 +261,20 @@ controller_interface::CallbackReturn NeuralController::on_activate(
   rt_observation_publisher_ =
       std::make_shared<realtime_tools::RealtimePublisher<ObservationMsg>>(observation_publisher_);
 
+  // Create IMU latency publishers
+  imu_latency_publisher_ = get_node()->create_publisher<std_msgs::msg::Float32>(
+      "~/imu_latency_seconds", rclcpp::SystemDefaultsQoS());
+  rt_imu_latency_publisher_ =
+      std::make_shared<realtime_tools::RealtimePublisher<std_msgs::msg::Float32>>(
+          imu_latency_publisher_);
+
+  // Create policy inference latency publishers
+  policy_inference_latency_publisher_ = get_node()->create_publisher<std_msgs::msg::Float32>(
+      "~/policy_inference_latency_seconds", rclcpp::SystemDefaultsQoS());
+  rt_policy_inference_latency_publisher_ =
+      std::make_shared<realtime_tools::RealtimePublisher<std_msgs::msg::Float32>>(
+          policy_inference_latency_publisher_);
+
   RCLCPP_INFO(get_node()->get_logger(), "activate successful");
   return controller_interface::CallbackReturn::SUCCESS;
 }
@@ -502,11 +516,11 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
 
   // Measure the time after policy inference
   auto end_time = std::chrono::high_resolution_clock::now();
-  auto inference_duration =
+  auto inference_duration_us =
       std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
   RCLCPP_INFO(get_node()->get_logger(),
               "Policy inference took %.2f ms\tIMU measurement age: %.3f ms",
-              inference_duration / 1000.0, time_since_measurement_seconds * 1000.0);
+              inference_duration_us / 1000.0, time_since_measurement_seconds * 1000.0);
 
   // Shift the observation history to the right by kSingleObservationSize for the next control
   // step https://en.cppreference.com/w/cpp/algorithm/rotate
@@ -572,6 +586,17 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
     }
     // rt_position_command_publisher_->msg_.header.stamp = time;
     rt_position_command_publisher_->unlockAndPublish();
+  }
+
+  // Publish imu latency
+  if (rt_imu_latency_publisher_->trylock()) {
+    rt_imu_latency_publisher_->msg_.data = time_since_measurement_seconds;
+    rt_imu_latency_publisher_->unlockAndPublish();
+  }
+
+  if (rt_policy_inference_latency_publisher_->trylock()) {
+    rt_policy_inference_latency_publisher_->msg_.data = inference_duration_us / 1000000.0;
+    rt_policy_inference_latency_publisher_->unlockAndPublish();
   }
 
   // Get the policy inference time

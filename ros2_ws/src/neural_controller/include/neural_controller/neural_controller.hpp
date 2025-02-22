@@ -9,14 +9,15 @@
 #include <vector>
 
 #include "controller_interface/controller_interface.hpp"
-#include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/subscription.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
 #include "realtime_tools/realtime_buffer.h"
 #include "realtime_tools/realtime_publisher.h"
 #include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include "std_msgs/msg/float32_multi_array.hpp"
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
@@ -131,9 +132,21 @@ class NeuralController : public controller_interface::ControllerInterface {
       nullptr;
   rclcpp::Publisher<ActionMsg>::SharedPtr position_command_publisher_ = nullptr;
 
+  // Observation publisher
   std::shared_ptr<realtime_tools::RealtimePublisher<ObservationMsg>> rt_observation_publisher_ =
       nullptr;
   rclcpp::Publisher<ObservationMsg>::SharedPtr observation_publisher_ = nullptr;
+
+  // IMU latency
+  std::shared_ptr<realtime_tools::RealtimePublisher<std_msgs::msg::Float32>>
+      rt_imu_latency_publisher_ = nullptr;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr imu_latency_publisher_ = nullptr;
+
+  // Policy inference time
+  std::shared_ptr<realtime_tools::RealtimePublisher<std_msgs::msg::Float32>>
+      rt_policy_inference_latency_publisher_ = nullptr;
+  rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr policy_inference_latency_publisher_ =
+      nullptr;
 
   rclcpp::Time init_time_;
 
