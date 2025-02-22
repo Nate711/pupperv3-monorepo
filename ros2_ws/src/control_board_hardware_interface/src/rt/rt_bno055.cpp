@@ -304,6 +304,10 @@ float BNO055::getGyroZ() {
   return (gyro);
 }
 
+uint32_t BNO055::getTimestamp() {
+  return timeStamp;
+}
+
 float BNO055::qToFloat(int16_t fixedPointValue, uint8_t qPoint) {
   float qFloat = fixedPointValue;
   qFloat *= pow(2, qPoint * -1);
@@ -448,6 +452,7 @@ void BNO055::parseCommandReport(void) {
 BNO055::Output BNO055::sample() {
   // Typically has two messages available in one call to sample()
   while (dataAvailable() == true) {
+    latest_packet_timestamp = std::chrono::high_resolution_clock::now();
   }
   Output result;
   result.quat.x() = getQuatI();
@@ -463,5 +468,10 @@ BNO055::Output BNO055::sample() {
   result.gyro(0) = getGyroX();
   result.gyro(1) = getGyroY();
   result.gyro(2) = getGyroZ();
+
+  // Record time data read from IMU
+  result.packet_timestamp = latest_packet_timestamp;
+  result.measurement_timestamp = latest_packet_timestamp - std::chrono::microseconds(timeStamp);
+
   return result;
 }

@@ -79,7 +79,7 @@ class RealtimeAPIClient:
 
     async def handle_realtime_connection(self) -> None:
         async with self.client.beta.realtime.connect(
-            model="gpt-4o-mini-realtime-preview",
+            model="gpt-4o-realtime-preview",
         ) as conn:
             self.connection = conn
             self.connected.set()

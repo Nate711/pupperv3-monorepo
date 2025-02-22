@@ -157,6 +157,12 @@ ControlBoardHardwareInterface::export_state_interfaces() {
       "imu_sensor", "linear_acceleration.y", &hw_state_imu_linear_acceleration_[1]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
       "imu_sensor", "linear_acceleration.z", &hw_state_imu_linear_acceleration_[2]));
+  state_interfaces.emplace_back(
+      hardware_interface::StateInterface("imu_sensor", "packet_timestamp", &packet_timestamp_));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+      "imu_sensor", "measurement_timestamp", &measurement_timestamp_));
+  state_interfaces.emplace_back(hardware_interface::StateInterface(
+      "imu_sensor", "microseconds_since_measurement", &microseconds_since_measurement_));
 
   return state_interfaces;
 }
@@ -280,14 +286,21 @@ hardware_interface::return_type ControlBoardHardwareInterface::read(
   if (imu_manager_.enabled) {
     // TODO: put this functionality into the imu_manager
     BNO055::Output imu_output = imu_manager_.get_imu_data();
+    std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+
+    imu_package_timestamp_micros_ = std::chrono::duration_cast<std::chrono::microseconds>(
+                                        imu_output.packet_timestamp.time_since_epoch())
+                                        .count();
+    imu_measurement_timestamp_micros_ = std::chrono::duration_cast<std::chrono::microseconds>(
+                                            imu_output.measurement_timestamp.time_since_epoch())
+                                            .count();
+    imu_time_since_measurement_micros_ = std::chrono::duration_cast<std::chrono::microseconds>(
+                                             now - imu_output.measurement_timestamp)
+                                             .count();
 
     // Represent IMU orientation as quaternion
     tf2::Quaternion imu_quat(imu_output.quat.x(), imu_output.quat.y(), imu_output.quat.z(),
                              imu_output.quat.w());
-
-    // RCLCPP_INFO(rclcpp::get_logger("ControlBoardHardwareInterface"), "x: %f, y: %f, z: %f, w:
-    // %f",
-    //             imu_quat.x(), imu_quat.y(), imu_quat.z(), imu_quat.w());
 
     // Applying the offset to the IMU quaternion
     corrected_quat = imu_quat * imu_manager_.offset_quaternion.inverse();

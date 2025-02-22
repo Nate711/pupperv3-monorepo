@@ -80,6 +80,12 @@ class BNO055 {
     Eigen::Quaternionf quat;
     Eigen::Vector3f acc;
     Eigen::Vector3f gyro;
+
+    // Timestamp of when the data was sent from the sensor to the Raspberry Pi
+    std::chrono::high_resolution_clock::time_point packet_timestamp;
+
+    // Timestamp of when the data was actually measured by the sensor
+    std::chrono::high_resolution_clock::time_point measurement_timestamp;
   };
 
   Output sample();
@@ -136,12 +142,17 @@ class BNO055 {
   float getGyroX();
   float getGyroY();
   float getGyroZ();
+  uint32_t getTimestamp();
+
   float qToFloat(int16_t fixedPointValue, uint8_t qPoint);
   void parseInputReport(void);
   void parseCommandReport(void);
 
   int m_fd = 0;
   bool m_okay = false;
+
+  // Timestamp of when the data was sent from the sensor to the Raspberry Pi
+  std::chrono::high_resolution_clock::time_point latest_packet_timestamp;
 
   uint16_t rawAccelX, rawAccelY, rawAccelZ, accelAccuracy;
   uint16_t rawLinAccelX, rawLinAccelY, rawLinAccelZ, accelLinAccuracy;

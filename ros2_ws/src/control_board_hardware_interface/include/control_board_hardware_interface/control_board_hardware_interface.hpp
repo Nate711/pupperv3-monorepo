@@ -132,6 +132,10 @@ class ControlBoardHardwareInterface : public hardware_interface::SystemInterface
   std::vector<double> hw_command_efforts_;
   std::vector<double> hw_command_kps_;
   std::vector<double> hw_command_kds_;
+
+  int64_t imu_packet_timestamp_micros_;
+  int64_t imu_measurement_timestamp_micros_;
+  int64_t imu_time_since_measurement_micros_;
 };
 
 }  // namespace control_board_hardware_interface
