@@ -36,6 +36,11 @@ source "arm" "raspbian" {
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
+variable "OPENAI_API_KEY" {
+  type = string
+  default = env("PUPPER_OPENAI_API_KEY")
+}
+
 build {
   sources = ["source.arm.raspbian"]
 
@@ -61,6 +66,51 @@ build {
     source      = "asound.conf"
     destination = "/etc/asound.conf"
   }
+
+  provisioner "file" {
+    sources      = ["resources/blue_eyes.jpg", "resources/pupperface2.jpg", "resources/pupperface3.jpg", "resources/bmo9.jpg"]
+    destination = "/usr/share/rpd-wallpaper/"
+  }
+
+  provisioner "shell" {
+    inline = [
+      "cp /usr/share/rpd-wallpaper/blue_eyes.jpg /usr/share/rpd-wallpaper/fisherman.jpg",
+    ]
+  }
+
+  provisioner "shell" {
+    inline = [
+      "echo 'export OPENAI_API_KEY=${var.OPENAI_API_KEY}' >> ~/.bashrc"
+    ]
+  }
+
+
+# THIS DOESN'T WORK
+# Providing a kanshi config file prevents the screen configuration menu on pios from opening
+#   provisioner "shell" {
+#     inline = [
+#       "mkdir -p /home/pi/.config/kanshi",
+#     ]
+#   }
+
+#   provisioner "file" {
+#     source      = "resources/config"
+#     destination = "/home/pi/.config/kanshi/config"
+#   }
+
+#   provisioner "shell" {
+#     inline = [
+#       "sudo chown pi /home/pi/.config/kanshi/config",
+#     ]
+#   }
+
+# Doesn't work: arm.raspbian: Cannot open display: 
+#   provisioner "shell" {
+#     inline = [
+#       "pcmanfm --set-wallpaper /usr/share/rpd-wallpaper/pupperface3.png",
+#     ]
+#   }
+
 
   provisioner "shell" {
     inline = [

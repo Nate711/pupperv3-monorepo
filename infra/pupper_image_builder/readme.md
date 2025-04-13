@@ -9,19 +9,31 @@ An automated OS image builder for the Pupper robot. Pulls the latest Ubuntu imag
 2. Make sure your Docker is up-to-date. After upgrading MacOS, older versions of Docker will not work.
 
 
-### Build Ubuntu server image:
+### Build PiOS image
+```
+./make_pios_base_image.sh
+./make_pios_full_image.sh
+```
+If you want to copy your `OPENAI_API_KEY` to the image change the last command to
+```
+PUPPER_OPENAI_API_KEY="$OPENAI_API_KEY" ./make_pios_full_image.sh
+```
+
+### Older images
+
+#### Build Ubuntu server image:
 ```
 ./make_server_image.sh
 ```
 Image saved as `pupOS_ubuntu_server.img`.
 
-### Build full Ubuntu desktop image 
+#### Build full Ubuntu desktop image 
 ```
 ./make_desktop_image.sh
 ```
 Image saved as `pupOS_ubuntu_desktop_full.img`. The script will also build the desktop base image (details see below) and save it as `pupOS_ubuntu_desktop_ros_base.img` during the build process if it doesn't already exist in this directory.
 
-### Build desktop base image
+#### Build desktop base image
 
 To just build the base for the desktop image which includes Ubuntu desktop, ros-jazzy-desktop, and low-latency kernel:
 ```
@@ -31,11 +43,6 @@ Image saved as `pupOS_ubuntu_desktop_ros_base.img`
 
 The build process takes about 5-30 minutes on an M1 MacBook Pro depending on which image you build.
 
-### Build PiOS image
-```
-./make_pios_base_image.sh
-./make_pios_full_image.sh
-```
 
 ### Default credentials
 Hostname: `pupper`

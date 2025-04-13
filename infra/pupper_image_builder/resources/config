@@ -1,0 +1,3 @@
+profile {
+		output HDMI-A-1 enable mode 720x720@59.790 position 0,0 transform 270
+}
