@@ -73,7 +73,7 @@ def generate_launch_description():
     #
     # 5. Common controller parameters
     #
-    robot_controllers = ParameterFile(
+    node_parameters = ParameterFile(
         PathJoinSubstitution(
             [FindPackageShare("neural_controller"), "launch", "config.yaml"]
         ),
@@ -86,14 +86,14 @@ def generate_launch_description():
     joy_node = Node(
         package="joy",
         executable="joy_node",
-        parameters=[robot_controllers],
+        parameters=[node_parameters],
         output="both",
     )
 
     teleop_twist_joy_node = Node(
         package="teleop_twist_joy",
         executable="teleop_node",
-        parameters=[robot_controllers],
+        parameters=[node_parameters],
         output="both",
         condition=IfCondition(LaunchConfiguration("teleop")),
     )
@@ -101,7 +101,7 @@ def generate_launch_description():
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[robot_controllers],
+        parameters=[node_parameters],
         output="both",
     )
 
@@ -164,7 +164,7 @@ def generate_launch_description():
     joy_util_node = Node(
         package="joy_utils",
         executable="estop_controller",
-        parameters=[robot_controllers],
+        parameters=[node_parameters],
         output="both",
     )
 
