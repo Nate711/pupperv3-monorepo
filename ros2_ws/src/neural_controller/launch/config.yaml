@@ -148,7 +148,7 @@ joy_node:
   ros__parameters:
     dev: "/dev/input/js0"
     autorepeat_rate: 50.0
-    coalesce_interval: 0.02
+    coalesce_interval_ms: 20
 
 joint_state_broadcaster:
   ros__parameters:
