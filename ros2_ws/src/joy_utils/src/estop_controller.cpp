@@ -4,6 +4,7 @@
 #include "std_msgs/msg/empty.hpp"
 #include <mutex>
 #include <thread>
+#include "geometry_msgs/msg/pose.hpp"
 
 class EStopController : public rclcpp::Node {
 public:
@@ -48,6 +49,11 @@ public:
     switch_controller_client_ =
         this->create_client<controller_manager_msgs::srv::SwitchController>(
             "/controller_manager/switch_controller");
+
+    // Add publisher for pose message
+    pub_pose_ = this->create_publisher<geometry_msgs::msg::Pose>(
+        "/cmd_pose", 10);
+
 
     RCLCPP_INFO(this->get_logger(), "EStopController node has been started.");
   }
@@ -115,6 +121,34 @@ private:
         switch_to_controller(controller_names_.at(i));
       }
       prev_switch_states_.at(i) = button_pressed;
+    }
+
+    // Publish pose based on right joystick y value
+    if (msg->axes.size() > 4) {
+      geometry_msgs::msg::Pose pose_msg;
+      pose_msg.position.x = 0.0;
+      pose_msg.position.y = 0.0;
+      pose_msg.position.z = 0.0;
+
+      // Set the orientation quaternion based on the joystick y value
+      // and a quaternion made from that angle rotation around y axis
+      // Map joystick value to [-30°, 30°] rotation around Y axis
+      const double kMaxAngle = M_PI / 6.0; // 30 degrees in radians
+      double angle = msg->axes.at(4) * kMaxAngle; // Assuming axes[4] is the right joystick y-axis
+      pose_msg.orientation.x = 0.0;
+      pose_msg.orientation.y = sin(angle / 2.0);
+      pose_msg.orientation.z = 0.0;
+      pose_msg.orientation.w = cos(angle / 2.0);
+
+      RCLCPP_INFO(this->get_logger(),
+                  "Publishing pose: x=%f, y=%f, z=%f, "
+                  "orientation=(%f, %f, %f, %f)",
+                  pose_msg.position.x, pose_msg.position.y,
+                  pose_msg.position.z, pose_msg.orientation.x,
+                  pose_msg.orientation.y, pose_msg.orientation.z,
+                  pose_msg.orientation.w);
+      // Publish the pose message
+    //   pub_pose_->publish(pose_msg);
     }
   }
 
@@ -184,6 +218,7 @@ private:
 
   // ROS 2 publishers
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pub_estop_;
+  rclcpp::Publisher<geometry_msgs::msg::Pose>::SharedPtr pub_pose_;
 
   // ROS 2 subscriber
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
