@@ -39,9 +39,8 @@ sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 pip install wandb sounddevice openai[realtime] pydub pyaudio black
 
 # Install hailo
-sudo DEBIAN_FRONTEND=noninteractive apt full-upgrade -y << EOF
-N
-EOF
+yes N | sudo DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+
 sudo apt install -y hailo-all
 
 # Source ros2
