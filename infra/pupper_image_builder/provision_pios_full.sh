@@ -36,7 +36,7 @@ sudo apt upgrade -y
 sudo apt install -y vim
 
 sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install wandb sounddevice openai[realtime] pydub pyaudio black
+pip install wandb sounddevice openai[realtime] pydub pyaudio black supervision opencv-python loguru
 
 # Install hailo
 yes N | sudo DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
@@ -79,7 +79,8 @@ pip install empy==3.3.4
 repos=(
     "https://github.com/facontidavide/rosx_introspection.git"
     "https://github.com/foxglove/ros-foxglove-bridge.git"
-    "https://github.com/christianrauch/camera_ros.git -b no_switch_error"
+    "https://github.com/christianrauch/camera_ros.git"
+    "https://github.com/ros-perception/vision_msgs.git"
 )
 
 for repo in "${repos[@]}"; do
