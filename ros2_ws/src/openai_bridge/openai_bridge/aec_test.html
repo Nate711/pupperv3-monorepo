@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Echo Cancellation Test</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #121a33;
+            --text: #e6e9f3;
+            --muted: #a8b0c7;
+            --accent: #7aa2ff;
+            --danger: #ff7a7a;
+            --ok: #61d095;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+                Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            background: radial-gradient(1200px 600px at 70% -10%, #1a244b, var(--bg));
+            color: var(--text);
+        }
+
+        header {
+            padding: 28px 20px 12px;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+
+        .card {
+            grid-column: span 12;
+            background: linear-gradient(180deg, #151e3e, var(--panel));
+            border: 1px solid #1f2a55;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        @media (min-width: 900px) {
+            .card.sm6 {
+                grid-column: span 6;
+            }
+
+            .card.sm4 {
+                grid-column: span 4;
+            }
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        select,
+        input[type="range"],
+        button,
+        .toggle {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #2a376e;
+            background: #0e1530;
+            color: var(--text);
+            outline: none;
+        }
+
+        select:focus,
+        input[type="range"]:focus,
+        button:focus {
+            box-shadow: 0 0 0 2px #3e57a7;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 12px;
+            align-items: center;
+        }
+
+        .row>* {
+            grid-column: span 12;
+        }
+
+        @media (min-width: 700px) {
+            .row>.col6 {
+                grid-column: span 6;
+            }
+
+            .row>.col4 {
+                grid-column: span 4;
+            }
+        }
+
+        .toggles {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .toggle {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            background: #0f1735;
+        }
+
+        .toggle input {
+            display: none;
+        }
+
+        .toggle span.badge {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #2b3a76;
+            color: #cbd5ff;
+        }
+
+        .btn {
+            cursor: pointer;
+            border: 1px solid #33448b;
+            background: linear-gradient(180deg, #1d2a59, #16214a);
+            transition: transform .05s ease, filter .15s ease;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            filter: brightness(1.08);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn.danger {
+            border-color: #834040;
+            background: linear-gradient(180deg, #5a1f1f, #471616);
+        }
+
+        .btn.ghost {
+            background: transparent;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid #2a376e;
+            color: #cbd5ff;
+            background: #0f1735;
+            font-size: 12px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 120px;
+            background: #0c132b;
+            border-radius: 10px;
+            border: 1px solid #22306a;
+        }
+
+        .log {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono";
+            background: #0d1430;
+            border: 1px solid #22306a;
+            border-radius: 12px;
+            padding: 10px;
+            height: 160px;
+            overflow: auto;
+            color: #cfe2ff;
+        }
+
+        .hint {
+            color: #cfe2ff;
+            background: #0c1733;
+            padding: 10px 12px;
+            border: 1px dashed #2a3a6e;
+            border-radius: 12px;
+        }
+
+        a.small {
+            color: #cfe2ff;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Echo Cancellation Test</h1>
+        <p>Play a reference signal on your speakers and capture the microphone with <b>echo cancellation on/off</b>.
+            Works best on HTTPS.</p>
+    </header>
+
+    <div class="wrap">
+        <div class="grid">
+            <section class="card sm6" id="capture-card">
+                <h2 style="margin-top:0">1) Capture Settings</h2>
+                <div class="row" style="margin-top:8px">
+                    <div class="col6">
+                        <label for="micSelect">Microphone</label>
+                        <select id="micSelect"></select>
+                    </div>
+                    <div class="col6">
+                        <label for="spkSelect">Speaker / Output <span class="pill"
+                                id="sinkSupport">checking…</span></label>
+                        <select id="spkSelect"></select>
+                    </div>
+                </div>
+                <div style="height:8px"></div>
+                <div class="toggles">
+                    <label class="toggle"><input type="checkbox" id="aec" checked><span>Echo cancellation</span><span
+                            class="badge" id="aecState">on</span></label>
+                    <label class="toggle"><input type="checkbox" id="ns" checked><span>Noise suppression</span><span
+                            class="badge" id="nsState">on</span></label>
+                    <label class="toggle"><input type="checkbox" id="agc" checked><span>Auto gain</span><span
+                            class="badge" id="agcState">on</span></label>
+                </div>
+                <div style="height:10px"></div>
+                <div class="row">
+                    <button class="btn col6" id="startBtn">Start microphone</button>
+                    <button class="btn danger col6" id="stopBtn" disabled>Stop</button>
+                </div>
+                <div style="height:12px"></div>
+                <div class="row">
+                    <div class="col6">
+                        <label>Mic level</label>
+                        <canvas id="meter"></canvas>
+                    </div>
+                    <div class="col6">
+                        <label>Mic spectrum</label>
+                        <canvas id="spectrum"></canvas>
+                    </div>
+                </div>
+                <div style="height:10px"></div>
+                <div class="row">
+                    <div class="col6">
+                        <button class="btn ghost" id="recordBtn" disabled>Record 5 s sample</button>
+                    </div>
+                    <div class="col6">
+                        <div id="downloadSlot"></div>
+                    </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                    <div class="col6">
+                        <button class="btn ghost" id="playLastBtn" disabled>Play last recording</button>
+                    </div>
+                    <div class="col6">
+                        <audio id="lastRecordingAudio" controls style="width:100%;height:32px"></audio>
+                    </div>
+                </div>
+                <div style="height:10px"></div>
+                <div class="hint">
+                    <b>Tip:</b> For a simple check, keep quiet, click <i>Start microphone</i>, then use the Reference
+                    Signal below.
+                    Toggle <i>Echo cancellation</i> on/off and watch the mic level drop when it's on — that indicates
+                    AEC is working.
+                </div>
+            </section>
+
+            <section class="card sm6">
+                <h2 style="margin-top:0">2) Reference Signal (play on your speakers)</h2>
+                <div class="row">
+                    <div class="col6">
+                        <label for="sigType">Signal type</label>
+                        <select id="sigType">
+                            <option value="noise">White noise</option>
+                            <option value="sine">Sine tone</option>
+                            <option value="sweep">Sine sweep (200 Hz → 6 kHz)</option>
+                        </select>
+                    </div>
+                    <div class="col6">
+                        <label for="sigGain">Volume</label>
+                        <input id="sigGain" type="range" min="0" max="1" step="0.01" value="0.3" />
+                    </div>
+                </div>
+                <div style="height:10px"></div>
+                <div class="row">
+                    <button class="btn col6" id="playSig">Play</button>
+                    <button class="btn danger col6" id="stopSig" disabled>Stop</button>
+                </div>
+                <div style="height:12px"></div>
+                <audio id="remoteAudio" autoplay playsinline></audio>
+                <div class="hint" style="margin-top:10px">
+                    <b>Optional:</b> Enable a local WebRTC loopback call to exercise the exact WebRTC path many apps
+                    use.
+                    <div class="row" style="margin-top:8px">
+                        <button id="startRtc" class="btn col6" disabled>Create loopback call</button>
+                        <button id="stopRtc" class="btn danger col6" disabled>Hang up</button>
+                    </div>
+                    <small style="display:block;margin-top:6px;color:var(--muted)">Some browsers apply the strongest AEC
+                        when the mic track is used in a <code>RTCPeerConnection</code>.</small>
+                </div>
+            </section>
+
+            <section class="card sm4">
+                <h3 style="margin-top:0">Status</h3>
+                <div class="row">
+                    <div class="col6"><span class="pill">AEC: <span id="settingsAec">—</span></span></div>
+                    <div class="col6"><span class="pill">NS: <span id="settingsNs">—</span></span></div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                    <div class="col6"><span class="pill">AGC: <span id="settingsAgc">—</span></span></div>
+                    <div class="col6"><span class="pill">Input: <span id="micName">—</span></span></div>
+                </div>
+                <p style="margin-top:10px" id="compat"></p>
+            </section>
+
+            <section class="card sm8">
+                <h3 style="margin-top:0">Event log</h3>
+                <div class="log" id="log"></div>
+            </section>
+
+            <section class="card">
+                <h3 style="margin-top:0">How to use</h3>
+                <ol>
+                    <li>Choose your <b>Microphone</b> and <b>Speaker</b> (if supported) and set <b>Echo cancellation</b>
+                        ON.</li>
+                    <li>Click <b>Start microphone</b> and allow mic access. You should see the level meter moving when
+                        you speak.</li>
+                    <li>In <b>Reference Signal</b>, click <b>Play</b> to send noise/tone to your speakers. Keep quiet.
+                    </li>
+                    <li>Toggle <b>Echo cancellation</b> OFF → ON; with it ON the mic level should drop significantly
+                        while the reference is playing.
+                        That indicates the browser is removing speaker echo from the mic capture.</li>
+                    <li>(Optional) Click <b>Create loopback call</b> to route your mic through WebRTC. Some browsers
+                        maximize AEC in that mode.</li>
+                    <li>(Optional) Use <b>Record 5 s sample</b> to save a snippet (WebM/Opus) for comparison.</li>
+                </ol>
+                <p class="hint">Note: Exact behavior varies by OS, audio hardware, and browser. For best results test on
+                    a <b>laptop with speakers</b> (not headphones) in a quiet room.</p>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // --- UI elements
+        const micSelect = document.getElementById('micSelect');
+        const spkSelect = document.getElementById('spkSelect');
+        const sinkSupport = document.getElementById('sinkSupport');
+        const aec = document.getElementById('aec');
+        const ns = document.getElementById('ns');
+        const agc = document.getElementById('agc');
+        const aecState = document.getElementById('aecState');
+        const nsState = document.getElementById('nsState');
+        const agcState = document.getElementById('agcState');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const meterCanvas = document.getElementById('meter');
+        const spectrumCanvas = document.getElementById('spectrum');
+        const recordBtn = document.getElementById('recordBtn');
+        const downloadSlot = document.getElementById('downloadSlot');
+        const playLastBtn = document.getElementById('playLastBtn');
+        const lastRecordingAudio = document.getElementById('lastRecordingAudio');
+        const playSigBtn = document.getElementById('playSig');
+        const stopSigBtn = document.getElementById('stopSig');
+        const sigType = document.getElementById('sigType');
+        const sigGain = document.getElementById('sigGain');
+        const remoteAudio = document.getElementById('remoteAudio');
+        const startRtcBtn = document.getElementById('startRtc');
+        const stopRtcBtn = document.getElementById('stopRtc');
+
+        const settingsAec = document.getElementById('settingsAec');
+        const settingsNs = document.getElementById('settingsNs');
+        const settingsAgc = document.getElementById('settingsAgc');
+        const micName = document.getElementById('micName');
+        const compat = document.getElementById('compat');
+
+        const logEl = document.getElementById('log');
+
+        function log(msg) {
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `[${time}] ${msg}<br/>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        // --- Audio / Media globals
+        let audioCtx;
+        let micStream; // MediaStream from getUserMedia (processed by AEC/NS/AGC as per constraints)
+        let micSource; // MediaStreamAudioSourceNode
+        let analyser, spectrum;
+        let rafId;
+
+        let recorder;
+        let chunks = [];
+        let lastRecordingBlob = null;
+
+        // Reference signal nodes
+        let sigNodes = { gain: null, src: null };
+
+        // WebRTC loopback
+        let pc1, pc2;
+
+        // --- Utils
+        function supportedOutputSelection() {
+            const ok = typeof HTMLMediaElement.prototype.setSinkId === 'function';
+            sinkSupport.textContent = ok ? 'supported' : 'not supported by this browser';
+            return ok;
+        }
+
+        function updateToggleBadges() {
+            aecState.textContent = aec.checked ? 'on' : 'off';
+            nsState.textContent = ns.checked ? 'on' : 'off';
+            agcState.textContent = agc.checked ? 'on' : 'off';
+        }
+
+        async function listDevices() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const mics = devices.filter(d => d.kind === 'audioinput');
+                const outs = devices.filter(d => d.kind === 'audiooutput');
+
+                micSelect.innerHTML = mics.map(d => `<option value="${d.deviceId}">${d.label || 'Microphone'}</option>`).join('');
+                spkSelect.innerHTML = outs.map(d => `<option value="${d.deviceId}">${d.label || 'Speaker'}</option>`).join('');
+
+                if (!outs.length) spkSelect.innerHTML = '<option value="">Default</option>';
+                if (!mics.length) log('No microphones found.');
+            } catch (e) {
+                log('enumerateDevices failed: ' + e.message);
+            }
+        }
+
+        function drawMeter() {
+            const ctx = meterCanvas.getContext('2d');
+            const sctx = spectrumCanvas.getContext('2d');
+            const w = meterCanvas.width = meterCanvas.clientWidth;
+            const h = meterCanvas.height = meterCanvas.clientHeight;
+            const ws = spectrumCanvas.width = spectrumCanvas.clientWidth;
+            const hs = spectrumCanvas.height = spectrumCanvas.clientHeight;
+
+            const timeData = new Uint8Array(analyser.fftSize);
+            const freqData = new Uint8Array(spectrum.frequencyBinCount);
+
+            function frame() {
+                analyser.getByteTimeDomainData(timeData);
+                spectrum.getByteFrequencyData(freqData);
+
+                // Compute RMS for a simple level meter
+                let sum = 0;
+                for (let i = 0; i < timeData.length; i++) {
+                    const v = (timeData[i] - 128) / 128; sum += v * v;
+                }
+                const rms = Math.sqrt(sum / timeData.length);
+                const pct = Math.min(1, rms * 2.5); // arbitrary scale
+
+                ctx.clearRect(0, 0, w, h);
+                ctx.fillStyle = '#0f1735'; ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = '#24367a'; ctx.fillRect(8, h - 22, w - 16, 14);
+                ctx.fillStyle = pct > 0.8 ? 'var(--danger)' : 'var(--ok)';
+                ctx.fillRect(8, h - 22, (w - 16) * pct, 14);
+
+                // Time waveform
+                ctx.strokeStyle = '#8fb0ff'; ctx.lineWidth = 1.2; ctx.beginPath();
+                for (let i = 0; i < timeData.length; i++) {
+                    const x = (i / (timeData.length - 1)) * w;
+                    const y = h * 0.5 + (timeData[i] - 128) / 128 * (h * 0.35);
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Spectrum
+                sctx.clearRect(0, 0, ws, hs);
+                sctx.fillStyle = '#0f1735'; sctx.fillRect(0, 0, ws, hs);
+                for (let i = 0; i < freqData.length; i++) {
+                    const x = i / freqData.length * ws;
+                    const v = freqData[i] / 255;
+                    const barH = v * hs;
+                    sctx.fillStyle = '#7aa2ff';
+                    sctx.fillRect(x, hs - barH, ws / freqData.length + 1, barH);
+                }
+
+                rafId = requestAnimationFrame(frame);
+            }
+            frame();
+        }
+
+        async function startMicrophone() {
+            try {
+                stopMicrophone(); // cleanup previous
+
+                updateToggleBadges();
+
+                const constraints = {
+                    audio: {
+                        echoCancellation: aec.checked,
+                        noiseSuppression: ns.checked,
+                        autoGainControl: agc.checked,
+                        deviceId: micSelect.value ? { exact: micSelect.value } : undefined,
+                        channelCount: 1
+                    }
+                };
+                log('Requesting mic with constraints: ' + JSON.stringify(constraints.audio));
+
+                micStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const track = micStream.getAudioTracks?.()[0];
+
+                // Show applied settings
+                const s = track?.getSettings?.() || {};
+                settingsAec.textContent = String(s.echoCancellation);
+                settingsNs.textContent = String(s.noiseSuppression);
+                settingsAgc.textContent = String(s.autoGainControl);
+                micName.textContent = track?.label || '—';
+
+                // Web Audio graph
+                audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                await audioCtx.resume();
+
+                micSource = audioCtx.createMediaStreamSource(micStream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                spectrum = audioCtx.createAnalyser();
+                spectrum.fftSize = 2048;
+                spectrum.smoothingTimeConstant = 0.85;
+
+                // Splitter so we can feed both analysers
+                const splitter = audioCtx.createChannelSplitter(1);
+                const merger = audioCtx.createChannelMerger(1);
+                micSource.connect(splitter);
+                splitter.connect(analyser, 0);
+                splitter.connect(spectrum, 0);
+                analyser.connect(merger, 0, 0);
+
+                drawMeter();
+
+                // Enable controls
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                recordBtn.disabled = false;
+                startRtcBtn.disabled = false;
+
+                // If a specific speaker was chosen and supported, bind remote outputs to it
+                if (supportedOutputSelection() && spkSelect.value) {
+                    try {
+                        await remoteAudio.setSinkId(spkSelect.value);
+                        log('Remote audio sink set to deviceId=' + spkSelect.value);
+                    } catch (e) {
+                        log('setSinkId failed: ' + e.message);
+                    }
+                }
+
+                log('Microphone started.');
+            } catch (e) {
+                log('getUserMedia error: ' + e.message);
+                alert('Microphone error: ' + e.message);
+            }
+        }
+
+        function stopMicrophone() {
+            if (rafId) cancelAnimationFrame(rafId);
+            if (micStream) {
+                micStream.getTracks().forEach(t => t.stop());
+                micStream = null;
+            }
+            if (audioCtx && audioCtx.state !== 'closed') {
+                // keep context for signal generation; don't close
+            }
+            startBtn.disabled = false; stopBtn.disabled = true; recordBtn.disabled = true; startRtcBtn.disabled = true;
+            settingsAec.textContent = settingsNs.textContent = settingsAgc.textContent = '—';
+            micName.textContent = '—';
+            log('Microphone stopped.');
+        }
+
+        // --- Recording (WebM/Opus)
+        function recordFiveSeconds() {
+            if (!micStream) return;
+            downloadSlot.innerHTML = '';
+            recorder = new MediaRecorder(micStream, { mimeType: 'audio/webm' });
+            chunks = [];
+            recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                lastRecordingBlob = blob;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `sample_${aec.checked ? 'AEC-on' : 'AEC-off'}.webm`;
+                a.textContent = 'Download sample (' + Math.round(blob.size / 1024) + ' KB)';
+                a.className = 'small';
+                downloadSlot.innerHTML = '';
+                downloadSlot.appendChild(a);
+                
+                // Enable play button and set audio source
+                playLastBtn.disabled = false;
+                lastRecordingAudio.src = url;
+                
+                log('Recording complete: ' + a.download);
+            };
+            recorder.start();
+            log('Recording 5 seconds…');
+            setTimeout(() => recorder?.state === 'recording' && recorder.stop(), 5000);
+        }
+
+        // --- Reference Signal generation
+        function stopSignal() {
+            try { sigNodes.src?.stop?.(); } catch { }
+            try { sigNodes.src?.disconnect?.(); } catch { }
+            try { sigNodes.gain?.disconnect?.(); } catch { }
+            sigNodes = { gain: null, src: null };
+            stopSigBtn.disabled = true; playSigBtn.disabled = false;
+            log('Reference signal stopped.');
+        }
+
+        function playSignal() {
+            audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+            const gain = audioCtx.createGain();
+            gain.gain.value = parseFloat(sigGain.value);
+
+            let src;
+            const type = sigType.value;
+            if (type === 'sine') {
+                const osc = audioCtx.createOscillator();
+                osc.type = 'sine'; osc.frequency.value = 700; // friendly mid tone
+                src = osc; src.start();
+            } else if (type === 'sweep') {
+                const osc = audioCtx.createOscillator();
+                osc.type = 'sine';
+                const now = audioCtx.currentTime;
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(6000, now + 8);
+                src = osc; src.start();
+            } else {
+                // White noise buffer
+                const dur = 2;
+                const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buf; noise.loop = true; src = noise; src.start();
+            }
+
+            src.connect(gain);
+            const dest = audioCtx.destination; // speakers
+            gain.connect(dest);
+
+            sigNodes = { gain, src };
+            playSigBtn.disabled = true; stopSigBtn.disabled = false;
+            log('Reference signal playing: ' + sigType.value + ' @ volume ' + sigGain.value);
+        }
+
+        // --- WebRTC loopback (pc1 -> pc2)
+        async function startLoopback() {
+            if (!micStream) { alert('Start microphone first.'); return; }
+            try {
+                stopLoopback();
+                pc1 = new RTCPeerConnection();
+                pc2 = new RTCPeerConnection();
+                micStream.getTracks().forEach(t => pc1.addTrack(t, micStream));
+                pc2.ontrack = e => { remoteAudio.srcObject = e.streams[0]; };
+                pc1.onicecandidate = e => e.candidate && pc2.addIceCandidate(e.candidate);
+                pc2.onicecandidate = e => e.candidate && pc1.addIceCandidate(e.candidate);
+
+                const offer = await pc1.createOffer({ offerToReceiveAudio: true });
+                await pc1.setLocalDescription(offer);
+                await pc2.setRemoteDescription(offer);
+                const answer = await pc2.createAnswer();
+                await pc2.setLocalDescription(answer);
+                await pc1.setRemoteDescription(answer);
+
+                startRtcBtn.disabled = true; stopRtcBtn.disabled = false;
+                log('Loopback call established. Your mic is routed through WebRTC and back to your speakers.');
+            } catch (e) {
+                log('Loopback error: ' + e.message);
+                alert('Loopback error: ' + e.message);
+            }
+        }
+
+        function stopLoopback() {
+            try { pc1?.getSenders?.().forEach(s => s.track && s.track.stop && s.track.stop()); } catch { }
+            try { pc1?.close?.(); } catch { }
+            try { pc2?.close?.(); } catch { }
+            pc1 = pc2 = null;
+            startRtcBtn.disabled = micStream ? false : true;
+            stopRtcBtn.disabled = true;
+            remoteAudio.srcObject = null;
+            log('Loopback call ended.');
+        }
+
+        // --- Event wiring
+        startBtn.onclick = startMicrophone;
+        stopBtn.onclick = stopMicrophone;
+        recordBtn.onclick = recordFiveSeconds;
+        playLastBtn.onclick = () => {
+            if (lastRecordingAudio.src) {
+                lastRecordingAudio.play();
+                log('Playing last recording');
+            }
+        };
+
+        playSigBtn.onclick = playSignal;
+        stopSigBtn.onclick = stopSignal;
+        sigGain.oninput = () => { if (sigNodes.gain) sigNodes.gain.gain.value = parseFloat(sigGain.value); };
+
+        startRtcBtn.onclick = startLoopback;
+        stopRtcBtn.onclick = stopLoopback;
+
+        aec.onchange = ns.onchange = agc.onchange = () => {
+            updateToggleBadges();
+            if (micStream) {
+                // Re-start the stream to apply new constraints
+                startMicrophone();
+            }
+        };
+
+        spkSelect.onchange = async () => {
+            if (supportedOutputSelection() && spkSelect.value) {
+                try { await remoteAudio.setSinkId(spkSelect.value); log('Speaker changed.'); }
+                catch (e) { log('setSinkId error: ' + e.message); }
+            }
+        };
+
+        navigator.mediaDevices?.addEventListener?.('devicechange', () => {
+            listDevices();
+            log('Device change detected.');
+        });
+
+        // Initial boot
+        (async function init() {
+            supportedOutputSelection();
+            compat.innerHTML = `Secure context: <b>${window.isSecureContext}</b><br/>` +
+                `Output selection: <b>${typeof HTMLMediaElement.prototype.setSinkId === 'function'}</b><br/>` +
+                `MediaRecorder: <b>${!!window.MediaRecorder}</b>`;
+
+            // Ask for temp mic permission so labels are populated
+            try {
+                const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+                tmp.getTracks().forEach(t => t.stop());
+            } catch (e) {
+                log('Mic permission not yet granted; device labels may be generic.');
+            }
+            await listDevices();
+            updateToggleBadges();
+            log('Ready. Choose your mic and click "Start microphone".');
+        })();
+    </script>
+</body>
+
+</html>
