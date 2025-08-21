@@ -213,19 +213,6 @@ export class GdmRobotFace extends LitElement {
       50% { opacity: 1; transform: translateY(-5px); }
     }
 
-    /* Equalizer */
-    .eq {
-      opacity: 0;
-      transform-origin: 50% 100%;
-    }
-
-    .stage[data-state="speaking"] .eq {
-      opacity: 1;
-    }
-
-    .eq rect {
-      transform-origin: 50% 100%;
-    }
 
     @media (prefers-reduced-motion: reduce) {
       .halo, .dots circle {
@@ -260,7 +247,6 @@ export class GdmRobotFace extends LitElement {
 
         if (outputLevel > 0.05) {
           this.setState('speaking');
-          this.updateSpeakingAnimation();
         } else if (inputLevel > 0.02) {
           this.setState('listening');
         } else {
@@ -297,39 +283,6 @@ export class GdmRobotFace extends LitElement {
     }
   }
 
-  private updateSpeakingAnimation() {
-    if (this.speakingAnimationFrameId) {
-      cancelAnimationFrame(this.speakingAnimationFrameId);
-    }
-
-    const animate = () => {
-      const stage = this.shadowRoot?.querySelector('.stage') as HTMLElement;
-      const eqBars = stage?.querySelectorAll('.eq rect') as NodeListOf<SVGRectElement>;
-      const brows = stage?.querySelectorAll('.brow') as NodeListOf<SVGPathElement>;
-
-      if (eqBars && this.outputAnalyser) {
-        const energy = Math.pow(this.outputAnalyser.data[0] / 255, 2);
-
-        eqBars.forEach((bar, i) => {
-          const jitter = Math.max(0.08, energy + (Math.random() - .5) * 0.15);
-          const h = 100 * jitter * (1 + (i === 2 ? 0.35 : 0));
-          bar.setAttribute('height', h.toFixed(1));
-          bar.setAttribute('y', (-h).toFixed(1));
-        });
-
-        if (brows) {
-          const browY = -2 - 4 * energy;
-          brows.forEach(b => b.setAttribute('transform', `translate(0, ${browY.toFixed(2)})`));
-        }
-      }
-
-      if (this.currentState === 'speaking') {
-        this.speakingAnimationFrameId = requestAnimationFrame(animate);
-      }
-    };
-
-    this.speakingAnimationFrameId = requestAnimationFrame(animate);
-  }
 
 
   private triggerListeningPing() {
@@ -415,13 +368,6 @@ export class GdmRobotFace extends LitElement {
               <circle class="halo" cx="600" cy="210" r="105" fill="#2ec4ff" filter="url(#blur8)" />
             </g>
 
-            <g class="eq" id="eq" transform="translate(450,205)">
-              <rect x="-36" y="0" width="10" height="0" rx="5" fill="#93d2ff" />
-              <rect x="-18" y="0" width="10" height="0" rx="5" fill="#c9e6ff" />
-              <rect x="0" y="0" width="10" height="0" rx="5" fill="#ffffff" />
-              <rect x="18" y="0" width="10" height="0" rx="5" fill="#c9e6ff" />
-              <rect x="36" y="0" width="10" height="0" rx="5" fill="#93d2ff" />
-            </g>
 
             <g class="dots" transform="translate(450,245)">
               <circle cx="-12" cy="0" r="3" fill="#a8d7ff" />

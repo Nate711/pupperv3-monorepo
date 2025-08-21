@@ -35,7 +35,9 @@ export class GdmLiveAudio extends LitElement {
   private scriptProcessorNode: ScriptProcessorNode;
   private sources = new Set<AudioBufferSourceNode>();
   private inputAnalyser: AnalyserNode;
+  private outputAnalyser: AnalyserNode;
   private visualizerAnimationId: number;
+  private outputVisualizerAnimationId: number;
 
   static styles = css`
     #status {
@@ -268,6 +270,19 @@ export class GdmLiveAudio extends LitElement {
       border-radius: 4px;
     }
 
+    .output-visualizer {
+      position: absolute;
+      top: 80px;
+      right: 20px;
+      z-index: 10;
+      width: 200px;
+      height: 80px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
     .controls {
       z-index: 10;
       position: absolute;
@@ -356,6 +371,12 @@ export class GdmLiveAudio extends LitElement {
     this.inputAnalyser.fftSize = 256;
     this.inputAnalyser.smoothingTimeConstant = 0.8;
     this.inputNode.connect(this.inputAnalyser);
+
+    // Set up output analyzer for visualizer
+    this.outputAnalyser = this.outputAudioContext.createAnalyser();
+    this.outputAnalyser.fftSize = 256;
+    this.outputAnalyser.smoothingTimeConstant = 0.8;
+    this.outputNode.connect(this.outputAnalyser);
   }
 
   private async initClient() {
@@ -713,12 +734,23 @@ export class GdmLiveAudio extends LitElement {
       }
     }
 
-    // Start visualizer when component is ready
+    // Start visualizers when component is ready
     if (changedProperties.has('isRecording') && this.isRecording) {
       this.startVisualizer();
     } else if (changedProperties.has('isRecording') && !this.isRecording) {
       this.stopVisualizer();
     }
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    // Start output visualizer when component connects (runs always)
+    setTimeout(() => this.startOutputVisualizer(), 100);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopOutputVisualizer();
   }
 
   private startVisualizer() {
@@ -781,6 +813,64 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
+  private startOutputVisualizer() {
+    const canvas = this.shadowRoot?.querySelector('.output-visualizer .visualizer-canvas') as HTMLCanvasElement;
+    if (!canvas || !this.outputAnalyser) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    canvas.width = 184; // 200px - 16px padding
+    canvas.height = 64; // 80px - 16px padding
+
+    const bufferLength = this.outputAnalyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const animate = () => {
+      this.outputAnalyser.getByteFrequencyData(dataArray);
+
+      // Clear canvas
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw frequency bars
+      const barWidth = canvas.width / bufferLength * 2;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength / 2; i++) { // Only show lower frequencies
+        const barHeight = (dataArray[i] / 255) * canvas.height;
+        
+        // Color based on frequency - orange to red for output
+        const hue = 30 - (i / (bufferLength / 2)) * 30; // 30-0 (orange to red)
+        ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+        
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        x += barWidth + 1;
+      }
+
+      this.outputVisualizerAnimationId = requestAnimationFrame(animate);
+    };
+
+    this.outputVisualizerAnimationId = requestAnimationFrame(animate);
+  }
+
+  private stopOutputVisualizer() {
+    if (this.outputVisualizerAnimationId) {
+      cancelAnimationFrame(this.outputVisualizerAnimationId);
+    }
+
+    // Clear canvas
+    const canvas = this.shadowRoot?.querySelector('.output-visualizer .visualizer-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  }
+
   render() {
     return html`
       <div>
@@ -796,6 +886,10 @@ export class GdmLiveAudio extends LitElement {
         </div>
 
         <div class="audio-visualizer">
+          <canvas class="visualizer-canvas"></canvas>
+        </div>
+
+        <div class="output-visualizer">
           <canvas class="visualizer-canvas"></canvas>
         </div>
 
