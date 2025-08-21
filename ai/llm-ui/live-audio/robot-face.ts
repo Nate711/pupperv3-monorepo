@@ -257,14 +257,12 @@ export class GdmRobotFace extends LitElement {
         // Determine state based on audio levels
         const inputLevel = this.inputAnalyser.data[0] / 255;
         const outputLevel = this.outputAnalyser.data[0] / 255;
-        const inputAverage = this.inputAnalyser.data.slice(0, 10).reduce((a, b) => a + b, 0) / (10 * 255);
 
         if (outputLevel > 0.05) {
           this.setState('speaking');
           this.updateSpeakingAnimation();
-        } else if (inputLevel > 0.02 || inputAverage > 0.01) {
+        } else if (inputLevel > 0.02) {
           this.setState('listening');
-          this.updateListeningGaze();
         } else {
           this.setState('idle');
         }
@@ -333,26 +331,6 @@ export class GdmRobotFace extends LitElement {
     this.speakingAnimationFrameId = requestAnimationFrame(animate);
   }
 
-  private updateListeningGaze() {
-    // Enhanced gaze movement and effects during listening
-    if (this.currentState === 'listening') {
-      const time = performance.now() / 1000;
-      const inputLevel = this.inputAnalyser.data[0] / 255;
-
-      // More dynamic gaze movement based on input level
-      const intensity = 1 + inputLevel * 2;
-      this.gazeX = Math.sin(time * 2.1 * intensity) * (8 + inputLevel * 10);
-      this.gazeY = Math.sin(time * 4.2 * intensity) * (5 + inputLevel * 6);
-
-      this.style.setProperty('--gaze-x', `${this.gazeX}px`);
-      this.style.setProperty('--gaze-y', `${this.gazeY}px`);
-
-      // Trigger ping effect on strong input
-      if (inputLevel > 0.3) {
-        this.triggerListeningPing();
-      }
-    }
-  }
 
   private triggerListeningPing() {
     this.pingClass = 'ping';

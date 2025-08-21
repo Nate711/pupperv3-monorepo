@@ -34,6 +34,8 @@ export class GdmLiveAudio extends LitElement {
   private sourceNode: AudioBufferSourceNode;
   private scriptProcessorNode: ScriptProcessorNode;
   private sources = new Set<AudioBufferSourceNode>();
+  private inputAnalyser: AnalyserNode;
+  private visualizerAnimationId: number;
 
   static styles = css`
     #status {
@@ -246,6 +248,26 @@ export class GdmLiveAudio extends LitElement {
       word-break: break-word;
     }
 
+    .audio-visualizer {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      z-index: 10;
+      width: 200px;
+      height: 80px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .visualizer-canvas {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      border-radius: 4px;
+    }
+
     .controls {
       z-index: 10;
       position: absolute;
@@ -328,6 +350,12 @@ export class GdmLiveAudio extends LitElement {
 
   private initAudio() {
     this.nextStartTime = this.outputAudioContext.currentTime;
+    
+    // Set up input analyzer for visualizer
+    this.inputAnalyser = this.inputAudioContext.createAnalyser();
+    this.inputAnalyser.fftSize = 256;
+    this.inputAnalyser.smoothingTimeConstant = 0.8;
+    this.inputNode.connect(this.inputAnalyser);
   }
 
   private async initClient() {
@@ -684,6 +712,73 @@ export class GdmLiveAudio extends LitElement {
         consoleContent.scrollTop = consoleContent.scrollHeight;
       }
     }
+
+    // Start visualizer when component is ready
+    if (changedProperties.has('isRecording') && this.isRecording) {
+      this.startVisualizer();
+    } else if (changedProperties.has('isRecording') && !this.isRecording) {
+      this.stopVisualizer();
+    }
+  }
+
+  private startVisualizer() {
+    const canvas = this.shadowRoot?.querySelector('.visualizer-canvas') as HTMLCanvasElement;
+    if (!canvas || !this.inputAnalyser) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    canvas.width = 184; // 200px - 16px padding
+    canvas.height = 64; // 80px - 16px padding
+
+    const bufferLength = this.inputAnalyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const animate = () => {
+      this.inputAnalyser.getByteFrequencyData(dataArray);
+
+      // Clear canvas
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw frequency bars
+      const barWidth = canvas.width / bufferLength * 2;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength / 2; i++) { // Only show lower frequencies
+        const barHeight = (dataArray[i] / 255) * canvas.height;
+        
+        // Color based on frequency - blue for low, green for mid, red for high
+        const hue = (i / (bufferLength / 2)) * 120; // 0-120 (blue to green)
+        ctx.fillStyle = `hsl(${120 - hue}, 80%, 60%)`;
+        
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        x += barWidth + 1;
+      }
+
+      if (this.isRecording) {
+        this.visualizerAnimationId = requestAnimationFrame(animate);
+      }
+    };
+
+    this.visualizerAnimationId = requestAnimationFrame(animate);
+  }
+
+  private stopVisualizer() {
+    if (this.visualizerAnimationId) {
+      cancelAnimationFrame(this.visualizerAnimationId);
+    }
+
+    // Clear canvas
+    const canvas = this.shadowRoot?.querySelector('.visualizer-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
   }
 
   render() {
@@ -698,6 +793,10 @@ export class GdmLiveAudio extends LitElement {
             <option value="gemini-live-2.5-flash-preview">Gemini Live 2.5 Flash</option>
             <option value="gemini-2.5-flash-preview-native-audio-dialog">Gemini 2.5 Flash Native Audio</option>
           </select>
+        </div>
+
+        <div class="audio-visualizer">
+          <canvas class="visualizer-canvas"></canvas>
         </div>
 
         <div class="controls">
