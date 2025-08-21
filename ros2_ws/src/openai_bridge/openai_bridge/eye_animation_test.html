@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face States Demo</title>
+    <style>
+        :root {
+            --iris-h: 200;
+            /* base hue for blue */
+            --iris-s: 80;
+            /* saturation (state changes tweak this) */
+            --iris-l: 52;
+            --gaze-x: 0px;
+            /* pupil offset */
+            --gaze-y: 0px;
+            --glow-alpha: .18;
+            /* halo opacity */
+            --dim: 1;
+            /* global dimmer for muted */
+            --lid-top: 0px;
+            /* one-shot lid offsets (blink etc.) */
+            --lid-bot: 0px;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #d7e7ff;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            gap: 18px;
+        }
+
+        .shell {
+            width: min(880px, 92vw);
+            display: grid;
+            gap: 14px;
+        }
+
+        .stage {
+            position: relative;
+            background: #000;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .6), inset 0 0 40px rgba(0, 120, 255, .08);
+            padding: 24px;
+            cursor: default;
+        }
+
+        /* Control row */
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button {
+            background: #0e1b2b;
+            border: 1px solid #1f3557;
+            color: #d7e7ff;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            letter-spacing: .2px;
+            cursor: pointer;
+            transition: .2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            background: #12233a;
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .badge {
+            opacity: .9;
+            font-size: .9rem;
+            padding: .25rem .5rem;
+            border-radius: 8px;
+            background: #142133;
+            border: 1px solid #213756;
+        }
+
+        /* SVG sizing */
+        svg {
+            display: block;
+            width: 100%;
+            height: auto;
+            filter: saturate(var(--dim));
+        }
+
+        /* --- State styling via data-state on .stage --- */
+        .stage[data-state="idle"] {
+            --iris-s: 80;
+            --glow-alpha: .12;
+        }
+
+        .stage[data-state="listening"] {
+            --iris-s: 92;
+            --glow-alpha: .20;
+        }
+
+        .stage[data-state="thinking"] {
+            --iris-s: 60;
+            --glow-alpha: 0;
+        }
+
+        .stage[data-state="speaking"] {
+            --iris-s: 98;
+            --glow-alpha: .32;
+        }
+
+        .stage[data-state="muted"] {
+            --iris-s: 0;
+            --glow-alpha: 0;
+            --dim: .7;
+            filter: grayscale(.2) brightness(.8);
+        }
+
+        /* --- Common animated pieces --- */
+        .iris {
+            fill: hsl(var(--iris-h) var(--iris-s)% var(--iris-l)%);
+        }
+
+        .halo {
+            opacity: var(--glow-alpha);
+            transform-origin: center;
+        }
+
+        /* Idle: slow breathe of halos */
+        .stage[data-state="idle"] .halo {
+            animation: breathe 7s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        /* Listening: faster halo pulse */
+        .stage[data-state="listening"] .halo {
+            animation: pulse 900ms ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.07);
+            }
+        }
+
+        /* Speaking: quick throb */
+        .stage[data-state="speaking"] .halo {
+            animation: throb 320ms ease-in-out infinite;
+        }
+
+        @keyframes throb {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.06);
+            }
+        }
+
+        /* Pupils follow CSS vars (or JS sets) */
+        .pupil,
+        .highlightGroup {
+            transform: translate(var(--gaze-x), var(--gaze-y));
+        }
+
+        /* Eyelids (we slide these) */
+        .lidTop {
+            transform: translateY(var(--lid-top));
+        }
+
+        .lidBot {
+            transform: translateY(calc(var(--lid-bot) * -1));
+        }
+
+        /* One-shot blink */
+        .blink .lidTop,
+        .blink .lidBot {
+            animation: blinkOnce 220ms cubic-bezier(.3, .6, .3, 1) 1;
+        }
+
+        @keyframes blinkOnce {
+            0% {
+                transform: translateY(0);
+            }
+
+            45% {
+                transform: translateY(46px);
+            }
+
+            55% {
+                transform: translateY(46px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        /* Listening ping (sonar rings) */
+        .ping .ripple {
+            animation: ripple 700ms ease-out 1;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(.2);
+                opacity: .35;
+            }
+
+            100% {
+                transform: scale(1.6);
+                opacity: 0;
+            }
+        }
+
+        /* Thinking dots march */
+        .dots {
+            opacity: 0;
+        }
+
+        .stage[data-state="thinking"] .dots {
+            opacity: 1;
+        }
+
+        .stage[data-state="thinking"] .dots circle {
+            animation: dot 900ms ease-in-out infinite;
+        }
+
+        .stage[data-state="thinking"] .dots circle:nth-child(2) {
+            animation-delay: .12s;
+        }
+
+        .stage[data-state="thinking"] .dots circle:nth-child(3) {
+            animation-delay: .24s;
+        }
+
+        @keyframes dot {
+
+            0%,
+            100% {
+                opacity: .2;
+                transform: translateY(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateY(-5px);
+            }
+        }
+
+        /* Equalizer (speaking) */
+        .eq {
+            opacity: 0;
+            transform-origin: 50% 100%;
+        }
+
+        .stage[data-state="speaking"] .eq {
+            opacity: 1;
+        }
+
+        .eq rect {
+            transform-origin: 50% 100%;
+        }
+
+        /* Reduced motion: freeze loops, keep color signals */
+        @media (prefers-reduced-motion: reduce) {
+
+            .halo,
+            .dots circle {
+                animation: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shell">
+        <div class="row" role="group" aria-label="State">
+            <button data-go="idle">Idle</button>
+            <button data-go="listening">Listening</button>
+            <button data-go="thinking">Thinking</button>
+            <button data-go="speaking">Speaking</button>
+            <button data-go="muted">Muted</button>
+            <span class="badge">State: <strong id="stateLabel">idle</strong></span>
+        </div>
+
+        <div class="row" role="group" aria-label="Play">
+            <button id="btnBlink">Blink once</button>
+            <button id="btnPing">Listening ping</button>
+            <button id="btnSpeakDemo">Speak demo (2s)</button>
+        </div>
+
+        <!-- Stage with state machine on data-state -->
+        <div id="stage" class="stage" data-state="idle" aria-live="polite">
+            <!-- SVG FACE -->
+            <svg viewBox="0 0 800 360" aria-hidden="true">
+                <defs>
+                    <filter id="blur6">
+                        <feGaussianBlur stdDeviation="6" />
+                    </filter>
+                </defs>
+
+                <!-- Halos -->
+                <g class="haloGroup">
+                    <circle class="halo" cx="270" cy="180" r="88" fill="#2fb7ff" filter="url(#blur6)"></circle>
+                    <circle class="halo" cx="530" cy="180" r="88" fill="#2fb7ff" filter="url(#blur6)"></circle>
+                </g>
+
+                <!-- Equalizer (speaking) -->
+                <g class="eq" id="eq" transform="translate(380,165)">
+                    <!-- five bars centered -->
+                    <rect x="-40" y="0" width="12" height="0" rx="6" fill="#8fc7ff" />
+                    <rect x="-20" y="0" width="12" height="0" rx="6" fill="#b3d8ff" />
+                    <rect x="0" y="0" width="12" height="0" rx="6" fill="#ffffff" />
+                    <rect x="20" y="0" width="12" height="0" rx="6" fill="#b3d8ff" />
+                    <rect x="40" y="0" width="12" height="0" rx="6" fill="#8fc7ff" />
+                </g>
+
+                <!-- Thinking dots -->
+                <g class="dots" transform="translate(380,210)">
+                    <circle cx="-16" cy="0" r="4" fill="#9ccfff"></circle>
+                    <circle cx="0" cy="0" r="4" fill="#cfe5ff"></circle>
+                    <circle cx="16" cy="0" r="4" fill="#9ccfff"></circle>
+                </g>
+
+                <!-- LEFT EYE -->
+                <g id="eyeL" transform="translate(270,180)">
+                    <!-- outer ring -->
+                    <circle r="78" fill="none" stroke="#2a3b55" stroke-width="10" />
+                    <circle r="68" fill="#0b1727" />
+                    <!-- iris & pupil -->
+                    <circle class="iris" r="44" />
+                    <g class="pupilGroup">
+                        <circle class="pupil" r="22" fill="#07111c" />
+                        <g class="highlightGroup">
+                            <circle r="8" cx="-8" cy="-12" fill="#ffffff" opacity=".95" />
+                            <circle r="4" cx="6" cy="-6" fill="#ffffff" opacity=".85" />
+                        </g>
+                    </g>
+                    <!-- ripple (listening ping) -->
+                    <circle class="ripple" r="50" fill="none" stroke="#8ad1ff" stroke-width="6" opacity="0"></circle>
+
+                    <!-- lids (simple rounded rects that slide) -->
+                    <rect class="lidTop" x="-84" y="-92" width="168" height="86" rx="44" fill="#000" />
+                    <rect class="lidBot" x="-84" y="6" width="168" height="86" rx="44" fill="#000" />
+                    <!-- eyebrow -->
+                    <rect class="brow" x="-72" y="-118" width="144" height="20" rx="10" fill="#1b283c" opacity=".9" />
+                </g>
+
+                <!-- RIGHT EYE -->
+                <g id="eyeR" transform="translate(530,180)">
+                    <circle r="78" fill="none" stroke="#2a3b55" stroke-width="10" />
+                    <circle r="68" fill="#0b1727" />
+                    <circle class="iris" r="44" />
+                    <g class="pupilGroup">
+                        <circle class="pupil" r="22" fill="#07111c" />
+                        <g class="highlightGroup">
+                            <circle r="8" cx="-8" cy="-12" fill="#ffffff" opacity=".95" />
+                            <circle r="4" cx="6" cy="-6" fill="#ffffff" opacity=".85" />
+                        </g>
+                    </g>
+                    <circle class="ripple" r="50" fill="none" stroke="#8ad1ff" stroke-width="6" opacity="0"></circle>
+
+                    <rect class="lidTop" x="-84" y="-92" width="168" height="86" rx="44" fill="#000" />
+                    <rect class="lidBot" x="-84" y="6" width="168" height="86" rx="44" fill="#000" />
+                    <rect class="brow" x="-72" y="-118" width="144" height="20" rx="10" fill="#1b283c" opacity=".9" />
+                </g>
+            </svg>
+        </div>
+
+        <small style="opacity:.75; text-align:center;">
+            Tip: Move your mouse across the stage while in <strong>Listening</strong> to see subtle gaze tracking.
+        </small>
+    </div>
+
+    <script>
+        (() => {
+            const stage = document.getElementById('stage');
+            const stateLabel = document.getElementById('stateLabel');
+            const eq = document.getElementById('eq');
+            const buttons = [...document.querySelectorAll('button[data-go]')];
+            const btnBlink = document.getElementById('btnBlink');
+            const btnPing = document.getElementById('btnPing');
+            const btnSpeakDemo = document.getElementById('btnSpeakDemo');
+
+            let state = 'idle';
+            let rafThinking = null;
+            let rafSpeaking = null;
+            let speakingDemoTimer = null;
+            let blinkTimer = null;
+
+            function setState(next) {
+                if (state === next) return;
+                state = next;
+                stage.setAttribute('data-state', state);
+                stateLabel.textContent = state;
+
+                // cleanup loops when leaving a state
+                stopThinking();
+                stopSpeaking();
+
+                if (state === 'thinking') startThinking();
+                if (state === 'speaking') startSpeaking();
+
+                // Idle gets autonomous blinking
+                scheduleIdleBlink();
+
+                // reset gaze and temporary classes
+                setGaze(0, 0);
+                stage.classList.remove('blink', 'ping');
+            }
+
+            buttons.forEach(b => b.addEventListener('click', () => setState(b.dataset.go)));
+
+            /* ---------- GAZE CONTROL ---------- */
+            function setGaze(x, y) {
+                stage.style.setProperty('--gaze-x', x + 'px');
+                stage.style.setProperty('--gaze-y', y + 'px');
+            }
+
+            // Listening: soft mouse-follow (capped)
+            stage.addEventListener('mousemove', (e) => {
+                if (state !== 'listening') return;
+                const rect = stage.getBoundingClientRect();
+                const nx = (e.clientX - rect.left) / rect.width;  // 0..1
+                const ny = (e.clientY - rect.top) / rect.height;
+                const amp = 12; // max px offset
+                const x = (nx - 0.5) * amp * 2;
+                const y = (ny - 0.5) * amp * 1.5;
+                setGaze(x, y);
+            });
+
+            /* ---------- THINKING LOOP (figure-8 drift) ---------- */
+            function startThinking() {
+                let t0 = performance.now();
+                const ampX = 8, ampY = 6;
+                const step = (t) => {
+                    const dt = (t - t0) / 1000; // seconds
+                    const x = Math.sin(dt * 2.0) * ampX;
+                    const y = Math.sin(dt * 4.0) * ampY * 0.6;
+                    setGaze(x, y);
+                    rafThinking = requestAnimationFrame(step);
+                };
+                rafThinking = requestAnimationFrame(step);
+            }
+            function stopThinking() {
+                if (rafThinking) { cancelAnimationFrame(rafThinking); rafThinking = null; }
+            }
+
+            /* ---------- SPEAKING LOOP (equalizer + brow bounce) ---------- */
+            const eqBars = [...eq.querySelectorAll('rect')];
+            // eyebrows move as group under each eye:
+            const brows = [...document.querySelectorAll('.brow')];
+
+            function startSpeaking() {
+                const step = () => {
+                    // simple VU randomizer to simulate syllables
+                    const energy = Math.pow(Math.random(), 2); // bias to lower values
+                    eqBars.forEach((bar, i) => {
+                        const jitter = Math.max(0.08, energy + (Math.random() - .5) * 0.15);
+                        const h = 80 * jitter * (1 + (i === 2 ? 0.3 : 0)); // center a bit taller
+                        bar.setAttribute('height', h.toFixed(1));
+                        bar.setAttribute('y', -h.toFixed(1));
+                    });
+                    const browY = -4 - 3 * energy;
+                    brows.forEach(b => b.setAttribute('transform', `translate(0, ${browY.toFixed(2)})`));
+                    rafSpeaking = requestAnimationFrame(step);
+                };
+                rafSpeaking = requestAnimationFrame(step);
+            }
+            function stopSpeaking() {
+                if (rafSpeaking) { cancelAnimationFrame(rafSpeaking); rafSpeaking = null; }
+                eqBars.forEach(b => { b.setAttribute('height', 0); b.setAttribute('y', 0); });
+                brows.forEach(b => b.removeAttribute('transform'));
+            }
+
+            /* ---------- ONE-SHOTS ---------- */
+            // Blink
+            btnBlink.addEventListener('click', () => {
+                stage.classList.remove('blink'); void stage.offsetWidth; // restart
+                stage.classList.add('blink');
+                // clear quickly to allow retriggering
+                setTimeout(() => stage.classList.remove('blink'), 260);
+            });
+
+            // Listening ping (sonar rings)
+            btnPing.addEventListener('click', () => {
+                stage.classList.remove('ping'); void stage.offsetWidth;
+                stage.classList.add('ping');
+                setTimeout(() => stage.classList.remove('ping'), 750);
+            });
+
+            // Speak demo: temporarily enter speaking state for 2s
+            btnSpeakDemo.addEventListener('click', () => {
+                const prior = state;
+                setState('speaking');
+                clearTimeout(speakingDemoTimer);
+                speakingDemoTimer = setTimeout(() => setState(prior === 'speaking' ? 'idle' : prior), 2000);
+            });
+
+            /* ---------- IDLE RANDOM BLINKS ---------- */
+            function scheduleIdleBlink() {
+                clearTimeout(blinkTimer);
+                if (state !== 'idle') return;
+                const wait = 1800 + Math.random() * 4200; // ~2–6s
+                blinkTimer = setTimeout(() => {
+                    btnBlink.click();
+                    scheduleIdleBlink();
+                }, wait);
+            }
+            scheduleIdleBlink();
+
+            // Init
+            setState('idle');
+        })();
+    </script>
+</body>
+
+</html>
