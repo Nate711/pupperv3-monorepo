@@ -1,0 +1,26 @@
+# Core ML/RL dependencies
+jax==0.5.0
+jaxlib==0.5.0
+mujoco==3.2.7
+mujoco-mjx==3.2.7
+brax==0.12.1
+flax==0.10.2
+orbax==0.1.9
+numpy==2.1
+numba
+
+# Configuration management
+hydra-core
+omegaconf
+
+# Visualization and plotting
+matplotlib
+plotly
+mediapy
+
+# Experiment tracking
+wandb
+
+# Utilities
+ml-collections
+etils

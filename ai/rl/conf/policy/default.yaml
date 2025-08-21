@@ -1,0 +1,6 @@
+# @package _global_.policy
+use_imu: true
+observation_history: 4
+action_scale: 0.75
+hidden_layer_sizes: [256, 128, 128, 128]
+activation: "elu"

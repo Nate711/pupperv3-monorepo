@@ -1,0 +1,19 @@
+# Main configuration file for Pupper MJX RL Training
+defaults:
+  - simulation: default
+  - training: default
+  - policy: default
+  - reward: default
+  - export: default
+  - _self_
+
+# Repository configurations
+pupperv3_mjx:
+  branch: "main"
+
+# Override any settings here
+hydra:
+  job:
+    chdir: true
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

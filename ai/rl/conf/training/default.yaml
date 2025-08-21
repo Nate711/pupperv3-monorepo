@@ -1,0 +1,102 @@
+# @package _global_.training
+# Training configuration
+checkpoint_run_number: null  # Set to load from existing checkpoint
+environment_dt: 0.02
+
+# PPO parameters
+ppo:
+  num_timesteps: 1000000000   # 1B timesteps
+  episode_length: 500
+  num_evals: 11
+  reward_scaling: 1
+  normalize_observations: true
+  action_repeat: 1
+  unroll_length: 20
+  num_minibatches: 32
+  num_updates_per_batch: 4
+  discounting: 0.97
+  learning_rate: 3.0e-5
+  entropy_cost: 1e-2
+  num_envs: 8192
+  batch_size: 256
+
+# Command sampling
+resample_velocity_step: 250  # episode_length // 2
+lin_vel_x_range: [-0.75, 0.75]
+lin_vel_y_range: [-0.5, 0.5]
+ang_vel_yaw_range: [-2.0, 2.0]
+zero_command_probability: 0.02
+stand_still_command_threshold: 0.05
+
+# Orientation commands (degrees)
+maximum_pitch_command: 0.0
+maximum_roll_command: 0.0
+
+# Desired body orientation
+desired_world_z_in_body_frame: [0.0, 0.0, 1.0]
+
+# Termination conditions
+terminal_body_z: 0.05
+terminal_body_angle: 0.70
+early_termination_step_threshold: 250  # episode_length // 2
+
+# Joint control
+dof_damping: 0.25
+position_control_kp: 5.0
+
+# Default joint poses
+default_pose: [0.26, 0.0, -0.52, -0.26, 0.0, 0.52, 0.26, 0.0, -0.52, -0.26, 0.0, 0.52]
+desired_abduction_angles: [0.0, 0.0, 0.0, 0.0]
+
+# Height field settings
+height_field_random: false
+height_field_steps: false
+height_field_step_size: 4
+height_field_grid_size: 256
+height_field_group: "0"
+height_field_radius_x: 10.0
+height_field_radius_y: 10.0
+height_field_elevation_z: 0.02
+height_field_base_z: 0.2
+
+# Domain randomization - Perturbations
+kick_probability: 0.04
+kick_vel: 0.10
+angular_velocity_noise: 0.1
+gravity_noise: 0.05
+motor_angle_noise: 0.05
+last_action_noise: 0.01
+
+# Domain randomization - Motors
+position_control_kp_multiplier_range: [0.6, 1.1]
+position_control_kd_multiplier_range: [0.8, 1.5]
+
+# Domain randomization - Starting position
+start_position_config:
+  x_min: -2.0
+  x_max: 2.0
+  y_min: -2.0
+  y_max: 2.0
+  z_min: 0.15
+  z_max: 0.20
+
+# Latency distributions
+latency_distribution: [0.2, 0.8]  # 0 latency 20%, 1 timestep 80%
+imu_latency_distribution: [0.5, 0.5]  # 0 latency 50%, 1 timestep 50%
+
+# Body randomization
+body_com_x_shift_range: [-0.02, 0.03]
+body_com_y_shift_range: [-0.005, 0.005]
+body_com_z_shift_range: [-0.005, 0.005]
+body_mass_scale_range: [0.9, 1.3]
+body_inertia_scale_range: [0.9, 1.3]
+
+# Friction
+friction_range: [0.6, 1.4]
+
+# Obstacles
+n_obstacles: 0
+obstacle_x_range: [-3.0, 3.0]
+obstacle_y_range: [-3.0, 3.0]
+obstacle_height: 0.04
+obstacle_length: 2.0

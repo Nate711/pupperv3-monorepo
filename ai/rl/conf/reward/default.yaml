@@ -1,0 +1,33 @@
+# @package _global_.reward
+rewards:
+  scales:
+    # Tracking rewards
+    tracking_lin_vel: 1.5
+    tracking_ang_vel: 0.8
+    tracking_orientation: 0.5
+    
+    # Base regularization
+    lin_vel_z: -0.1
+    ang_vel_xy: -0.002
+    orientation: -0.0
+    
+    # Joint regularization
+    torques: -0.025
+    joint_acceleration: -1e-6
+    mechanical_work: 0
+    action_rate: -0.1
+    
+    # Behavior rewards
+    feet_air_time: 0.02
+    stand_still: -0.00
+    stand_still_joint_velocity: -0.2
+    abduction_angle: -0.01
+    
+    # Penalties
+    termination: -100.0
+    foot_slip: -0.2
+    knee_collision: -10.0
+    body_collision: -0.5
+  
+  # Tracking reward parameters
+  tracking_sigma: 0.25
