@@ -51,11 +51,19 @@ export class GdmLiveAudio extends LitElement {
       text-align: center;
     }
 
-    .mode-indicator {
+    .top-bar {
       position: absolute;
       top: 20px;
       left: 20px;
+      right: 20px;
       z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .mode-indicator {
       background: rgba(0, 0, 0, 0.7);
       color: white;
       padding: 8px 16px;
@@ -66,6 +74,7 @@ export class GdmLiveAudio extends LitElement {
       letter-spacing: 0.5px;
       border: 1px solid rgba(255, 255, 255, 0.2);
       transition: all 0.3s ease;
+      flex-shrink: 0;
     }
 
     .mode-indicator.idle {
@@ -106,11 +115,76 @@ export class GdmLiveAudio extends LitElement {
       50% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(255, 80, 80, 0); }
     }
 
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 6px;
+    }
+
+    .control-button {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      padding: 0;
+    }
+
+    .control-button:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .control-button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .control-button.recording {
+      background: rgba(200, 0, 0, 0.7);
+      border-color: rgba(200, 0, 0, 0.5);
+      animation: pulse-recording 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-recording {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(200, 0, 0, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(200, 0, 0, 0); }
+    }
+
+    .viz-toggle {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .viz-toggle:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .viz-toggle.active {
+      background: rgba(25, 162, 230, 0.7);
+      border-color: rgba(25, 162, 230, 0.5);
+    }
+
     .model-selector {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 10;
+      flex-shrink: 0;
     }
 
     .model-selector select {
@@ -160,44 +234,6 @@ export class GdmLiveAudio extends LitElement {
     .console-toggle:hover {
       background: rgba(0, 0, 0, 0.8);
       border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .analyzer-toggles {
-      position: absolute;
-      top: 180px;
-      left: 20px;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .analyzer-toggle {
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      min-width: 80px;
-      text-align: center;
-    }
-
-    .analyzer-toggle:hover {
-      background: rgba(0, 0, 0, 0.8);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .analyzer-toggle.active {
-      background: rgba(25, 162, 230, 0.7);
-      border-color: rgba(25, 162, 230, 0.5);
-    }
-
-    .analyzer-toggle.active:hover {
-      background: rgba(25, 162, 230, 0.8);
-      border-color: rgba(25, 162, 230, 0.6);
     }
 
     .console-panel {
@@ -292,7 +328,7 @@ export class GdmLiveAudio extends LitElement {
 
     .audio-visualizer {
       position: absolute;
-      top: 80px;
+      top: 70px;
       left: 20px;
       z-index: 10;
       width: 200px;
@@ -312,7 +348,7 @@ export class GdmLiveAudio extends LitElement {
 
     .output-visualizer {
       position: absolute;
-      top: 80px;
+      top: 70px;
       right: 20px;
       z-index: 10;
       width: 200px;
@@ -323,40 +359,6 @@ export class GdmLiveAudio extends LitElement {
       padding: 8px;
     }
 
-    .controls {
-      z-index: 10;
-      position: absolute;
-      bottom: 10vh;
-      left: 0;
-      right: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 10px;
-
-      button {
-        outline: none;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.1);
-        width: 64px;
-        height: 64px;
-        cursor: pointer;
-        font-size: 24px;
-        padding: 0;
-        margin: 0;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-      }
-
-      button[disabled] {
-        display: none;
-      }
-    }
   `;
 
   constructor() {
@@ -980,15 +982,80 @@ export class GdmLiveAudio extends LitElement {
   render() {
     return html`
       <div>
-        <div class="mode-indicator ${this.robotMode}">
-          ${this.robotMode}
-        </div>
+        <div class="top-bar">
+          <div class="mode-indicator ${this.robotMode}">
+            ${this.robotMode}
+          </div>
 
-        <div class="model-selector">
-          <select @change=${this.onModelChange} .value=${this.selectedModel}>
-            <option value="gemini-live-2.5-flash-preview">Gemini Live 2.5 Flash</option>
-            <option value="gemini-2.5-flash-preview-native-audio-dialog">Gemini 2.5 Flash Native Audio</option>
-          </select>
+          <div class="control-group">
+            <button
+              class="control-button"
+              @click=${this.reset}
+              ?disabled=${this.isRecording}
+              title="Reset Session">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                height="20px"
+                viewBox="0 -960 960 960"
+                width="20px"
+                fill="currentColor">
+                <path
+                  d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
+              </svg>
+            </button>
+            
+            ${!this.isRecording ? html`
+              <button
+                class="control-button"
+                @click=${this.startRecording}
+                title="Start Recording">
+                <svg
+                  viewBox="0 0 100 100"
+                  width="18px"
+                  height="18px"
+                  fill="#c80000"
+                  xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" r="50" />
+                </svg>
+              </button>
+            ` : html`
+              <button
+                class="control-button recording"
+                @click=${this.stopRecording}
+                title="Stop Recording">
+                <svg
+                  viewBox="0 0 100 100"
+                  width="16px"
+                  height="16px"
+                  fill="currentColor"
+                  xmlns="http://www.w3.org/2000/svg">
+                  <rect x="25" y="25" width="50" height="50" rx="5" />
+                </svg>
+              </button>
+            `}
+
+            <div style="width: 1px; height: 24px; background: rgba(255, 255, 255, 0.2);"></div>
+
+            <button 
+              class="viz-toggle ${this.showInputAnalyzer ? 'active' : ''}"
+              @click=${this.toggleInputAnalyzer}
+              title="Toggle Input Visualizer">
+              In Viz
+            </button>
+            <button 
+              class="viz-toggle ${this.showOutputAnalyzer ? 'active' : ''}"
+              @click=${this.toggleOutputAnalyzer}
+              title="Toggle Output Visualizer">
+              Out Viz
+            </button>
+          </div>
+
+          <div class="model-selector">
+            <select @change=${this.onModelChange} .value=${this.selectedModel}>
+              <option value="gemini-live-2.5-flash-preview">Gemini Live 2.5 Flash</option>
+              <option value="gemini-2.5-flash-preview-native-audio-dialog">Gemini 2.5 Flash Native Audio</option>
+            </select>
+          </div>
         </div>
 
         ${this.showInputAnalyzer ? html`
@@ -1002,62 +1069,6 @@ export class GdmLiveAudio extends LitElement {
             <canvas class="visualizer-canvas"></canvas>
           </div>
         ` : ''}
-
-        <div class="analyzer-toggles">
-          <button 
-            class="analyzer-toggle ${this.showInputAnalyzer ? 'active' : ''}"
-            @click=${this.toggleInputAnalyzer}>
-            Input Viz
-          </button>
-          <button 
-            class="analyzer-toggle ${this.showOutputAnalyzer ? 'active' : ''}"
-            @click=${this.toggleOutputAnalyzer}>
-            Output Viz
-          </button>
-        </div>
-
-        <div class="controls">
-          <button
-            id="resetButton"
-            @click=${this.reset}
-            ?disabled=${this.isRecording}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              height="40px"
-              viewBox="0 -960 960 960"
-              width="40px"
-              fill="#ffffff">
-              <path
-                d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
-            </svg>
-          </button>
-          <button
-            id="startButton"
-            @click=${this.startRecording}
-            ?disabled=${this.isRecording}>
-            <svg
-              viewBox="0 0 100 100"
-              width="32px"
-              height="32px"
-              fill="#c80000"
-              xmlns="http://www.w3.org/2000/svg">
-              <circle cx="50" cy="50" r="50" />
-            </svg>
-          </button>
-          <button
-            id="stopButton"
-            @click=${this.stopRecording}
-            ?disabled=${!this.isRecording}>
-            <svg
-              viewBox="0 0 100 100"
-              width="32px"
-              height="32px"
-              fill="#000000"
-              xmlns="http://www.w3.org/2000/svg">
-              <rect x="0" y="0" width="100" height="100" rx="15" />
-            </svg>
-          </button>
-        </div>
 
         <div id="status"> ${this.error} </div>
         <gdm-robot-face
