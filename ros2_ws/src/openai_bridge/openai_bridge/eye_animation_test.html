@@ -310,109 +310,8 @@
             <button id="btnSpeakDemo">Speak demo (2s)</button>
         </div>
 
-        <div id="stage" class="stage" data-state="idle" aria-live="polite">
-            <svg viewBox="0 0 900 420" aria-hidden="true">
-                <defs>
-                    <filter id="blur8">
-                        <feGaussianBlur stdDeviation="8" />
-                    </filter>
-                    <!-- soft radial gradient for iris core -->
-                    <radialGradient id="gIris" cx="35%" cy="35%" r="80%">
-                        <stop offset="0%" stop-color="#0f2438" />
-                        <stop offset="70%" stop-color="#0b1727" />
-                        <stop offset="100%" stop-color="#081220" />
-                    </radialGradient>
-                </defs>
-
-                <!-- halos -->
-                <g class="haloGroup">
-                    <circle class="halo" cx="300" cy="210" r="105" fill="#2ec4ff" filter="url(#blur8)" />
-                    <circle class="halo" cx="600" cy="210" r="105" fill="#2ec4ff" filter="url(#blur8)" />
-                </g>
-
-                <!-- equalizer (speaking) -->
-                <g class="eq" id="eq" transform="translate(450,205)">
-                    <rect x="-36" y="0" width="10" height="0" rx="5" fill="#93d2ff" />
-                    <rect x="-18" y="0" width="10" height="0" rx="5" fill="#c9e6ff" />
-                    <rect x="0" y="0" width="10" height="0" rx="5" fill="#ffffff" />
-                    <rect x="18" y="0" width="10" height="0" rx="5" fill="#c9e6ff" />
-                    <rect x="36" y="0" width="10" height="0" rx="5" fill="#93d2ff" />
-                </g>
-
-                <!-- thinking dots -->
-                <g class="dots" transform="translate(450,245)">
-                    <circle cx="-12" cy="0" r="3" fill="#a8d7ff" />
-                    <circle cx="0" cy="0" r="3" fill="#e6f3ff" />
-                    <circle cx="12" cy="0" r="3" fill="#a8d7ff" />
-                </g>
-
-                <!-- EYE COMPONENT (left) -->
-                <g id="eyeL" transform="translate(300,210)">
-                    <!-- outer dark ring -->
-                    <circle r="96" fill="none" stroke="var(--ring-dark)" stroke-width="2.4" />
-                    <!-- mid base -->
-                    <circle r="86" fill="#0b1727" />
-                    <!-- bright blue ring -->
-                    <circle r="76" fill="none" stroke="var(--iris-blue)" stroke-width="16" />
-                    <!-- inner core -->
-                    <circle r="62" fill="url(#gIris)" />
-                    <!-- thin inner ring -->
-                    <circle r="58" fill="none" stroke="#166ea0" stroke-width="6" opacity=".6" />
-
-                    <!-- pupil + glints follow gaze -->
-                    <g class="pupilGroup">
-                        <circle class="pupil" r="45" fill="var(--pupil)" />
-                        <!-- smile reflection (arc) inside pupil -->
-                        <path d="M -30 18 A 36 36 0 0 0 28 18" fill="none" stroke="var(--iris-blue-2)" stroke-width="8"
-                            stroke-linecap="round" />
-                        <circle r="4" cx="34" cy="20" fill="var(--iris-blue-2)" />
-                        <g class="glints">
-                            <circle r="16" cx="-14" cy="-20" fill="#ffffff" opacity=".96" />
-                            <circle r="7" cx="9" cy="-8" fill="#ffffff" opacity=".9" />
-                        </g>
-                    </g>
-
-                    <!-- listening ripple -->
-                    <circle class="ripple" r="70" fill="none" stroke="#8ad1ff" stroke-width="8" opacity="0" />
-
-                    <!-- eyebrows -->
-                    <path class="brow"
-                        d="M -55 -125 Q -35 -145 -10 -148 Q 15 -142 35 -128 Q 20 -132 -5 -140 Q -30 -135 -55 -125 Z"
-                        fill="#273345" opacity=".8" />
-                    <!-- lids (off-canvas, used for blink) -->
-                    <rect class="lidTop" x="-110" y="-250" width="220" height="130" rx="60" fill="#000" />
-                    <rect class="lidBot" x="-110" y="120" width="220" height="130" rx="60" fill="#000" />
-                </g>
-
-                <!-- EYE COMPONENT (right) -->
-                <g id="eyeR" transform="translate(600,210)">
-                    <circle r="96" fill="none" stroke="var(--ring-dark)" stroke-width="2.4" />
-                    <circle r="86" fill="#0b1727" />
-                    <circle r="76" fill="none" stroke="var(--iris-blue)" stroke-width="16" />
-                    <circle r="62" fill="url(#gIris)" />
-                    <circle r="58" fill="none" stroke="#166ea0" stroke-width="6" opacity=".6" />
-
-                    <g class="pupilGroup">
-                        <circle class="pupil" r="45" fill="var(--pupil)" />
-                        <!-- smile reflection (arc) inside pupil -->
-                        <path d="M -30 18 A 36 36 0 0 0 28 18" fill="none" stroke="var(--iris-blue-2)" stroke-width="8"
-                            stroke-linecap="round" />
-                        <circle r="4" cx="34" cy="20" fill="var(--iris-blue-2)" />
-                        <g class="glints">
-                            <circle r="16" cx="-14" cy="-20" fill="#ffffff" opacity=".96" />
-                            <circle r="7" cx="9" cy="-8" fill="#ffffff" opacity=".9" />
-                        </g>
-                    </g>
-
-                    <circle class="ripple" r="70" fill="none" stroke="#8ad1ff" stroke-width="8" opacity="0" />
-
-                    <path class="brow"
-                        d="M -55 -125 Q -35 -145 -10 -148 Q 15 -142 35 -128 Q 20 -132 -5 -140 Q -30 -135 -55 -125 Z"
-                        fill="#273345" opacity=".8" />
-                    <rect class="lidTop" x="-110" y="-250" width="220" height="130" rx="60" fill="#000" />
-                    <rect class="lidBot" x="-110" y="120" width="220" height="130" rx="60" fill="#000" />
-                </g>
-            </svg>
+        <div id="stage" class="stage" data-state="idle" aria-live="polite" data-svg-source="eyes.svg">
+            <!-- SVG will be loaded here by JavaScript -->
         </div>
 
         <small style="opacity:.75; text-align:center;">
@@ -422,13 +321,40 @@
 
     <script>
         (() => {
-            const stage = document.getElementById('stage');
-            const stateLabel = document.getElementById('stateLabel');
-            const eq = document.getElementById('eq');
-            const buttons = [...document.querySelectorAll('button[data-go]')];
-            const btnBlink = document.getElementById('btnBlink');
-            const btnPing = document.getElementById('btnPing');
-            const btnSpeakDemo = document.getElementById('btnSpeakDemo');
+            // Load external SVG content
+            async function loadSVG() {
+                const stage = document.getElementById('stage');
+                const svgSource = stage.getAttribute('data-svg-source');
+                
+                try {
+                    const response = await fetch(svgSource);
+                    const svgText = await response.text();
+                    stage.innerHTML = svgText;
+                } catch (error) {
+                    console.error('Failed to load SVG:', error);
+                    // Fallback to basic structure if external SVG fails
+                    stage.innerHTML = `
+                        <svg viewBox="0 0 900 420" aria-hidden="true">
+                            <text x="450" y="210" text-anchor="middle" fill="white">SVG Loading Failed</text>
+                        </svg>
+                    `;
+                }
+            }
+            
+            // Initialize SVG loading
+            loadSVG().then(() => {
+                // Initialize animations after SVG is loaded
+                initializeAnimations();
+            });
+            
+            function initializeAnimations() {
+                const stage = document.getElementById('stage');
+                const stateLabel = document.getElementById('stateLabel');
+                const eq = document.getElementById('eq');
+                const buttons = [...document.querySelectorAll('button[data-go]')];
+                const btnBlink = document.getElementById('btnBlink');
+                const btnPing = document.getElementById('btnPing');
+                const btnSpeakDemo = document.getElementById('btnSpeakDemo');
 
             let state = 'idle';
             let rafThinking = null;
@@ -532,8 +458,9 @@
                 const wait = 1800 + Math.random() * 4200;
                 blinkTimer = setTimeout(() => { document.getElementById('btnBlink').click(); scheduleIdleBlink(); }, wait);
             }
-            scheduleIdleBlink();
-            setState('idle');
+                scheduleIdleBlink();
+                setState('idle');
+            } // end initializeAnimations
         })();
     </script>
 </body>
