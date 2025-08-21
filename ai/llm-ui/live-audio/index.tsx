@@ -19,6 +19,8 @@ export class GdmLiveAudio extends LitElement {
   @state() selectedModel = 'gemini-live-2.5-flash-preview';
   @state() showConsole = false;
   @state() consoleLogs: Array<{timestamp: string, level: string, message: string}> = [];
+  @state() showInputAnalyzer = true;
+  @state() showOutputAnalyzer = true;
 
   private client: GoogleGenAI;
   private session: Session;
@@ -158,6 +160,44 @@ export class GdmLiveAudio extends LitElement {
     .console-toggle:hover {
       background: rgba(0, 0, 0, 0.8);
       border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .analyzer-toggles {
+      position: absolute;
+      top: 180px;
+      left: 20px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .analyzer-toggle {
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .analyzer-toggle:hover {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .analyzer-toggle.active {
+      background: rgba(25, 162, 230, 0.7);
+      border-color: rgba(25, 162, 230, 0.5);
+    }
+
+    .analyzer-toggle.active:hover {
+      background: rgba(25, 162, 230, 0.8);
+      border-color: rgba(25, 162, 230, 0.6);
     }
 
     .console-panel {
@@ -366,17 +406,21 @@ export class GdmLiveAudio extends LitElement {
   private initAudio() {
     this.nextStartTime = this.outputAudioContext.currentTime;
     
-    // Set up input analyzer for visualizer
-    this.inputAnalyser = this.inputAudioContext.createAnalyser();
-    this.inputAnalyser.fftSize = 256;
-    this.inputAnalyser.smoothingTimeConstant = 0.8;
-    this.inputNode.connect(this.inputAnalyser);
+    // Set up input analyzer for visualizer if enabled
+    if (this.showInputAnalyzer) {
+      this.inputAnalyser = this.inputAudioContext.createAnalyser();
+      this.inputAnalyser.fftSize = 256;
+      this.inputAnalyser.smoothingTimeConstant = 0.8;
+      this.inputNode.connect(this.inputAnalyser);
+    }
 
-    // Set up output analyzer for visualizer
-    this.outputAnalyser = this.outputAudioContext.createAnalyser();
-    this.outputAnalyser.fftSize = 256;
-    this.outputAnalyser.smoothingTimeConstant = 0.8;
-    this.outputNode.connect(this.outputAnalyser);
+    // Set up output analyzer for visualizer if enabled
+    if (this.showOutputAnalyzer) {
+      this.outputAnalyser = this.outputAudioContext.createAnalyser();
+      this.outputAnalyser.fftSize = 256;
+      this.outputAnalyser.smoothingTimeConstant = 0.8;
+      this.outputNode.connect(this.outputAnalyser);
+    }
   }
 
   private async initClient() {
@@ -723,6 +767,60 @@ export class GdmLiveAudio extends LitElement {
     this.consoleLogs = [];
   }
 
+  private toggleInputAnalyzer = () => {
+    this.showInputAnalyzer = !this.showInputAnalyzer;
+    console.log(`🎛️ [ANALYZER] Input analyzer toggled: ${this.showInputAnalyzer ? 'ON' : 'OFF'}`);
+    
+    if (!this.showInputAnalyzer) {
+      // Stop visualizer and disconnect analyzer
+      this.stopVisualizer();
+      if (this.inputAnalyser) {
+        try {
+          this.inputNode.disconnect(this.inputAnalyser);
+        } catch (e) {
+          // Ignore disconnect errors
+        }
+        this.inputAnalyser = null;
+      }
+    } else {
+      // Create new analyzer and start visualizer if recording
+      this.inputAnalyser = this.inputAudioContext.createAnalyser();
+      this.inputAnalyser.fftSize = 256;
+      this.inputAnalyser.smoothingTimeConstant = 0.8;
+      this.inputNode.connect(this.inputAnalyser);
+      
+      if (this.isRecording) {
+        setTimeout(() => this.startVisualizer(), 50);
+      }
+    }
+  }
+
+  private toggleOutputAnalyzer = () => {
+    this.showOutputAnalyzer = !this.showOutputAnalyzer;
+    console.log(`🎛️ [ANALYZER] Output analyzer toggled: ${this.showOutputAnalyzer ? 'ON' : 'OFF'}`);
+    
+    if (!this.showOutputAnalyzer) {
+      // Stop visualizer and disconnect analyzer
+      this.stopOutputVisualizer();
+      if (this.outputAnalyser) {
+        try {
+          this.outputNode.disconnect(this.outputAnalyser);
+        } catch (e) {
+          // Ignore disconnect errors
+        }
+        this.outputAnalyser = null;
+      }
+    } else {
+      // Create new analyzer and start visualizer
+      this.outputAnalyser = this.outputAudioContext.createAnalyser();
+      this.outputAnalyser.fftSize = 256;
+      this.outputAnalyser.smoothingTimeConstant = 0.8;
+      this.outputNode.connect(this.outputAnalyser);
+      
+      setTimeout(() => this.startOutputVisualizer(), 50);
+    }
+  }
+
   protected updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
     
@@ -736,16 +834,24 @@ export class GdmLiveAudio extends LitElement {
 
     // Start visualizers when component is ready
     if (changedProperties.has('isRecording') && this.isRecording) {
-      this.startVisualizer();
+      if (this.showInputAnalyzer) {
+        this.startVisualizer();
+      }
     } else if (changedProperties.has('isRecording') && !this.isRecording) {
-      this.stopVisualizer();
+      if (this.showInputAnalyzer) {
+        this.stopVisualizer();
+      }
     }
   }
 
   connectedCallback() {
     super.connectedCallback();
-    // Start output visualizer when component connects (runs always)
-    setTimeout(() => this.startOutputVisualizer(), 100);
+    // Start output visualizer when component connects (runs only if enabled)
+    setTimeout(() => {
+      if (this.showOutputAnalyzer) {
+        this.startOutputVisualizer();
+      }
+    }, 100);
   }
 
   disconnectedCallback() {
@@ -755,7 +861,7 @@ export class GdmLiveAudio extends LitElement {
 
   private startVisualizer() {
     const canvas = this.shadowRoot?.querySelector('.visualizer-canvas') as HTMLCanvasElement;
-    if (!canvas || !this.inputAnalyser) return;
+    if (!canvas || !this.inputAnalyser || !this.showInputAnalyzer) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -815,7 +921,7 @@ export class GdmLiveAudio extends LitElement {
 
   private startOutputVisualizer() {
     const canvas = this.shadowRoot?.querySelector('.output-visualizer .visualizer-canvas') as HTMLCanvasElement;
-    if (!canvas || !this.outputAnalyser) return;
+    if (!canvas || !this.outputAnalyser || !this.showOutputAnalyzer) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -885,12 +991,29 @@ export class GdmLiveAudio extends LitElement {
           </select>
         </div>
 
-        <div class="audio-visualizer">
-          <canvas class="visualizer-canvas"></canvas>
-        </div>
+        ${this.showInputAnalyzer ? html`
+          <div class="audio-visualizer">
+            <canvas class="visualizer-canvas"></canvas>
+          </div>
+        ` : ''}
 
-        <div class="output-visualizer">
-          <canvas class="visualizer-canvas"></canvas>
+        ${this.showOutputAnalyzer ? html`
+          <div class="output-visualizer">
+            <canvas class="visualizer-canvas"></canvas>
+          </div>
+        ` : ''}
+
+        <div class="analyzer-toggles">
+          <button 
+            class="analyzer-toggle ${this.showInputAnalyzer ? 'active' : ''}"
+            @click=${this.toggleInputAnalyzer}>
+            Input Viz
+          </button>
+          <button 
+            class="analyzer-toggle ${this.showOutputAnalyzer ? 'active' : ''}"
+            @click=${this.toggleOutputAnalyzer}>
+            Output Viz
+          </button>
         </div>
 
         <div class="controls">
