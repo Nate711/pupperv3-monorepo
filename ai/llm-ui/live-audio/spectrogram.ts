@@ -18,8 +18,6 @@ export class GdmSpectrogram extends LitElement {
   @property() width = 256;
   @property() height = 128;
   @property() maxHistory = 256; // Number of time slices to keep
-  @property() position: 'left' | 'right' = 'left';
-  @property() label = '';
 
   private _audioNode!: AudioNode;
 
@@ -38,35 +36,13 @@ export class GdmSpectrogram extends LitElement {
       display: block;
       position: absolute;
       top: 20px;
+      left: 20px;
       z-index: 100;
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       border: 2px solid rgba(25, 162, 230, 0.3);
       background: rgba(0, 0, 0, 0.7);
-    }
-
-    :host([position="left"]) {
-      left: 20px;
-    }
-
-    :host([position="right"]) {
-      right: 20px;
-    }
-
-    .spectrogram-container {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .label {
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 11px;
-      font-family: monospace;
-      padding: 4px 8px;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.5);
-      border-bottom: 1px solid rgba(25, 162, 230, 0.3);
     }
 
     canvas {
@@ -196,12 +172,7 @@ export class GdmSpectrogram extends LitElement {
   }
 
   protected render() {
-    return html`
-      <div class="spectrogram-container">
-        ${this.label ? html`<div class="label">${this.label}</div>` : ''}
-        <canvas width="${this.width}" height="${this.height}"></canvas>
-      </div>
-    `;
+    return html`<canvas width="${this.width}" height="${this.height}"></canvas>`;
   }
 }
 
