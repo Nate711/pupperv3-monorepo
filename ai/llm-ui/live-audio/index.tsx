@@ -8,7 +8,7 @@ import {GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, End
 import {LitElement, css, html} from 'lit';
 import {customElement, state} from 'lit/decorators.js';
 import {createBlob, decode, decodeAudioData} from './utils';
-import './visual-3d';
+import './robot-face';
 
 @customElement('gdm-live-audio')
 export class GdmLiveAudio extends LitElement {
@@ -368,9 +368,9 @@ export class GdmLiveAudio extends LitElement {
         </div>
 
         <div id="status"> ${this.error} </div>
-        <gdm-live-audio-visuals-3d
+        <gdm-robot-face
           .inputNode=${this.inputNode}
-          .outputNode=${this.outputNode}></gdm-live-audio-visuals-3d>
+          .outputNode=${this.outputNode}></gdm-robot-face>
       </div>
     `;
   }
