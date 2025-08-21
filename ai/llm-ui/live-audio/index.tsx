@@ -18,6 +18,7 @@ export class GdmLiveAudio extends LitElement {
 
   private client: GoogleGenAI;
   private session: Session;
+  private sessionState: 'disconnected' | 'connecting' | 'connected' | 'closing' | 'closed' = 'disconnected';
   private inputAudioContext = new (window.AudioContext ||
     window.webkitAudioContext)({sampleRate: 16000});
   private outputAudioContext = new (window.AudioContext ||
@@ -100,11 +101,16 @@ export class GdmLiveAudio extends LitElement {
   private async initSession() {
     const model = 'gemini-2.5-flash-preview-native-audio-dialog';
 
+    console.log('🔄 [SESSION] Initializing session...');
+    this.sessionState = 'connecting';
+
     try {
       this.session = await this.client.live.connect({
         model: model,
         callbacks: {
           onopen: () => {
+            console.log('✅ [SESSION] WebSocket connection opened');
+            this.sessionState = 'connected';
             this.updateStatus('Opened');
           },
           onmessage: async (message: LiveServerMessage) => {
@@ -150,10 +156,19 @@ export class GdmLiveAudio extends LitElement {
             }
           },
           onerror: (e: ErrorEvent) => {
-            console.error('❌ WebSocket/Connection Error:', e);
+            console.error('❌ [SESSION] WebSocket/Connection Error:', e);
+            console.error('❌ [SESSION] Current state:', this.sessionState);
+            this.sessionState = 'closed';
             this.handleGoogleAIError(e);
           },
           onclose: (e: CloseEvent) => {
+            console.warn('🚪 [SESSION] WebSocket connection closed:', {
+              code: e.code,
+              reason: e.reason,
+              wasClean: e.wasClean,
+              previousState: this.sessionState
+            });
+            this.sessionState = 'closed';
             this.updateStatus('Close:' + e.reason);
           },
         },
@@ -168,7 +183,10 @@ export class GdmLiveAudio extends LitElement {
           systemInstruction: "You are a cute robot dog and have the intelligence and knowledge of a 6 year old child."
         },
       });
+      console.log('✅ [SESSION] Session successfully created');
     } catch (e) {
+      console.error('❌ [SESSION] Failed to create session:', e);
+      this.sessionState = 'closed';
       this.handleGoogleAIError(e);
     }
   }
@@ -237,7 +255,16 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private async startRecording() {
+    console.log('🎤 [RECORDING] Start recording requested, current session state:', this.sessionState);
+    
     if (this.isRecording) {
+      console.log('⚠️  [RECORDING] Already recording, ignoring request');
+      return;
+    }
+
+    if (this.sessionState !== 'connected') {
+      console.error('❌ [RECORDING] Cannot start recording - session not connected. State:', this.sessionState);
+      this.updateStatus('❌ Cannot start recording - connection not ready');
       return;
     }
 
@@ -266,27 +293,63 @@ export class GdmLiveAudio extends LitElement {
       );
 
       this.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
-        if (!this.isRecording) return;
+        if (!this.isRecording) {
+          console.log('⏹️  [AUDIO] Skipping audio processing - not recording');
+          return;
+        }
+
+        if (!this.session) {
+          console.error('❌ [AUDIO] No session available for sendRealtimeInput');
+          return;
+        }
+
+        if (this.sessionState !== 'connected') {
+          console.error('❌ [AUDIO] Attempting to send data but session state is:', this.sessionState);
+          console.error('❌ [AUDIO] Session object exists:', !!this.session);
+          return;
+        }
 
         const inputBuffer = audioProcessingEvent.inputBuffer;
         const pcmData = inputBuffer.getChannelData(0);
 
-        this.session.sendRealtimeInput({media: createBlob(pcmData)});
+        try {
+          // Only log every 100th audio frame to avoid spam
+          if (Math.random() < 0.01) {
+            console.log('🎤 [AUDIO] Sending realtime input, session state:', this.sessionState);
+          }
+          this.session.sendRealtimeInput({media: createBlob(pcmData)});
+        } catch (error) {
+          console.error('❌ [AUDIO] Error sending realtime input:', error);
+          console.error('❌ [AUDIO] Session state at error:', this.sessionState);
+          console.error('❌ [AUDIO] Session exists:', !!this.session);
+          
+          // Stop recording if we can't send data
+          this.stopRecording();
+          this.updateStatus('❌ Connection lost during recording');
+        }
       };
 
       this.sourceNode.connect(this.scriptProcessorNode);
       this.scriptProcessorNode.connect(this.inputAudioContext.destination);
 
       this.isRecording = true;
+      console.log('✅ [RECORDING] Recording started successfully');
       this.updateStatus('🔴 Recording... Capturing PCM chunks.');
     } catch (err) {
-      console.error('Error starting recording:', err);
+      console.error('❌ [RECORDING] Error starting recording:', err);
       this.updateStatus(`Error: ${err.message}`);
       this.stopRecording();
     }
   }
 
   private stopRecording() {
+    console.log('🛑 [RECORDING] Stop recording requested, current state:', {
+      isRecording: this.isRecording,
+      hasMediaStream: !!this.mediaStream,
+      hasAudioContext: !!this.inputAudioContext,
+      sessionState: this.sessionState
+    });
+    
     if (!this.isRecording && !this.mediaStream && !this.inputAudioContext)
       return;
 
@@ -311,12 +374,20 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private reset() {
+    console.log('🔄 [RESET] Resetting session, current state:', this.sessionState);
+    
     try {
-      this.session?.close();
+      if (this.session) {
+        console.log('🚪 [RESET] Closing existing session');
+        this.sessionState = 'closing';
+        this.session.close();
+      }
     } catch (e) {
-      console.error('❌ Error closing session:', e);
+      console.error('❌ [RESET] Error closing session:', e);
       this.handleGoogleAIError(e);
     }
+    
+    this.sessionState = 'disconnected';
     this.initSession();
     this.updateStatus('Session cleared.');
   }
