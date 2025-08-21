@@ -17,6 +17,8 @@ export class GdmLiveAudio extends LitElement {
   @state() error = '';
   @state() robotMode = 'idle';
   @state() selectedModel = 'gemini-live-2.5-flash-preview';
+  @state() showConsole = false;
+  @state() consoleLogs: Array<{timestamp: string, level: string, message: string}> = [];
 
   private client: GoogleGenAI;
   private session: Session;
@@ -134,6 +136,116 @@ export class GdmLiveAudio extends LitElement {
       padding: 8px;
     }
 
+    .console-toggle {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .console-toggle:hover {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .console-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 30vh;
+      background: rgba(0, 0, 0, 0.9);
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      z-index: 20;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .console-panel.show {
+      transform: translateY(0);
+    }
+
+    .console-header {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    .console-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0;
+      margin-left: auto;
+    }
+
+    .console-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .console-log {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      gap: 8px;
+    }
+
+    .console-timestamp {
+      color: #666;
+      flex-shrink: 0;
+      width: 60px;
+    }
+
+    .console-level {
+      flex-shrink: 0;
+      width: 50px;
+      font-weight: bold;
+    }
+
+    .console-level.log {
+      color: #fff;
+    }
+
+    .console-level.error {
+      color: #ff6b6b;
+    }
+
+    .console-level.warn {
+      color: #ffa726;
+    }
+
+    .console-level.info {
+      color: #42a5f5;
+    }
+
+    .console-message {
+      flex: 1;
+      color: #ccc;
+      word-break: break-word;
+    }
+
     .controls {
       z-index: 10;
       position: absolute;
@@ -172,7 +284,46 @@ export class GdmLiveAudio extends LitElement {
 
   constructor() {
     super();
+    this.setupConsoleInterception();
     this.initClient();
+  }
+
+  private setupConsoleInterception() {
+    const originalConsole = {
+      log: console.log,
+      error: console.error,
+      warn: console.warn,
+      info: console.info
+    };
+
+    const addLog = (level: string, ...args: any[]) => {
+      const timestamp = new Date().toLocaleTimeString();
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' ');
+      
+      this.consoleLogs = [...this.consoleLogs.slice(-99), { timestamp, level, message }];
+    };
+
+    console.log = (...args: any[]) => {
+      originalConsole.log(...args);
+      addLog('log', ...args);
+    };
+
+    console.error = (...args: any[]) => {
+      originalConsole.error(...args);
+      addLog('error', ...args);
+    };
+
+    console.warn = (...args: any[]) => {
+      originalConsole.warn(...args);
+      addLog('warn', ...args);
+    };
+
+    console.info = (...args: any[]) => {
+      originalConsole.info(...args);
+      addLog('info', ...args);
+    };
   }
 
   private initAudio() {
@@ -515,6 +666,26 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
+  private toggleConsole = () => {
+    this.showConsole = !this.showConsole;
+  }
+
+  private clearConsole = () => {
+    this.consoleLogs = [];
+  }
+
+  protected updated(changedProperties: Map<string, any>) {
+    super.updated(changedProperties);
+    
+    // Auto-scroll console to bottom when new logs are added
+    if (changedProperties.has('consoleLogs') && this.showConsole) {
+      const consoleContent = this.shadowRoot?.querySelector('.console-content');
+      if (consoleContent) {
+        consoleContent.scrollTop = consoleContent.scrollHeight;
+      }
+    }
+  }
+
   render() {
     return html`
       <div>
@@ -577,6 +748,27 @@ export class GdmLiveAudio extends LitElement {
           .inputNode=${this.inputNode}
           .outputNode=${this.outputNode}
           @mode-change=${this.onRobotModeChange}></gdm-robot-face>
+
+        <button class="console-toggle" @click=${this.toggleConsole}>
+          ${this.showConsole ? 'Hide Console' : 'Show Console'}
+        </button>
+
+        <div class="console-panel ${this.showConsole ? 'show' : ''}">
+          <div class="console-header">
+            <span>Console (${this.consoleLogs.length} logs)</span>
+            <button @click=${this.clearConsole} style="margin-left: 10px; background: none; border: 1px solid #666; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">Clear</button>
+            <button class="console-close" @click=${this.toggleConsole}>×</button>
+          </div>
+          <div class="console-content">
+            ${this.consoleLogs.map(log => html`
+              <div class="console-log">
+                <span class="console-timestamp">${log.timestamp}</span>
+                <span class="console-level ${log.level}">${log.level.toUpperCase()}</span>
+                <span class="console-message">${log.message}</span>
+              </div>
+            `)}
+          </div>
+        </div>
       </div>
     `;
   }
