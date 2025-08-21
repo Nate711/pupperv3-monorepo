@@ -387,6 +387,15 @@ export class GdmRobotFace extends LitElement {
       <div class="robot-face-container">
         <gdm-spectrogram 
           .audioNode=${this._inputNode}
+          position="left"
+          label="MIC INPUT"
+          width="256" 
+          height="128">
+        </gdm-spectrogram>
+        <gdm-spectrogram 
+          .audioNode=${this._outputNode}
+          position="right"
+          label="AI OUTPUT"
           width="256" 
           height="128">
         </gdm-spectrogram>
