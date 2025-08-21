@@ -3,16 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {LitElement, css, html} from 'lit';
-import {customElement, property, state} from 'lit/decorators.js';
-import {Analyser} from './analyser';
-import './spectrogram';
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { Analyser } from './analyser';
 
 @customElement('gdm-robot-face')
 export class GdmRobotFace extends LitElement {
   private inputAnalyser!: Analyser;
   private outputAnalyser!: Analyser;
-  
+
   @state() private currentState: 'idle' | 'listening' | 'thinking' | 'speaking' | 'muted' = 'idle';
   @state() private blinkClass = '';
   @state() private pingClass = '';
@@ -273,7 +272,7 @@ export class GdmRobotFace extends LitElement {
 
       this.animationFrameId = requestAnimationFrame(animate);
     };
-    
+
     this.animationFrameId = requestAnimationFrame(animate);
   }
 
@@ -290,6 +289,13 @@ export class GdmRobotFace extends LitElement {
     if (this.currentState !== newState) {
       this.currentState = newState;
       this.requestUpdate();
+
+      // Emit custom event for mode change
+      this.dispatchEvent(new CustomEvent('mode-change', {
+        detail: { mode: newState },
+        bubbles: true,
+        composed: true
+      }));
     }
   }
 
@@ -305,7 +311,7 @@ export class GdmRobotFace extends LitElement {
 
       if (eqBars && this.outputAnalyser) {
         const energy = Math.pow(this.outputAnalyser.data[0] / 255, 2);
-        
+
         eqBars.forEach((bar, i) => {
           const jitter = Math.max(0.08, energy + (Math.random() - .5) * 0.15);
           const h = 100 * jitter * (1 + (i === 2 ? 0.35 : 0));
@@ -332,15 +338,15 @@ export class GdmRobotFace extends LitElement {
     if (this.currentState === 'listening') {
       const time = performance.now() / 1000;
       const inputLevel = this.inputAnalyser.data[0] / 255;
-      
+
       // More dynamic gaze movement based on input level
       const intensity = 1 + inputLevel * 2;
       this.gazeX = Math.sin(time * 2.1 * intensity) * (8 + inputLevel * 10);
       this.gazeY = Math.sin(time * 4.2 * intensity) * (5 + inputLevel * 6);
-      
+
       this.style.setProperty('--gaze-x', `${this.gazeX}px`);
       this.style.setProperty('--gaze-y', `${this.gazeY}px`);
-      
+
       // Trigger ping effect on strong input
       if (inputLevel > 0.3) {
         this.triggerListeningPing();
@@ -351,7 +357,7 @@ export class GdmRobotFace extends LitElement {
   private triggerListeningPing() {
     this.pingClass = 'ping';
     this.requestUpdate();
-    
+
     setTimeout(() => {
       this.pingClass = '';
       this.requestUpdate();
@@ -362,7 +368,7 @@ export class GdmRobotFace extends LitElement {
     if (this.blinkTimer) {
       clearTimeout(this.blinkTimer);
     }
-    
+
     if (this.currentState === 'idle') {
       const wait = 1800 + Math.random() * 4200;
       this.blinkTimer = setTimeout(() => {
@@ -375,7 +381,7 @@ export class GdmRobotFace extends LitElement {
   private blink() {
     this.blinkClass = 'blink';
     this.requestUpdate();
-    
+
     setTimeout(() => {
       this.blinkClass = '';
       this.requestUpdate();
@@ -385,11 +391,6 @@ export class GdmRobotFace extends LitElement {
   protected render() {
     return html`
       <div class="robot-face-container">
-        <gdm-spectrogram 
-          .audioNode=${this._inputNode}
-          width="256" 
-          height="128">
-        </gdm-spectrogram>
         <div class="stage ${this.blinkClass} ${this.pingClass}" data-state="${this.currentState}">
           <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>

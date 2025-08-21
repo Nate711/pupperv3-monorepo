@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, EndSensitivity} from '@google/genai';
-import {LitElement, css, html} from 'lit';
-import {customElement, state} from 'lit/decorators.js';
-import {createBlob, decode, decodeAudioData} from './utils';
+import { GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, EndSensitivity } from '@google/genai';
+import { LitElement, css, html } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import { createBlob, decode, decodeAudioData } from './utils';
 import './robot-face';
 
 @customElement('gdm-live-audio')
@@ -15,14 +15,16 @@ export class GdmLiveAudio extends LitElement {
   @state() isRecording = false;
   @state() status = '';
   @state() error = '';
+  @state() robotMode = 'idle';
+  @state() selectedModel = 'gemini-live-2.5-flash-preview';
 
   private client: GoogleGenAI;
   private session: Session;
   private sessionState: 'disconnected' | 'connecting' | 'connected' | 'closing' | 'closed' = 'disconnected';
   private inputAudioContext = new (window.AudioContext ||
-    window.webkitAudioContext)({sampleRate: 16000});
+    window.webkitAudioContext)({ sampleRate: 16000 });
   private outputAudioContext = new (window.AudioContext ||
-    window.webkitAudioContext)({sampleRate: 24000});
+    window.webkitAudioContext)({ sampleRate: 24000 });
   @state() inputNode = this.inputAudioContext.createGain();
   @state() outputNode = this.outputAudioContext.createGain();
   private nextStartTime = 0;
@@ -39,6 +41,97 @@ export class GdmLiveAudio extends LitElement {
       right: 0;
       z-index: 10;
       text-align: center;
+    }
+
+    .mode-indicator {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .mode-indicator.idle {
+      background: rgba(100, 100, 100, 0.7);
+      border-color: rgba(150, 150, 150, 0.3);
+    }
+
+    .mode-indicator.listening {
+      background: rgba(25, 162, 230, 0.7);
+      border-color: rgba(25, 162, 230, 0.5);
+      animation: pulse-listening 0.9s ease-in-out infinite;
+    }
+
+    .mode-indicator.thinking {
+      background: rgba(128, 90, 213, 0.7);
+      border-color: rgba(128, 90, 213, 0.5);
+    }
+
+    .mode-indicator.speaking {
+      background: rgba(255, 80, 80, 0.7);
+      border-color: rgba(255, 80, 80, 0.5);
+      animation: pulse-speaking 0.32s ease-in-out infinite;
+    }
+
+    .mode-indicator.muted {
+      background: rgba(60, 60, 60, 0.7);
+      border-color: rgba(80, 80, 80, 0.3);
+      filter: grayscale(1);
+    }
+
+    @keyframes pulse-listening {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 162, 230, 0.4); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(25, 162, 230, 0); }
+    }
+
+    @keyframes pulse-speaking {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 80, 80, 0.4); }
+      50% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(255, 80, 80, 0); }
+    }
+
+    .model-selector {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+    }
+
+    .model-selector select {
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .model-selector select:hover {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .model-selector select:focus {
+      border-color: rgba(25, 162, 230, 0.5);
+      box-shadow: 0 0 0 2px rgba(25, 162, 230, 0.2);
+    }
+
+    .model-selector option {
+      background: #1a1a1a;
+      color: white;
+      padding: 8px;
     }
 
     .controls {
@@ -99,9 +192,9 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private async initSession() {
-    const model = 'gemini-2.5-flash-preview-native-audio-dialog';
+    const model = this.selectedModel;
 
-    console.log('🔄 [SESSION] Initializing session...');
+    console.log(`🔄 [SESSION] Initializing session with model: ${model}...`);
     this.sessionState = 'connecting';
 
     try {
@@ -116,9 +209,17 @@ export class GdmLiveAudio extends LitElement {
           onmessage: async (message: LiveServerMessage) => {
             // console.log(message);
             const transcription = message.serverContent?.outputTranscription;
-            if(transcription) {
+            if (transcription) {
               console.log(transcription);
             }
+
+            // Check if this is a setup message (indicates AI is thinking)
+            const setupComplete = message.setupComplete;
+            if (setupComplete) {
+              // AI is now ready and thinking/processing
+              this.robotMode = 'thinking';
+            }
+
             const audio =
               message.serverContent?.modelTurn?.parts[0]?.inlineData;
 
@@ -137,7 +238,7 @@ export class GdmLiveAudio extends LitElement {
               const source = this.outputAudioContext.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(this.outputNode);
-              source.addEventListener('ended', () =>{
+              source.addEventListener('ended', () => {
                 this.sources.delete(source);
               });
 
@@ -147,8 +248,8 @@ export class GdmLiveAudio extends LitElement {
             }
 
             const interrupted = message.serverContent?.interrupted;
-            if(interrupted) {
-              for(const source of this.sources.values()) {
+            if (interrupted) {
+              for (const source of this.sources.values()) {
                 source.stop();
                 this.sources.delete(source);
               }
@@ -175,11 +276,11 @@ export class GdmLiveAudio extends LitElement {
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: {prebuiltVoiceConfig: {voiceName: 'Orus'}},
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Orus' } },
             // languageCode: 'en-GB'
           },
           outputAudioTranscription: {},
-          realtimeInputConfig: {automaticActivityDetection: {startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW, endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH}},
+          realtimeInputConfig: { automaticActivityDetection: { startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW, endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH } },
           systemInstruction: "You are a cute robot dog and have the intelligence and knowledge of a 6 year old child."
         },
       });
@@ -201,11 +302,11 @@ export class GdmLiveAudio extends LitElement {
 
   private handleGoogleAIError(error: any) {
     console.error('Google AI API Error:', error);
-    
+
     // Check for HTTP status codes
     if (error.status || error.code) {
       const statusCode = error.status || error.code;
-      
+
       switch (statusCode) {
         case 429:
           console.error('❌ Rate limit exceeded (429): Too many requests');
@@ -256,7 +357,7 @@ export class GdmLiveAudio extends LitElement {
 
   private async startRecording() {
     console.log('🎤 [RECORDING] Start recording requested, current session state:', this.sessionState);
-    
+
     if (this.isRecording) {
       console.log('⚠️  [RECORDING] Already recording, ignoring request');
       return;
@@ -317,12 +418,12 @@ export class GdmLiveAudio extends LitElement {
           if (Math.random() < 0.01) {
             console.log('🎤 [AUDIO] Sending realtime input, session state:', this.sessionState);
           }
-          this.session.sendRealtimeInput({media: createBlob(pcmData)});
+          this.session.sendRealtimeInput({ media: createBlob(pcmData) });
         } catch (error) {
           console.error('❌ [AUDIO] Error sending realtime input:', error);
           console.error('❌ [AUDIO] Session state at error:', this.sessionState);
           console.error('❌ [AUDIO] Session exists:', !!this.session);
-          
+
           // Stop recording if we can't send data
           this.stopRecording();
           this.updateStatus('❌ Connection lost during recording');
@@ -349,7 +450,7 @@ export class GdmLiveAudio extends LitElement {
       hasAudioContext: !!this.inputAudioContext,
       sessionState: this.sessionState
     });
-    
+
     if (!this.isRecording && !this.mediaStream && !this.inputAudioContext)
       return;
 
@@ -375,7 +476,7 @@ export class GdmLiveAudio extends LitElement {
 
   private reset() {
     console.log('🔄 [RESET] Resetting session, current state:', this.sessionState);
-    
+
     try {
       if (this.session) {
         console.log('🚪 [RESET] Closing existing session');
@@ -386,15 +487,48 @@ export class GdmLiveAudio extends LitElement {
       console.error('❌ [RESET] Error closing session:', e);
       this.handleGoogleAIError(e);
     }
-    
+
     this.sessionState = 'disconnected';
     this.initSession();
     this.updateStatus('Session cleared.');
   }
 
+  private onRobotModeChange = (event: CustomEvent) => {
+    this.robotMode = event.detail.mode;
+  }
+
+  private onModelChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    const newModel = target.value;
+    
+    if (newModel !== this.selectedModel) {
+      console.log(`🔄 [MODEL] Switching from ${this.selectedModel} to ${newModel}`);
+      this.selectedModel = newModel;
+      
+      // Stop recording if active
+      if (this.isRecording) {
+        this.stopRecording();
+      }
+      
+      // Reset session with new model
+      this.reset();
+    }
+  }
+
   render() {
     return html`
       <div>
+        <div class="mode-indicator ${this.robotMode}">
+          ${this.robotMode}
+        </div>
+
+        <div class="model-selector">
+          <select @change=${this.onModelChange} .value=${this.selectedModel}>
+            <option value="gemini-live-2.5-flash-preview">Gemini Live 2.5 Flash</option>
+            <option value="gemini-2.5-flash-preview-native-audio-dialog">Gemini 2.5 Flash Native Audio</option>
+          </select>
+        </div>
+
         <div class="controls">
           <button
             id="resetButton"
@@ -441,7 +575,8 @@ export class GdmLiveAudio extends LitElement {
         <div id="status"> ${this.error} </div>
         <gdm-robot-face
           .inputNode=${this.inputNode}
-          .outputNode=${this.outputNode}></gdm-robot-face>
+          .outputNode=${this.outputNode}
+          @mode-change=${this.onRobotModeChange}></gdm-robot-face>
       </div>
     `;
   }
