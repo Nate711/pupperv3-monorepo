@@ -167,7 +167,7 @@ export class GdmRobotFace extends LitElement {
 
     /* Blink animation */
     .blink .lidTop {
-      animation: blinkOnce 230ms cubic-bezier(.3, .7, .2, 1) 1;
+      animation: blinkOnce 500ms cubic-bezier(.3, .7, .2, 1) 1;
     }
 
     @keyframes blinkOnce {
@@ -237,7 +237,7 @@ export class GdmRobotFace extends LitElement {
 
   private startAnimation() {
     let frameCount = 0;
-    const AUDIO_CHECK_INTERVAL = 6; // Check audio every 6th frame (~10fps instead of 60fps)
+    const AUDIO_CHECK_INTERVAL = 12; // Check audio every 12th frame (~5fps instead of 60fps)
 
     const animate = () => {
       frameCount++;
@@ -371,12 +371,12 @@ export class GdmRobotFace extends LitElement {
               <circle class="halo" cx="630" cy="210" r="144" fill="#00b4ff" filter="url(#blur8)" />
             </g>
 
-            <g id="leftEye" transform="translate(270,210)">
+            <g id="leftEye" transform="translate(220,210)">
               <use href="#eyeComponent" />
               <use href="#eyebrowComponent" />
             </g>
 
-            <g id="rightEye" transform="translate(630,210)">
+            <g id="rightEye" transform="translate(680,210)">
               <use href="#eyeComponent" />
               <use href="#eyebrowComponent" />
             </g>
