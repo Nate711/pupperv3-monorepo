@@ -57,9 +57,9 @@ export class GdmLiveAudio extends LitElement {
       left: 20px;
       right: 20px;
       z-index: 10;
-      display: flex;
+      display: grid;
+      grid-template-columns: 120px 1fr 200px;
       align-items: center;
-      justify-content: space-between;
       gap: 12px;
     }
 
@@ -74,7 +74,11 @@ export class GdmLiveAudio extends LitElement {
       letter-spacing: 0.5px;
       border: 1px solid rgba(255, 255, 255, 0.2);
       transition: all 0.3s ease;
-      flex-shrink: 0;
+      text-align: center;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .mode-indicator.idle {
@@ -118,6 +122,7 @@ export class GdmLiveAudio extends LitElement {
     .control-group {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       background: rgba(0, 0, 0, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.2);
