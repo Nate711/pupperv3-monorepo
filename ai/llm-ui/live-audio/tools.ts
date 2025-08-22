@@ -59,6 +59,26 @@ function initRobotWebSocket(): Promise<WebSocket> {
   });
 }
 
+function validateResponseForCommand(commandName: string, response: any): boolean {
+  if (!response || response.status !== 'success') {
+    return true; // Let error responses through
+  }
+  
+  switch (commandName) {
+    case 'get_battery':
+      return response.battery_percentage !== undefined;
+    case 'get_cpu_usage':
+      return response.cpu_usage !== undefined;
+    case 'activate':
+    case 'deactivate':
+      return response.robot_state !== undefined;
+    case 'move':
+      return response.velocities !== undefined;
+    default:
+      return true; // Allow unknown commands through
+  }
+}
+
 export async function sendRobotCommand(name: string, args: any = {}): Promise<{ success: boolean; response?: any; error?: string }> {
   try {
     const ws = await initRobotWebSocket();
@@ -72,6 +92,14 @@ export async function sendRobotCommand(name: string, args: any = {}): Promise<{ 
           try {
             const response = JSON.parse(event.data);
             console.log(`🤖 [ROBOT] Received response for '${name}':`, response);
+            
+            // Validate response matches the command type
+            const isValidResponse = validateResponseForCommand(name, response);
+            if (!isValidResponse) {
+              console.warn(`🤖 [ROBOT] Response doesn't match command '${name}', ignoring:`, response);
+              return; // Don't resolve, wait for correct response
+            }
+            
             ws.removeEventListener('message', responseHandler);
             resolve({ success: true, response });
           } catch (error) {
@@ -159,6 +187,15 @@ export const get_battery_percentage = {
   }
 };
 
+export const get_cpu_usage = {
+  name: "get_cpu_usage",
+  description: "Get the current CPU usage percentage of the system",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {}
+  }
+};
+
 // Audio visualizer tool definitions
 export const turn_on_audio_visualizers = {
   name: "turn_on_audio_visualizers",
@@ -202,6 +239,7 @@ export const tools = [{
     deactivate_robot,
     move_robot,
     get_battery_percentage,
+    get_cpu_usage,
     turn_on_audio_visualizers,
     turn_off_audio_visualizers
   ]
@@ -257,6 +295,20 @@ export async function handleToolCall(
       } else {
         response = {
           result: `Failed to get battery percentage: ${result.error}`
+        };
+      }
+    }
+    else if (fc.name === "get_cpu_usage") {
+      console.log('💻 [TOOLS] Getting CPU usage');
+      const result = await sendRobotCommand("get_cpu_usage");
+      if (result.success && result.response) {
+        const cpuInfo = `CPU Usage: ${result.response.cpu_usage}% (${result.response.system_info?.platform})`;
+        response = {
+          result: cpuInfo
+        };
+      } else {
+        response = {
+          result: `Failed to get CPU usage: ${result.error}`
         };
       }
     }

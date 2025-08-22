@@ -30,6 +30,7 @@ export class GdmLiveAudio extends LitElement {
   @state() showInputAnalyzer = true;
   @state() showOutputAnalyzer = true;
   @state() batteryPercentage: string = 'N/A';
+  @state() cpuUsage: string = 'N/A';
 
   private audioManager: AudioManager;
   private sessionManager: SessionManager;
@@ -358,14 +359,14 @@ export class GdmLiveAudio extends LitElement {
         this.startOutputVisualizer();
       }
     }, 100);
-    // Start battery monitoring
-    this.startBatteryMonitoring();
+    // Start system monitoring
+    this.startSystemMonitoring();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.visualizerManager.cleanup();
-    this.stopBatteryMonitoring();
+    this.stopSystemMonitoring();
   }
 
   private startVisualizer() {
@@ -396,17 +397,41 @@ export class GdmLiveAudio extends LitElement {
     } catch (error) {
       this.batteryPercentage = 'N/A';
     }
+  }
+
+  private async updateCpuUsage() {
+    try {
+      const result = await sendRobotCommand("get_cpu_usage");
+      console.log('💻 [CPU] Raw result:', result);
+      if (result.success && result.response && result.response.cpu_usage !== undefined) {
+        console.log('💻 [CPU] Setting CPU usage to:', result.response.cpu_usage);
+        this.cpuUsage = `${Math.round(result.response.cpu_usage)}%`;
+      } else {
+        console.log('💻 [CPU] Setting CPU to N/A - success:', result.success, 'response:', result.response);
+        this.cpuUsage = 'N/A';
+      }
+    } catch (error) {
+      console.log('💻 [CPU] Error getting CPU usage:', error);
+      this.cpuUsage = 'N/A';
+    }
+  }
+
+  private async updateSystemStats() {
+    await Promise.all([
+      this.updateBatteryPercentage(),
+      this.updateCpuUsage()
+    ]);
     this.requestUpdate();
   }
 
-  private startBatteryMonitoring() {
-    this.updateBatteryPercentage();
+  private startSystemMonitoring() {
+    this.updateSystemStats();
     this.batteryUpdateInterval = window.setInterval(() => {
-      this.updateBatteryPercentage();
+      this.updateSystemStats();
     }, 1000);
   }
 
-  private stopBatteryMonitoring() {
+  private stopSystemMonitoring() {
     if (this.batteryUpdateInterval) {
       clearInterval(this.batteryUpdateInterval);
       this.batteryUpdateInterval = null;
@@ -418,6 +443,7 @@ export class GdmLiveAudio extends LitElement {
       robotMode: this.robotMode,
       selectedModel: this.selectedModel,
       batteryPercentage: this.batteryPercentage,
+      cpuUsage: this.cpuUsage,
       onModelChange: this.onModelChange,
       onReset: this.reset.bind(this),
       onStartRecording: this.startRecording.bind(this),

@@ -9,6 +9,7 @@ export interface TemplateProps {
   robotMode: string;
   selectedModel: string;
   batteryPercentage: string;
+  cpuUsage: string;
   onModelChange: (event: Event) => void;
   onReset: () => void;
   onStartRecording: () => void;
@@ -33,7 +34,10 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
     <div>
       <div class="top-bar">
         <div class="battery-indicator">
-          ${props.batteryPercentage}
+          BAT ${props.batteryPercentage}
+        </div>
+        <div class="cpu-indicator">
+          CPU ${props.cpuUsage}
         </div>
         <div class="mode-indicator ${props.robotMode}">
           ${props.robotMode}

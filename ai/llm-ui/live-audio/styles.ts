@@ -27,12 +27,27 @@ export const styles = css`
     right: 20px;
     z-index: 10;
     display: grid;
-    grid-template-columns: 80px 120px 1fr 200px;
+    grid-template-columns: 80px 90px 120px 1fr 200px;
     align-items: center;
     gap: 12px;
   }
 
   .battery-indicator {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cpu-indicator {
     background: rgba(0, 0, 0, 0.7);
     color: white;
     padding: 8px 12px;
