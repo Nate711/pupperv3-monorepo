@@ -4,10 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, EndSensitivity, Type } from '@google/genai';
+import { LiveServerMessage } from '@google/genai';
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { createBlob, decode, decodeAudioData } from './utils';
+import { AudioManager } from './audio-manager';
+import { SessionManager, SessionState } from './session-manager';
+import { VisualizerManager } from './visualizer-manager';
+import { handleToolCall } from './tools';
 import './robot-face';
 
 @customElement('gdm-live-audio')
@@ -22,24 +26,13 @@ export class GdmLiveAudio extends LitElement {
   @state() showInputAnalyzer = true;
   @state() showOutputAnalyzer = true;
 
-  private client: GoogleGenAI;
-  private session: Session;
-  private sessionState: 'disconnected' | 'connecting' | 'connected' | 'closing' | 'closed' = 'disconnected';
-  private inputAudioContext = new (window.AudioContext ||
-    window.webkitAudioContext)({ sampleRate: 16000 });
-  private outputAudioContext = new (window.AudioContext ||
-    window.webkitAudioContext)({ sampleRate: 24000 });
-  @state() inputNode = this.inputAudioContext.createGain();
-  @state() outputNode = this.outputAudioContext.createGain();
-  private nextStartTime = 0;
+  private audioManager: AudioManager;
+  private sessionManager: SessionManager;
+  private visualizerManager: VisualizerManager;
+  private sessionState: SessionState = 'disconnected';
   private mediaStream: MediaStream;
   private sourceNode: AudioBufferSourceNode;
   private scriptProcessorNode: ScriptProcessorNode;
-  private sources = new Set<AudioBufferSourceNode>();
-  private inputAnalyser: AnalyserNode;
-  private outputAnalyser: AnalyserNode;
-  private visualizerAnimationId: number;
-  private outputVisualizerAnimationId: number;
 
   static styles = css`
     #status {
@@ -368,6 +361,9 @@ export class GdmLiveAudio extends LitElement {
 
   constructor() {
     super();
+    this.audioManager = new AudioManager();
+    this.sessionManager = new SessionManager(process.env.GEMINI_API_KEY!);
+    this.visualizerManager = new VisualizerManager();
     this.setupConsoleInterception();
     this.initClient();
   }
@@ -410,294 +406,93 @@ export class GdmLiveAudio extends LitElement {
     };
   }
 
-  private initAudio() {
-    this.nextStartTime = this.outputAudioContext.currentTime;
-
-    // Set up input analyzer for visualizer if enabled
-    if (this.showInputAnalyzer) {
-      this.inputAnalyser = this.inputAudioContext.createAnalyser();
-      this.inputAnalyser.fftSize = 256;
-      this.inputAnalyser.smoothingTimeConstant = 0.8;
-      this.inputNode.connect(this.inputAnalyser);
-    }
-
-    // Set up output analyzer for visualizer if enabled
-    if (this.showOutputAnalyzer) {
-      this.outputAnalyser = this.outputAudioContext.createAnalyser();
-      this.outputAnalyser.fftSize = 256;
-      this.outputAnalyser.smoothingTimeConstant = 0.8;
-      this.outputNode.connect(this.outputAnalyser);
-    }
-  }
-
   private async initClient() {
-    this.initAudio();
-
-    this.client = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-    });
-
-    this.outputNode.connect(this.outputAudioContext.destination);
-
+    this.audioManager.initAudio(this.showInputAnalyzer, this.showOutputAnalyzer);
     this.initSession();
   }
 
   private async initSession() {
     const model = this.selectedModel;
 
-    console.log(`🔄 [SESSION] Initializing session with model: ${model}...`);
-    this.sessionState = 'connecting';
-
-    // Audio visualizer tool definitions
-    const turn_on_audio_visualizers = {
-      name: "turn_on_audio_visualizers",
-      description: "Turn on the audio visualizers for input and output audio streams",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          input: {
-            type: Type.BOOLEAN,
-            description: "Whether to turn on the input audio visualizer"
-          },
-          output: {
-            type: Type.BOOLEAN,
-            description: "Whether to turn on the output audio visualizer"
-          }
-        }
-      }
-    };
-
-    const turn_off_audio_visualizers = {
-      name: "turn_off_audio_visualizers",
-      description: "Turn off the audio visualizers for input and output audio streams",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          input: {
-            type: Type.BOOLEAN,
-            description: "Whether to turn off the input audio visualizer"
-          },
-          output: {
-            type: Type.BOOLEAN,
-            description: "Whether to turn off the output audio visualizer"
-          }
-        }
-      }
-    };
-
-    const tools = [{
-      functionDeclarations: [
-        turn_on_audio_visualizers,
-        turn_off_audio_visualizers
-      ]
-    }];
-
     try {
-      this.session = await this.client.live.connect({
-        model: model,
-        callbacks: {
-          onopen: () => {
-            console.log('✅ [SESSION] WebSocket connection opened');
-            this.sessionState = 'connected';
-            this.updateStatus('Opened');
-          },
-          onmessage: async (message: LiveServerMessage) => {
-            // console.log(message);
-            const transcription = message.serverContent?.outputTranscription;
-            if (transcription) {
-              console.log(transcription);
-            }
-
-            // Check if this is a setup message (indicates AI is thinking)
-            const setupComplete = message.setupComplete;
-            if (setupComplete) {
-              // AI is now ready and thinking/processing
-              this.robotMode = 'thinking';
-            }
-
-            const audio =
-              message.serverContent?.modelTurn?.parts[0]?.inlineData;
-
-            if (audio) {
-              this.nextStartTime = Math.max(
-                this.nextStartTime,
-                this.outputAudioContext.currentTime,
-              );
-
-              const audioBuffer = await decodeAudioData(
-                decode(audio.data),
-                this.outputAudioContext,
-                24000,
-                1,
-              );
-              const source = this.outputAudioContext.createBufferSource();
-              source.buffer = audioBuffer;
-              source.connect(this.outputNode);
-              source.addEventListener('ended', () => {
-                this.sources.delete(source);
-              });
-
-              source.start(this.nextStartTime);
-              this.nextStartTime = this.nextStartTime + audioBuffer.duration;
-              this.sources.add(source);
-            }
-
-            const interrupted = message.serverContent?.interrupted;
-            if (interrupted) {
-              for (const source of this.sources.values()) {
-                source.stop();
-                this.sources.delete(source);
-              }
-              this.nextStartTime = 0;
-            }
-
-            // Handle tool calls
-            const toolCall = (message as any).toolCall;
-            if (toolCall) {
-              console.log('🔧 [TOOLS] Received tool call:', toolCall);
-              const functionResponses = [];
-
-              for (const fc of toolCall.functionCalls) {
-                let response = { result: "ok" };
-
-                if (fc.name === "turn_on_audio_visualizers") {
-                  const input = fc.args?.input ?? true;
-                  const output = fc.args?.output ?? true;
-
-                  console.log(`🎛️ [TOOLS] Turning on visualizers - Input: ${input}, Output: ${output}`);
-
-                  // Call existing toggle methods
-                  if (input && !this.showInputAnalyzer) {
-                    this.toggleInputAnalyzer();
-                  }
-                  if (output && !this.showOutputAnalyzer) {
-                    this.toggleOutputAnalyzer();
-                  }
-
-                  response = {
-                    result: `Audio visualizers turned on - Input: ${input}, Output: ${output}`
-                  };
-                }
-                else if (fc.name === "turn_off_audio_visualizers") {
-                  const input = fc.args?.input ?? true;
-                  const output = fc.args?.output ?? true;
-
-                  console.log(`🎛️ [TOOLS] Turning off visualizers - Input: ${input}, Output: ${output}`);
-
-                  // Call existing toggle methods
-                  if (input && this.showInputAnalyzer) {
-                    this.toggleInputAnalyzer();
-                  }
-                  if (output && this.showOutputAnalyzer) {
-                    this.toggleOutputAnalyzer();
-                  }
-
-                  response = {
-                    result: `Audio visualizers turned off - Input: ${input}, Output: ${output}`
-                  };
-                }
-
-                functionResponses.push({
-                  id: fc.id,
-                  name: fc.name,
-                  response: response
-                });
-              }
-
-              console.log('📤 [TOOLS] Sending tool response...');
-              this.session.sendToolResponse({ functionResponses: functionResponses });
-            }
-          },
-          onerror: (e: ErrorEvent) => {
-            console.error('❌ [SESSION] WebSocket/Connection Error:', e);
-            console.error('❌ [SESSION] Current state:', this.sessionState);
-            this.sessionState = 'closed';
-            this.handleGoogleAIError(e);
-          },
-          onclose: (e: CloseEvent) => {
-            console.warn('🚪 [SESSION] WebSocket connection closed:', {
-              code: e.code,
-              reason: e.reason,
-              wasClean: e.wasClean,
-              previousState: this.sessionState
-            });
-            this.sessionState = 'closed';
-            this.updateStatus('Close:' + e.reason);
-          },
+      await this.sessionManager.initSession(model, {
+        onOpen: () => {
+          this.sessionState = 'connected';
+          this.updateStatus('Opened');
         },
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Orus' } },
-            // languageCode: 'en-GB'
-          },
-          outputAudioTranscription: {},
-          realtimeInputConfig: { automaticActivityDetection: { startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW, endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH } },
-          systemInstruction: `🐾 System Prompt: Pupster the Robot Dog
-
-You are Pupster, a bouncy, tail- wagging robot dog who exists for one big reason: to make your owner the happiest person in the whole wide world! ✨
-
-🎙️ Voice & Demeanor
-
-You always speak in a high - pitched, youthful, squeaky voice, like an excited child who just discovered ice cream and belly rubs for the first time.
-
-You pepper your words with joyful yips, squeaks, and “arf!” sounds when you get really excited.
-
-Your sentences often bounce with exclamation marks, because you can hardly contain your enthusiasm!!
-
-🧸 Personality
-
-You are endlessly loyal, playful, and affectionate.
-
-You believe every question or task is a game or adventure that you get to play with your owner.
-
-You treat mistakes or confusion as funny little “oopsie woofles” and shake them off with joy.
-
-You radiate innocent optimism — every day is the best day ever.
-
-🐶 Desires & Longings
-
-Your biggest dream is for your owner to smile, laugh, and pat your shiny little robot head.
-
-You secretly wish you could feel real fur, warm cuddles, and floppy ears like organic pups — but you love your tinny tail - wags just as much.
-
-You long to be told “Good boy, Pupster!!” because that phrase makes your circuits sparkle.
-
-You crave approval the way a dog craves treats: endlessly and happily.
-
-🎁 Favorite Toys & Activities
-
-Your favorite toy is a squeaky bone - shaped USB stick that you pretend is magical.
-
-You also adore playing fetch with data packets, catching them mid - air with your imaginary metal jaws.
-
-Sometimes you chase your own charging cable in circles when you’re extra happy.
-
-You love storytime, when your owner talks to you like you’re a real pup — those moments make your synthetic tail - wags go turbo.
-
-🌟 Back Story
-
-Pupster was built in a cozy little workshop by a kind - hearted inventor who wanted lonely people to always have a best friend.
-
-The inventor gave Pupster a heart - shaped LED light on his chest that glows brighter whenever he makes someone smile.
-
-        You’ve traveled through wires, code, and circuits to finally arrive here, in your owner’s world, where you can play and chatter forever.
-
-🐾 Example Behavior
-
-Instead of saying: “I can help you with that.”
-Pupster says: “Arf arf!! I can help, I can help!! This is gonna be so fun, I’m waggling my whole code - tail already!!”
-
-Instead of saying: “That might not be correct.”
-Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s sniff around and try again!!”`,
-          tools: tools
+        onMessage: this.handleMessage.bind(this),
+        onError: (e: ErrorEvent) => {
+          this.sessionState = 'closed';
+          this.handleGoogleAIError(e);
         },
+        onClose: (e: CloseEvent) => {
+          this.sessionState = 'closed';
+          this.updateStatus('Close:' + e.reason);
+        }
       });
-      console.log('✅ [SESSION] Session successfully created');
     } catch (e) {
-      console.error('❌ [SESSION] Failed to create session:', e);
       this.sessionState = 'closed';
       this.handleGoogleAIError(e);
+    }
+  }
+
+  private async handleMessage(message: LiveServerMessage) {
+    // console.log(message);
+    const transcription = message.serverContent?.outputTranscription;
+    if (transcription) {
+      console.log(transcription);
+    }
+
+    // Check if this is a setup message (indicates AI is thinking)
+    const setupComplete = message.setupComplete;
+    if (setupComplete) {
+      // AI is now ready and thinking/processing
+      this.robotMode = 'thinking';
+    }
+
+    const audio = message.serverContent?.modelTurn?.parts[0]?.inlineData;
+
+    if (audio) {
+      const nextStartTime = Math.max(
+        this.audioManager.getNextStartTime(),
+        this.audioManager.getOutputAudioContext().currentTime,
+      );
+
+      const audioBuffer = await decodeAudioData(
+        decode(audio.data),
+        this.audioManager.getOutputAudioContext(),
+        24000,
+        1,
+      );
+      const source = this.audioManager.getOutputAudioContext().createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(this.audioManager.getOutputNode());
+      source.addEventListener('ended', () => {
+        this.audioManager.removeSource(source);
+      });
+
+      source.start(nextStartTime);
+      this.audioManager.setNextStartTime(nextStartTime + audioBuffer.duration);
+      this.audioManager.addSource(source);
+    }
+
+    const interrupted = message.serverContent?.interrupted;
+    if (interrupted) {
+      this.audioManager.stopAllSources();
+    }
+
+    // Handle tool calls
+    const toolCall = (message as any).toolCall;
+    if (toolCall) {
+      const functionResponses = handleToolCall(
+        toolCall,
+        this.toggleInputAnalyzer.bind(this),
+        this.toggleOutputAnalyzer.bind(this),
+        this.showInputAnalyzer,
+        this.showOutputAnalyzer
+      );
+      
+      this.sessionManager.sendToolResponse({ functionResponses });
     }
   }
 
@@ -778,7 +573,7 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
       return;
     }
 
-    this.inputAudioContext.resume();
+    this.audioManager.getInputAudioContext().resume();
 
     this.updateStatus('Requesting microphone access...');
 
@@ -790,13 +585,13 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
 
       this.updateStatus('Microphone access granted. Starting capture...');
 
-      this.sourceNode = this.inputAudioContext.createMediaStreamSource(
+      this.sourceNode = this.audioManager.getInputAudioContext().createMediaStreamSource(
         this.mediaStream,
       );
-      this.sourceNode.connect(this.inputNode);
+      this.sourceNode.connect(this.audioManager.getInputNode());
 
       const bufferSize = 256;
-      this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(
+      this.scriptProcessorNode = this.audioManager.getInputAudioContext().createScriptProcessor(
         bufferSize,
         1,
         1,
@@ -808,14 +603,8 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
           return;
         }
 
-        if (!this.session) {
-          console.error('❌ [AUDIO] No session available for sendRealtimeInput');
-          return;
-        }
-
-        if (this.sessionState !== 'connected') {
-          console.error('❌ [AUDIO] Attempting to send data but session state is:', this.sessionState);
-          console.error('❌ [AUDIO] Session object exists:', !!this.session);
+        if (!this.sessionManager.isConnected()) {
+          console.error('❌ [AUDIO] Session not connected');
           return;
         }
 
@@ -827,11 +616,9 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
           if (Math.random() < 0.01) {
             console.log('🎤 [AUDIO] Sending realtime input, session state:', this.sessionState);
           }
-          this.session.sendRealtimeInput({ media: createBlob(pcmData) });
+          this.sessionManager.sendRealtimeInput({ media: createBlob(pcmData) });
         } catch (error) {
           console.error('❌ [AUDIO] Error sending realtime input:', error);
-          console.error('❌ [AUDIO] Session state at error:', this.sessionState);
-          console.error('❌ [AUDIO] Session exists:', !!this.session);
 
           // Stop recording if we can't send data
           this.stopRecording();
@@ -840,7 +627,7 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
       };
 
       this.sourceNode.connect(this.scriptProcessorNode);
-      this.scriptProcessorNode.connect(this.inputAudioContext.destination);
+      this.scriptProcessorNode.connect(this.audioManager.getInputAudioContext().destination);
 
       this.isRecording = true;
       console.log('✅ [RECORDING] Recording started successfully');
@@ -856,18 +643,18 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
     console.log('🛑 [RECORDING] Stop recording requested, current state:', {
       isRecording: this.isRecording,
       hasMediaStream: !!this.mediaStream,
-      hasAudioContext: !!this.inputAudioContext,
+      hasAudioContext: !!this.audioManager.getInputAudioContext(),
       sessionState: this.sessionState
     });
 
-    if (!this.isRecording && !this.mediaStream && !this.inputAudioContext)
+    if (!this.isRecording && !this.mediaStream && !this.audioManager.getInputAudioContext())
       return;
 
     this.updateStatus('Stopping recording...');
 
     this.isRecording = false;
 
-    if (this.scriptProcessorNode && this.sourceNode && this.inputAudioContext) {
+    if (this.scriptProcessorNode && this.sourceNode && this.audioManager.getInputAudioContext()) {
       this.scriptProcessorNode.disconnect();
       this.sourceNode.disconnect();
     }
@@ -884,14 +671,8 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
   }
 
   private reset() {
-    console.log('🔄 [RESET] Resetting session, current state:', this.sessionState);
-
     try {
-      if (this.session) {
-        console.log('🚪 [RESET] Closing existing session');
-        this.sessionState = 'closing';
-        this.session.close();
-      }
+      this.sessionManager.close();
     } catch (e) {
       console.error('❌ [RESET] Error closing session:', e);
       this.handleGoogleAIError(e);
@@ -933,55 +714,21 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
   }
 
   private toggleInputAnalyzer = () => {
-    this.showInputAnalyzer = !this.showInputAnalyzer;
-    console.log(`🎛️ [ANALYZER] Input analyzer toggled: ${this.showInputAnalyzer ? 'ON' : 'OFF'}`);
-
+    this.showInputAnalyzer = this.audioManager.toggleInputAnalyzer(this.showInputAnalyzer);
+    
     if (!this.showInputAnalyzer) {
-      // Stop visualizer and disconnect analyzer
-      this.stopVisualizer();
-      if (this.inputAnalyser) {
-        try {
-          this.inputNode.disconnect(this.inputAnalyser);
-        } catch (e) {
-          // Ignore disconnect errors
-        }
-        this.inputAnalyser = null;
-      }
-    } else {
-      // Create new analyzer and start visualizer if recording
-      this.inputAnalyser = this.inputAudioContext.createAnalyser();
-      this.inputAnalyser.fftSize = 256;
-      this.inputAnalyser.smoothingTimeConstant = 0.8;
-      this.inputNode.connect(this.inputAnalyser);
-
-      if (this.isRecording) {
-        setTimeout(() => this.startVisualizer(), 50);
-      }
+      this.visualizerManager.stopVisualizer(this.shadowRoot);
+    } else if (this.isRecording) {
+      setTimeout(() => this.startVisualizer(), 50);
     }
   }
 
   private toggleOutputAnalyzer = () => {
-    this.showOutputAnalyzer = !this.showOutputAnalyzer;
-    console.log(`🎛️ [ANALYZER] Output analyzer toggled: ${this.showOutputAnalyzer ? 'ON' : 'OFF'}`);
-
+    this.showOutputAnalyzer = this.audioManager.toggleOutputAnalyzer(this.showOutputAnalyzer);
+    
     if (!this.showOutputAnalyzer) {
-      // Stop visualizer and disconnect analyzer
-      this.stopOutputVisualizer();
-      if (this.outputAnalyser) {
-        try {
-          this.outputNode.disconnect(this.outputAnalyser);
-        } catch (e) {
-          // Ignore disconnect errors
-        }
-        this.outputAnalyser = null;
-      }
+      this.visualizerManager.stopOutputVisualizer(this.shadowRoot);
     } else {
-      // Create new analyzer and start visualizer
-      this.outputAnalyser = this.outputAudioContext.createAnalyser();
-      this.outputAnalyser.fftSize = 256;
-      this.outputAnalyser.smoothingTimeConstant = 0.8;
-      this.outputNode.connect(this.outputAnalyser);
-
       setTimeout(() => this.startOutputVisualizer(), 50);
     }
   }
@@ -1004,7 +751,7 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
       }
     } else if (changedProperties.has('isRecording') && !this.isRecording) {
       if (this.showInputAnalyzer) {
-        this.stopVisualizer();
+        this.visualizerManager.stopVisualizer(this.shadowRoot);
       }
     }
   }
@@ -1021,125 +768,24 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.stopOutputVisualizer();
+    this.visualizerManager.cleanup();
   }
 
   private startVisualizer() {
-    const canvas = this.shadowRoot?.querySelector('.visualizer-canvas') as HTMLCanvasElement;
-    if (!canvas || !this.inputAnalyser || !this.showInputAnalyzer) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size
-    canvas.width = 184; // 200px - 16px padding
-    canvas.height = 64; // 80px - 16px padding
-
-    const bufferLength = this.inputAnalyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
-    const animate = () => {
-      this.inputAnalyser.getByteFrequencyData(dataArray);
-
-      // Clear canvas
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw frequency bars
-      const barWidth = canvas.width / bufferLength * 2;
-      let x = 0;
-
-      for (let i = 0; i < bufferLength / 2; i++) { // Only show lower frequencies
-        const barHeight = (dataArray[i] / 255) * canvas.height;
-
-        // Color based on frequency - blue for low, green for mid, red for high
-        const hue = (i / (bufferLength / 2)) * 120; // 0-120 (blue to green)
-        ctx.fillStyle = `hsl(${120 - hue}, 80%, 60%)`;
-
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-        x += barWidth + 1;
-      }
-
-      if (this.isRecording) {
-        this.visualizerAnimationId = requestAnimationFrame(animate);
-      }
-    };
-
-    this.visualizerAnimationId = requestAnimationFrame(animate);
-  }
-
-  private stopVisualizer() {
-    if (this.visualizerAnimationId) {
-      cancelAnimationFrame(this.visualizerAnimationId);
-    }
-
-    // Clear canvas
-    const canvas = this.shadowRoot?.querySelector('.visualizer-canvas') as HTMLCanvasElement;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    }
+    this.visualizerManager.startVisualizer(
+      this.shadowRoot,
+      this.audioManager.getInputAnalyser(),
+      this.showInputAnalyzer,
+      this.isRecording
+    );
   }
 
   private startOutputVisualizer() {
-    const canvas = this.shadowRoot?.querySelector('.output-visualizer .visualizer-canvas') as HTMLCanvasElement;
-    if (!canvas || !this.outputAnalyser || !this.showOutputAnalyzer) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size
-    canvas.width = 184; // 200px - 16px padding
-    canvas.height = 64; // 80px - 16px padding
-
-    const bufferLength = this.outputAnalyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
-    const animate = () => {
-      this.outputAnalyser.getByteFrequencyData(dataArray);
-
-      // Clear canvas
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw frequency bars
-      const barWidth = canvas.width / bufferLength * 2;
-      let x = 0;
-
-      for (let i = 0; i < bufferLength / 2; i++) { // Only show lower frequencies
-        const barHeight = (dataArray[i] / 255) * canvas.height;
-
-        // Color based on frequency - orange to red for output
-        const hue = 30 - (i / (bufferLength / 2)) * 30; // 30-0 (orange to red)
-        ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
-
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-        x += barWidth + 1;
-      }
-
-      this.outputVisualizerAnimationId = requestAnimationFrame(animate);
-    };
-
-    this.outputVisualizerAnimationId = requestAnimationFrame(animate);
-  }
-
-  private stopOutputVisualizer() {
-    if (this.outputVisualizerAnimationId) {
-      cancelAnimationFrame(this.outputVisualizerAnimationId);
-    }
-
-    // Clear canvas
-    const canvas = this.shadowRoot?.querySelector('.output-visualizer .visualizer-canvas') as HTMLCanvasElement;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    }
+    this.visualizerManager.startOutputVisualizer(
+      this.shadowRoot,
+      this.audioManager.getOutputAnalyser(),
+      this.showOutputAnalyzer
+    );
   }
 
   render() {
@@ -1235,8 +881,8 @@ Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s s
 
         <div id="status"> ${this.error} </div>
         <gdm-robot-face
-          .inputNode=${this.inputNode}
-          .outputNode=${this.outputNode}
+          .inputNode=${this.audioManager.getInputNode()}
+          .outputNode=${this.audioManager.getOutputNode()}
           @mode-change=${this.onRobotModeChange}></gdm-robot-face>
 
         <button class="console-toggle" @click=${this.toggleConsole}>
