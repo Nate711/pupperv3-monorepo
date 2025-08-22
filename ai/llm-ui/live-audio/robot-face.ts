@@ -59,7 +59,7 @@ export class GdmRobotFace extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0a0a0a;
+      background: #000000ff;
     }
 
     .stage {
@@ -172,8 +172,8 @@ export class GdmRobotFace extends LitElement {
 
     @keyframes blinkOnce {
       0% { transform: translateY(0); }
-      45% { transform: translateY(240px); }
-      55% { transform: translateY(240px); }
+      45% { transform: translateY(288px); }
+      55% { transform: translateY(288px); }
       100% { transform: translateY(0); }
     }
 
@@ -335,34 +335,34 @@ export class GdmRobotFace extends LitElement {
               </radialGradient>
               
               <g id="pupilComponent">
-                <circle class="pupil" r="80" fill="var(--pupil)" />
-                <path d="M -52 32 A 62 62 0 0 0 48 32" fill="none" stroke="var(--iris-blue-2)" stroke-width="14" stroke-linecap="round" />
-                <circle r="7" cx="58" cy="35" fill="var(--iris-blue-2)" />
+                <circle class="pupil" r="96" fill="var(--pupil)" />
+                <path d="M -62 38 A 74 74 0 0 0 58 38" fill="none" stroke="var(--iris-blue-2)" stroke-width="17" stroke-linecap="round" />
+                <circle r="8" cx="70" cy="42" fill="var(--iris-blue-2)" />
                 <g class="glints">
-                  <circle r="26" cx="-24" cy="-34" fill="#ffffff" opacity=".96" />
-                  <circle r="12" cx="15" cy="-14" fill="#ffffff" opacity=".9" />
+                  <circle r="31" cx="-29" cy="-41" fill="#ffffff" opacity=".96" />
+                  <circle r="14" cx="18" cy="-17" fill="#ffffff" opacity=".9" />
                 </g>
               </g>
               
               <g id="eyeComponent">
-                <circle r="105" fill="url(#gIris)" />
-                <circle r="100" fill="none" stroke="#0090dd" stroke-width="5" opacity=".7" />
+                <circle r="126" fill="url(#gIris)" />
+                <circle r="120" fill="none" stroke="#0090dd" stroke-width="6" opacity=".7" />
 
                 <g class="pupilGroup">
                   <use href="#pupilComponent" />
                 </g>
 
-                <rect class="lidTop" x="-190" y="-430" width="380" height="225" rx="105" fill="#000" />
+                <rect class="lidTop" x="-228" y="-516" width="456" height="270" rx="126" fill="#000" />
               </g>
               
               <g id="eyebrowComponent">
-                <rect class="brow" x="-80" y="-160" width="160" height="12" rx="6" fill="#6b6b6b" opacity=".9" />
+                <path class="brow" d="M -84 -180 Q 0 -204 84 -180" fill="none" stroke="#5a5a5a" stroke-width="10" stroke-linecap="round" opacity=".8" />
               </g>
             </defs>
 
             <g class="haloGroup">
-              <circle class="halo" cx="270" cy="210" r="120" fill="#00b4ff" filter="url(#blur8)" />
-              <circle class="halo" cx="630" cy="210" r="120" fill="#00b4ff" filter="url(#blur8)" />
+              <circle class="halo" cx="270" cy="210" r="144" fill="#00b4ff" filter="url(#blur8)" />
+              <circle class="halo" cx="630" cy="210" r="144" fill="#00b4ff" filter="url(#blur8)" />
             </g>
 
             <g id="leftEye" transform="translate(270,210)">
