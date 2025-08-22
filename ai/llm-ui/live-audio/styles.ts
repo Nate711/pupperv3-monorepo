@@ -6,6 +6,10 @@
 import { css } from 'lit';
 
 export const styles = css`
+  :host {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+
   #status {
     position: absolute;
     bottom: 5vh;
@@ -13,6 +17,7 @@ export const styles = css`
     right: 0;
     z-index: 10;
     text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
 
   .top-bar {
@@ -34,7 +39,6 @@ export const styles = css`
     border-radius: 12px;
     font-size: 12px;
     font-weight: 500;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     border: 1px solid rgba(255, 255, 255, 0.2);
     text-align: center;
     min-width: 0;
@@ -153,6 +157,7 @@ export const styles = css`
     border-radius: 6px;
     padding: 6px 10px;
     font-size: 11px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
@@ -179,7 +184,7 @@ export const styles = css`
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 14px;
-    font-family: inherit;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     cursor: pointer;
     outline: none;
     transition: all 0.3s ease;
@@ -212,6 +217,7 @@ export const styles = css`
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     cursor: pointer;
     transition: all 0.3s ease;
   }
@@ -248,6 +254,7 @@ export const styles = css`
     justify-content: between;
     align-items: center;
     font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     color: #ccc;
   }
 

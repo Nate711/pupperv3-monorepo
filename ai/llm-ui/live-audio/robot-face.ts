@@ -335,7 +335,7 @@ export class GdmRobotFace extends LitElement {
                 <feGaussianBlur stdDeviation="8" />
               </filter>
               <radialGradient id="gIris" cx="35%" cy="35%" r="80%">
-                <stop offset="0%" stop-color="#0957a1ff" />
+                <stop offset="0%" stop-color="#0084ffff" />
                 <stop offset="70%" stop-color="#0b1727" />
                 <stop offset="100%" stop-color="#081220" />
               </radialGradient>
@@ -345,14 +345,14 @@ export class GdmRobotFace extends LitElement {
                 <path d="M -62 38 A 74 74 0 0 0 58 38" fill="none" stroke="var(--iris-blue-2)" stroke-width="17" stroke-linecap="round" />
                 <circle r="8" cx="70" cy="42" fill="var(--iris-blue-2)" />
                 <g class="glints">
-                  <circle r="31" cx="-29" cy="-41" fill="#ffffff" opacity=".96" />
+                  <circle r="31" cx="-29" cy="-51" fill="#ffffff" opacity=".96" />
                   <circle r="14" cx="18" cy="-17" fill="#ffffff" opacity=".9" />
                 </g>
               </g>
               
               <g id="eyeComponent">
                 <circle r="126" fill="url(#gIris)" />
-                <circle r="120" fill="none" stroke="#0090dd" stroke-width="6" opacity=".7" />
+                <circle r="126" fill="none" stroke="#00a6ffff" stroke-width="6" opacity=".7" />
 
                 <g class="pupilGroup">
                   <use href="#pupilComponent" />
@@ -362,13 +362,13 @@ export class GdmRobotFace extends LitElement {
               </g>
               
               <g id="eyebrowComponent">
-                <path class="brow" d="M -84 -180 Q 0 -204 84 -180" fill="none" stroke="#5a5a5a" stroke-width="10" stroke-linecap="round" opacity=".8" />
+                <path class="brow" d="M -84 -180 Q 0 -204 84 -180" fill="none" stroke="#b9b9b9ff" stroke-width="10" stroke-linecap="round" opacity=".8" />
               </g>
             </defs>
 
             <g class="haloGroup">
-              <circle class="halo" cx="270" cy="210" r="144" fill="#00b4ff" filter="url(#blur8)" />
-              <circle class="halo" cx="630" cy="210" r="144" fill="#00b4ff" filter="url(#blur8)" />
+              <circle class="halo" cx="220" cy="210" r="150" fill="#00b4ff" filter="url(#blur8)" />
+              <circle class="halo" cx="680" cy="210" r="150" fill="#00b4ff" filter="url(#blur8)" />
             </g>
 
             <g id="leftEye" transform="translate(220,210)">
