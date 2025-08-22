@@ -107,7 +107,7 @@ async function sendRobotCommand(name: string, args: any = {}): Promise<{ success
 // Robot control tool definitions
 export const activate_robot = {
   name: "activate_robot",
-  description: "Activate the robot to start operations",
+  description: "Activate the robot to start operations. If the user says activate, turn on, power on etc call this function.",
   parameters: {
     type: Type.OBJECT,
     properties: {}
@@ -116,7 +116,7 @@ export const activate_robot = {
 
 export const deactivate_robot = {
   name: "deactivate_robot",
-  description: "Deactivate the robot to stop operations",
+  description: "Deactivate the robot to stop operations. If the user says deactivate, power off, turn off etc you should use this function.",
   parameters: {
     type: Type.OBJECT,
     properties: {}
