@@ -8,6 +8,21 @@ import { Type } from '@google/genai';
 // WebSocket connection for robot control
 let robotWebSocket: WebSocket | null = null;
 
+// Request tracking system
+interface PendingRequest {
+  requestId: string;
+  resolve: (value: { success: boolean; response?: any; error?: string }) => void;
+  reject: (reason?: any) => void;
+  timeoutId: number;
+  commandName: string;
+}
+
+const pendingRequests = new Map<string, PendingRequest>();
+
+function generateRequestId(): string {
+  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
 function initRobotWebSocket(): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     // If already connected, return existing connection
@@ -37,8 +52,30 @@ function initRobotWebSocket(): Promise<WebSocket> {
       });
 
       robotWebSocket.addEventListener("message", (event) => {
-        const response = JSON.parse(event.data);
-        console.log("🤖 [ROBOT] Response:", response);
+        try {
+          const response = JSON.parse(event.data);
+          console.log("🤖 [ROBOT] Response:", response);
+          
+          // Handle response with request ID
+          const requestId = response.request_id;
+          if (requestId && pendingRequests.has(requestId)) {
+            const pendingRequest = pendingRequests.get(requestId)!;
+            
+            // Clear timeout and remove from pending
+            clearTimeout(pendingRequest.timeoutId);
+            pendingRequests.delete(requestId);
+            
+            // Resolve the promise
+            console.log(`🤖 [ROBOT] Matched response for request ${requestId} (${pendingRequest.commandName})`);
+            pendingRequest.resolve({ success: true, response });
+          } else if (requestId) {
+            console.warn(`🤖 [ROBOT] Received response for unknown request ID: ${requestId}`);
+          } else {
+            console.warn(`🤖 [ROBOT] Received response without request ID:`, response);
+          }
+        } catch (error) {
+          console.error("🤖 [ROBOT] Error parsing response:", error);
+        }
       });
 
       robotWebSocket.addEventListener("close", () => {
@@ -59,68 +96,36 @@ function initRobotWebSocket(): Promise<WebSocket> {
   });
 }
 
-function validateResponseForCommand(commandName: string, response: any): boolean {
-  if (!response || response.status !== 'success') {
-    return true; // Let error responses through
-  }
-  
-  switch (commandName) {
-    case 'get_battery':
-      return response.battery_percentage !== undefined;
-    case 'get_cpu_usage':
-      return response.cpu_usage !== undefined;
-    case 'activate':
-    case 'deactivate':
-      return response.robot_state !== undefined;
-    case 'move':
-      return response.velocities !== undefined;
-    default:
-      return true; // Allow unknown commands through
-  }
-}
 
 export async function sendRobotCommand(name: string, args: any = {}): Promise<{ success: boolean; response?: any; error?: string }> {
   try {
     const ws = await initRobotWebSocket();
 
     if (ws && ws.readyState === WebSocket.OPEN) {
-      const msg = JSON.stringify({ name, args });
+      const requestId = generateRequestId();
+      const msg = JSON.stringify({ name, args, request_id: requestId });
 
       // Create a promise to wait for the response
-      return new Promise((resolve) => {
-        const responseHandler = (event: MessageEvent) => {
-          try {
-            const response = JSON.parse(event.data);
-            console.log(`🤖 [ROBOT] Received response for '${name}':`, response);
-            
-            // Validate response matches the command type
-            const isValidResponse = validateResponseForCommand(name, response);
-            if (!isValidResponse) {
-              console.warn(`🤖 [ROBOT] Response doesn't match command '${name}', ignoring:`, response);
-              return; // Don't resolve, wait for correct response
-            }
-            
-            ws.removeEventListener('message', responseHandler);
-            resolve({ success: true, response });
-          } catch (error) {
-            console.error(`🤖 [ROBOT] Failed to parse response for '${name}':`, error);
-            ws.removeEventListener('message', responseHandler);
-            resolve({ success: false, error: "Failed to parse response" });
-          }
-        };
-
-        // Set up response listener
-        ws.addEventListener('message', responseHandler);
-
-        // Set timeout for response
-        setTimeout(() => {
-          ws.removeEventListener('message', responseHandler);
+      return new Promise((resolve, reject) => {
+        // Set up timeout
+        const timeoutId = window.setTimeout(() => {
+          pendingRequests.delete(requestId);
+          console.warn(`🤖 [ROBOT] Command '${name}' timed out (request ${requestId})`);
           resolve({ success: false, error: "Response timeout" });
-        }, 1000);
+        }, 2000); // Increased to 2 seconds
+
+        // Store the pending request
+        pendingRequests.set(requestId, {
+          requestId,
+          resolve,
+          reject,
+          timeoutId,
+          commandName: name
+        });
 
         // Send the command
         ws.send(msg);
-        console.log(`🤖 [ROBOT] Sent command: ${name}`, args);
+        console.log(`🤖 [ROBOT] Sent command: ${name} (request ${requestId})`, args);
       });
     } else {
       console.error(`🤖 [ROBOT] Cannot send command '${name}' - WebSocket not connected.`);

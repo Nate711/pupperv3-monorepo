@@ -34,7 +34,13 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
     <div>
       <div class="top-bar">
         <div class="battery-indicator">
-          BAT ${props.batteryPercentage}
+          <div class="battery-icon">
+            <div class="battery-shell">
+              <div class="battery-fill" style="width: ${props.batteryPercentage === 'N/A' ? '0' : props.batteryPercentage.replace('%', '')}%"></div>
+            </div>
+            <div class="battery-tip"></div>
+          </div>
+          ${props.batteryPercentage}
         </div>
         <div class="cpu-indicator">
           CPU ${props.cpuUsage}

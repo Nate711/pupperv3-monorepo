@@ -74,6 +74,7 @@ class WebSocketRobotServer(Node):
                     data = json.loads(message)
                     command_name = data.get("name", "unknown")
                     command_args = data.get("args", {})
+                    request_id = data.get("request_id")
 
                     self.robot_state.command_count += 1
                     self.robot_state.last_command = command_name
@@ -81,7 +82,7 @@ class WebSocketRobotServer(Node):
                     logger.info(f"📨 Received command from {client_addr}: {command_name}")
 
                     # Handle different commands
-                    response = await self.handle_command(command_name, command_args)
+                    response = await self.handle_command(command_name, command_args, request_id)
 
                     # Send response back to client
                     await websocket.send(json.dumps(response))
@@ -110,7 +111,13 @@ class WebSocketRobotServer(Node):
         except Exception as e:
             logger.error(f"❌ Connection error with {client_addr}: {e}")
 
-    async def handle_command(self, command_name: str, command_args: dict) -> dict:
+    def add_request_id(self, response: dict, request_id: str = None) -> dict:
+        """Add request_id to response if provided."""
+        if request_id:
+            response["request_id"] = request_id
+        return response
+
+    async def handle_command(self, command_name: str, command_args: dict, request_id: str = None) -> dict:
         """Handle specific robot commands and return appropriate responses."""
 
         if command_name == "activate":
@@ -165,7 +172,7 @@ class WebSocketRobotServer(Node):
                 battery_status = "low"
 
             logger.info(f"🔋 Battery level: {battery_percentage}% ({battery_voltage}V) ({battery_status})")
-            return {
+            return self.add_request_id({
                 "status": "success",
                 "message": f"Battery at {battery_percentage}% ({battery_voltage}V)",
                 "battery_percentage": battery_percentage,
@@ -174,7 +181,7 @@ class WebSocketRobotServer(Node):
                 "robot_state": "active" if self.robot_state.is_active else "inactive",
                 "timestamp": datetime.now().isoformat(),
                 "command_count": self.robot_state.command_count,
-            }
+            }, request_id)
 
         elif command_name == "get_cpu_usage":
             try:
@@ -187,22 +194,22 @@ class WebSocketRobotServer(Node):
                 }
                 
                 logger.info(f"💻 CPU usage: {cpu_usage}%")
-                return {
+                return self.add_request_id({
                     "status": "success",
                     "message": f"CPU usage at {cpu_usage}%",
                     "cpu_usage": round(cpu_usage, 1),
                     "system_info": system_info,
                     "timestamp": datetime.now().isoformat(),
                     "command_count": self.robot_state.command_count
-                }
+                }, request_id)
             except Exception as e:
                 logger.error(f"❌ Failed to get CPU usage: {e}")
-                return {
+                return self.add_request_id({
                     "status": "error",
                     "message": f"Failed to get CPU usage: {str(e)}",
                     "timestamp": datetime.now().isoformat(),
                     "command_count": self.robot_state.command_count
-                }
+                }, request_id)
 
         elif command_name == "status":
             battery_percentage, battery_voltage = await self.get_battery_info()

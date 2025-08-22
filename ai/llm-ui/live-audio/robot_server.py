@@ -28,6 +28,12 @@ class RobotState:
 
 robot_state = RobotState()
 
+def add_request_id(response: dict, request_id: str = None) -> dict:
+    """Add request_id to response if provided."""
+    if request_id:
+        response["request_id"] = request_id
+    return response
+
 async def handle_client(websocket):
     """Handle incoming WebSocket connections and messages."""
     client_addr = websocket.remote_address
@@ -40,6 +46,7 @@ async def handle_client(websocket):
                 data = json.loads(message)
                 command_name = data.get('name', 'unknown')
                 command_args = data.get('args', {})
+                request_id = data.get('request_id')
                 
                 robot_state.command_count += 1
                 robot_state.last_command = command_name
@@ -47,7 +54,7 @@ async def handle_client(websocket):
                 logger.info(f"📨 Received command from {client_addr}: {command_name}")
                 
                 # Handle different commands
-                response = await handle_command(command_name, command_args)
+                response = await handle_command(command_name, command_args, request_id)
                 
                 # Send response back to client
                 await websocket.send(json.dumps(response))
@@ -76,28 +83,28 @@ async def handle_client(websocket):
     except Exception as e:
         logger.error(f"❌ Connection error with {client_addr}: {e}")
 
-async def handle_command(command_name: str, command_args: dict) -> dict:
+async def handle_command(command_name: str, command_args: dict, request_id: str = None) -> dict:
     """Handle specific robot commands and return appropriate responses."""
     
     if command_name == "activate":
         if robot_state.is_active:
-            return {
+            return add_request_id({
                 "status": "warning",
                 "message": "Robot is already active",
                 "robot_state": "active",
                 "timestamp": datetime.now().isoformat(),
                 "command_count": robot_state.command_count
-            }
+            }, request_id)
         else:
             robot_state.is_active = True
             logger.info("🤖 Robot ACTIVATED")
-            return {
+            return add_request_id({
                 "status": "success",
                 "message": "Robot activated successfully", 
                 "robot_state": "active",
                 "timestamp": datetime.now().isoformat(),
                 "command_count": robot_state.command_count
-            }
+            }, request_id)
     
     elif command_name == "deactivate":
         if not robot_state.is_active:
@@ -191,7 +198,7 @@ async def handle_command(command_name: str, command_args: dict) -> dict:
             battery_status = "low"
         
         logger.info(f"🔋 Battery level: {robot_state.battery_percentage}% ({battery_status})")
-        return {
+        return add_request_id({
             "status": "success",
             "message": f"Battery at {robot_state.battery_percentage}%",
             "battery_percentage": robot_state.battery_percentage,
@@ -199,7 +206,7 @@ async def handle_command(command_name: str, command_args: dict) -> dict:
             "robot_state": "active" if robot_state.is_active else "inactive",
             "timestamp": datetime.now().isoformat(),
             "command_count": robot_state.command_count
-        }
+        }, request_id)
     
     elif command_name == "get_cpu_usage":
         try:
@@ -212,22 +219,22 @@ async def handle_command(command_name: str, command_args: dict) -> dict:
             }
             
             logger.info(f"💻 CPU usage: {cpu_usage}%")
-            return {
+            return add_request_id({
                 "status": "success",
                 "message": f"CPU usage at {cpu_usage}%",
                 "cpu_usage": round(cpu_usage, 1),
                 "system_info": system_info,
                 "timestamp": datetime.now().isoformat(),
                 "command_count": robot_state.command_count
-            }
+            }, request_id)
         except Exception as e:
             logger.error(f"❌ Failed to get CPU usage: {e}")
-            return {
+            return add_request_id({
                 "status": "error",
                 "message": f"Failed to get CPU usage: {str(e)}",
                 "timestamp": datetime.now().isoformat(),
                 "command_count": robot_state.command_count
-            }
+            }, request_id)
     
     elif command_name == "status":
         return {
