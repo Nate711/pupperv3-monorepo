@@ -2,7 +2,7 @@ controller_manager:
   ros__parameters:
     # Run slightly above nominal 500Hz in order to get exactly 50hz for neural controller
     # Should develop a better way to handle this in the future
-    update_rate: 520 
+    update_rate: 520
 
     neural_controller:
       type: neural_controller/NeuralController
@@ -160,3 +160,8 @@ joint_state_broadcaster:
   ros__parameters:
     update_rate: 260
     use_local_topics: false
+
+cmd_vel_mux:
+  ros__parameters:
+    deadband: 0.05
+    joystick_timeout_ms: 500

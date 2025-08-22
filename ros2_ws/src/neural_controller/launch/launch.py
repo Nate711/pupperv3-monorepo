@@ -103,6 +103,7 @@ def generate_launch_description():
         parameters=[node_parameters],
         output="both",
         condition=IfCondition(LaunchConfiguration("teleop")),
+        remappings=[("cmd_vel", "teleop_cmd_vel")],
     )
 
     control_node = Node(
@@ -183,6 +184,13 @@ def generate_launch_description():
         condition=UnlessCondition(LaunchConfiguration("sim")),
     )
 
+    cmd_vel_mux_node = Node(
+        package="cmd_vel_mux",
+        executable="cmd_vel_mux_node",
+        parameters=[node_parameters],
+        output="both",
+    )
+
     #
     # 7. Put them all together
     #
@@ -200,6 +208,7 @@ def generate_launch_description():
         joy_linux_node,
         teleop_twist_joy_node,
         camera_node,
+        cmd_vel_mux_node,
     ]
 
     #
