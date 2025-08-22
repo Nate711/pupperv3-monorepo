@@ -74,13 +74,13 @@ export class GdmRobotFace extends LitElement {
 
     :root {
       --ring-dark: #2a2f36;
-      --iris-blue: #19a2e6;
-      --iris-blue-2: #2ec4ff;
+      --iris-blue: #00b4ff;
+      --iris-blue-2: #00d4ff;
       --iris-core: #0b1727;
       --pupil: #060d13;
       --iris-h: 200;
-      --iris-s: 90;
-      --iris-l: 52;
+      --iris-s: 100;
+      --iris-l: 58;
       --gaze-x: 0px;
       --gaze-y: 0px;
       --glow-alpha: .18;
@@ -161,19 +161,19 @@ export class GdmRobotFace extends LitElement {
     }
 
     /* Eyelids */
-    .lidTop, .lidBot {
+    .lidTop {
       transform: translateY(0);
     }
 
     /* Blink animation */
-    .blink .lidTop, .blink .lidBot {
+    .blink .lidTop {
       animation: blinkOnce 230ms cubic-bezier(.3, .7, .2, 1) 1;
     }
 
     @keyframes blinkOnce {
       0% { transform: translateY(0); }
-      45% { transform: translateY(140px); }
-      55% { transform: translateY(140px); }
+      45% { transform: translateY(240px); }
+      55% { transform: translateY(240px); }
       100% { transform: translateY(0); }
     }
 
@@ -329,58 +329,50 @@ export class GdmRobotFace extends LitElement {
                 <feGaussianBlur stdDeviation="8" />
               </filter>
               <radialGradient id="gIris" cx="35%" cy="35%" r="80%">
-                <stop offset="0%" stop-color="#0f2438" />
+                <stop offset="0%" stop-color="#0957a1ff" />
                 <stop offset="70%" stop-color="#0b1727" />
                 <stop offset="100%" stop-color="#081220" />
               </radialGradient>
               
               <g id="pupilComponent">
-                <circle class="pupil" r="45" fill="var(--pupil)" />
-                <path d="M -30 18 A 36 36 0 0 0 28 18" fill="none" stroke="var(--iris-blue-2)" stroke-width="8" stroke-linecap="round" />
-                <circle r="4" cx="34" cy="20" fill="var(--iris-blue-2)" />
+                <circle class="pupil" r="80" fill="var(--pupil)" />
+                <path d="M -52 32 A 62 62 0 0 0 48 32" fill="none" stroke="var(--iris-blue-2)" stroke-width="14" stroke-linecap="round" />
+                <circle r="7" cx="58" cy="35" fill="var(--iris-blue-2)" />
                 <g class="glints">
-                  <circle r="16" cx="-14" cy="-20" fill="#ffffff" opacity=".96" />
-                  <circle r="7" cx="9" cy="-8" fill="#ffffff" opacity=".9" />
+                  <circle r="26" cx="-24" cy="-34" fill="#ffffff" opacity=".96" />
+                  <circle r="12" cx="15" cy="-14" fill="#ffffff" opacity=".9" />
                 </g>
               </g>
               
               <g id="eyeComponent">
-                <circle r="96" fill="none" stroke="var(--ring-dark)" stroke-width="2.4" />
-                <circle r="86" fill="#0b1727" />
-                <circle r="76" fill="none" stroke="var(--iris-blue)" stroke-width="16" />
-                <circle r="62" fill="url(#gIris)" />
-                <circle r="58" fill="none" stroke="#166ea0" stroke-width="6" opacity=".6" />
+                <circle r="105" fill="url(#gIris)" />
+                <circle r="100" fill="none" stroke="#0090dd" stroke-width="5" opacity=".7" />
 
                 <g class="pupilGroup">
                   <use href="#pupilComponent" />
                 </g>
 
-                <circle class="ripple" r="70" fill="none" stroke="#8ad1ff" stroke-width="8" opacity="0" />
-
-                <path class="brow" d="M -55 -125 Q -35 -145 -10 -148 Q 15 -142 35 -128 Q 20 -132 -5 -140 Q -30 -135 -55 -125 Z" fill="#273345" opacity=".8" />
-                <rect class="lidTop" x="-110" y="-250" width="220" height="130" rx="60" fill="#000" />
-                <rect class="lidBot" x="-110" y="120" width="220" height="130" rx="60" fill="#000" />
+                <rect class="lidTop" x="-190" y="-430" width="380" height="225" rx="105" fill="#000" />
+              </g>
+              
+              <g id="eyebrowComponent">
+                <path class="brow" d="M 0 -180 Q -40 -190 -60 -220 Q -65 -240 -50 -250 Q -30 -260 0 -255 Q 30 -260 50 -250 Q 65 -240 60 -220 Q 40 -190 0 -180 Z" fill="#6b6b6b" opacity=".9" />
               </g>
             </defs>
 
             <g class="haloGroup">
-              <circle class="halo" cx="300" cy="210" r="105" fill="#2ec4ff" filter="url(#blur8)" />
-              <circle class="halo" cx="600" cy="210" r="105" fill="#2ec4ff" filter="url(#blur8)" />
+              <circle class="halo" cx="270" cy="210" r="120" fill="#00b4ff" filter="url(#blur8)" />
+              <circle class="halo" cx="630" cy="210" r="120" fill="#00b4ff" filter="url(#blur8)" />
             </g>
 
-
-            <g class="dots" transform="translate(450,245)">
-              <circle cx="-12" cy="0" r="3" fill="#a8d7ff" />
-              <circle cx="0" cy="0" r="3" fill="#e6f3ff" />
-              <circle cx="12" cy="0" r="3" fill="#a8d7ff" />
-            </g>
-
-            <g id="leftEye" transform="translate(300,210)">
+            <g id="leftEye" transform="translate(270,210)">
               <use href="#eyeComponent" />
+              <use href="#eyebrowComponent" />
             </g>
 
-            <g id="rightEye" transform="translate(600,210)">
+            <g id="rightEye" transform="translate(630,210)">
               <use href="#eyeComponent" />
+              <use href="#eyebrowComponent" />
             </g>
           </svg>
         </div>
