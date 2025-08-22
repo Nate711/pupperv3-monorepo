@@ -59,22 +59,48 @@ function initRobotWebSocket(): Promise<WebSocket> {
   });
 }
 
-async function sendRobotCommand(name: string, args: any = {}): Promise<boolean> {
+async function sendRobotCommand(name: string, args: any = {}): Promise<{ success: boolean; response?: any; error?: string }> {
   try {
     const ws = await initRobotWebSocket();
 
     if (ws && ws.readyState === WebSocket.OPEN) {
       const msg = JSON.stringify({ name, args });
-      ws.send(msg);
-      console.log(`🤖 [ROBOT] Sent command: ${name}`, args);
-      return true;
+
+      // Create a promise to wait for the response
+      return new Promise((resolve) => {
+        const responseHandler = (event: MessageEvent) => {
+          try {
+            const response = JSON.parse(event.data);
+            console.log(`🤖 [ROBOT] Received response for '${name}':`, response);
+            ws.removeEventListener('message', responseHandler);
+            resolve({ success: true, response });
+          } catch (error) {
+            console.error(`🤖 [ROBOT] Failed to parse response for '${name}':`, error);
+            ws.removeEventListener('message', responseHandler);
+            resolve({ success: false, error: "Failed to parse response" });
+          }
+        };
+
+        // Set up response listener
+        ws.addEventListener('message', responseHandler);
+
+        // Set timeout for response
+        setTimeout(() => {
+          ws.removeEventListener('message', responseHandler);
+          resolve({ success: false, error: "Response timeout" });
+        }, 1000);
+
+        // Send the command
+        ws.send(msg);
+        console.log(`🤖 [ROBOT] Sent command: ${name}`, args);
+      });
     } else {
       console.error(`🤖 [ROBOT] Cannot send command '${name}' - WebSocket not connected.`);
-      return false;
+      return { success: false, error: "WebSocket not connected" };
     }
   } catch (error) {
     console.error(`🤖 [ROBOT] Failed to send command '${name}' - connection error:`, error);
-    return false;
+    return { success: false, error: `Connection error: ${error}` };
   }
 }
 
@@ -197,16 +223,16 @@ export async function handleToolCall(
 
     if (fc.name === "activate_robot") {
       console.log('🤖 [TOOLS] Activating robot');
-      const success = await sendRobotCommand("activate");
+      const result = await sendRobotCommand("activate");
       response = {
-        result: success ? "Robot activated successfully" : "Failed to activate robot - connection error"
+        result: result.success ? result.response?.message || "Robot activated successfully" : `Failed to activate robot: ${result.error}`
       };
     }
     else if (fc.name === "deactivate_robot") {
       console.log('🤖 [TOOLS] Deactivating robot');
-      const success = await sendRobotCommand("deactivate");
+      const result = await sendRobotCommand("deactivate");
       response = {
-        result: success ? "Robot deactivated successfully" : "Failed to deactivate robot - connection error"
+        result: result.success ? result.response?.message || "Robot deactivated successfully" : `Failed to deactivate robot: ${result.error}`
       };
     }
     else if (fc.name === "move_robot") {
@@ -215,17 +241,24 @@ export async function handleToolCall(
       const wz = fc.args?.wz ?? 0;
 
       console.log(`🤖 [TOOLS] Moving robot - vx: ${vx}, vy: ${vy}, wz: ${wz}`);
-      const success = await sendRobotCommand("move", { vx, vy, wz });
+      const result = await sendRobotCommand("move", { vx, vy, wz });
       response = {
-        result: success ? `Robot moving with velocities vx=${vx}, vy=${vy}, wz=${wz}` : "Failed to move robot - connection error"
+        result: result.success ? result.response?.message || `Robot moving with velocities vx=${vx}, vy=${vy}, wz=${wz}` : `Failed to move robot: ${result.error}`
       };
     }
     else if (fc.name === "get_battery_percentage") {
       console.log('🔋 [TOOLS] Getting battery percentage');
-      const success = await sendRobotCommand("get_battery");
-      response = {
-        result: success ? "Battery percentage retrieved" : "Failed to get battery percentage - connection error"
-      };
+      const result = await sendRobotCommand("get_battery");
+      if (result.success && result.response) {
+        const batteryInfo = `Battery: ${result.response.battery_percentage}% (${result.response.battery_status})`;
+        response = {
+          result: batteryInfo
+        };
+      } else {
+        response = {
+          result: `Failed to get battery percentage: ${result.error}`
+        };
+      }
     }
     else if (fc.name === "turn_on_audio_visualizers") {
       const input = fc.args?.input ?? true;
