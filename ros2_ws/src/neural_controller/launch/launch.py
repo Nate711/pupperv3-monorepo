@@ -83,11 +83,18 @@ def generate_launch_description():
     #
     # 6. Nodes from your original launch files
     #
-    joy_node = Node(
-        package="joy",
-        executable="joy_node",
+    # joy_node = Node(
+    #     package="joy",
+    #     executable="joy_node",
+    #     parameters=[node_parameters],
+    #     output="both",
+    # )
+    joy_linux_node = Node(
+        package="joy_linux",
+        executable="joy_linux_node",
         parameters=[node_parameters],
         output="both",
+        name="joy_linux_node",
     )
 
     teleop_twist_joy_node = Node(
@@ -189,7 +196,8 @@ def generate_launch_description():
         imu_sensor_broadcaster_spawner,
         foxglove_bridge,
         joy_util_node,
-        joy_node,
+        # joy_node,
+        joy_linux_node,
         teleop_twist_joy_node,
         camera_node,
     ]
