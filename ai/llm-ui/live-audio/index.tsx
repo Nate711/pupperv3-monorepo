@@ -5,13 +5,17 @@
  */
 
 import { LiveServerMessage } from '@google/genai';
-import { LitElement, css, html } from 'lit';
+import { LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { createBlob, decode, decodeAudioData } from './utils';
 import { AudioManager } from './audio-manager';
 import { SessionManager, SessionState } from './session-manager';
 import { VisualizerManager } from './visualizer-manager';
+import { ConsoleManager } from './console-manager';
+import { ErrorManager } from './error-manager';
 import { handleToolCall } from './tools';
+import { styles } from './styles';
+import { renderTemplate, TemplateProps } from './template';
 import './robot-face';
 
 @customElement('gdm-live-audio')
@@ -22,389 +26,31 @@ export class GdmLiveAudio extends LitElement {
   @state() robotMode = 'idle';
   @state() selectedModel = 'gemini-live-2.5-flash-preview';
   @state() showConsole = false;
-  @state() consoleLogs: Array<{ timestamp: string, level: string, message: string }> = [];
   @state() showInputAnalyzer = true;
   @state() showOutputAnalyzer = true;
 
   private audioManager: AudioManager;
   private sessionManager: SessionManager;
   private visualizerManager: VisualizerManager;
+  private consoleManager: ConsoleManager;
+  private errorManager: ErrorManager;
   private sessionState: SessionState = 'disconnected';
   private mediaStream: MediaStream;
-  private sourceNode: AudioBufferSourceNode;
+  private sourceNode: MediaStreamAudioSourceNode;
   private scriptProcessorNode: ScriptProcessorNode;
 
-  static styles = css`
-    #status {
-      position: absolute;
-      bottom: 5vh;
-      left: 0;
-      right: 0;
-      z-index: 10;
-      text-align: center;
-    }
-
-    .top-bar {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      right: 20px;
-      z-index: 10;
-      display: grid;
-      grid-template-columns: 120px 1fr 200px;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .mode-indicator {
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.3s ease;
-      text-align: center;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .mode-indicator.idle {
-      background: rgba(100, 100, 100, 0.7);
-      border-color: rgba(150, 150, 150, 0.3);
-    }
-
-    .mode-indicator.listening {
-      background: rgba(25, 162, 230, 0.7);
-      border-color: rgba(25, 162, 230, 0.5);
-      animation: pulse-listening 0.9s ease-in-out infinite;
-    }
-
-    .mode-indicator.thinking {
-      background: rgba(128, 90, 213, 0.7);
-      border-color: rgba(128, 90, 213, 0.5);
-    }
-
-    .mode-indicator.speaking {
-      background: rgba(255, 80, 80, 0.7);
-      border-color: rgba(255, 80, 80, 0.5);
-      animation: pulse-speaking 0.32s ease-in-out infinite;
-    }
-
-    .mode-indicator.muted {
-      background: rgba(60, 60, 60, 0.7);
-      border-color: rgba(80, 80, 80, 0.3);
-      filter: grayscale(1);
-    }
-
-    @keyframes pulse-listening {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 162, 230, 0.4); }
-      50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(25, 162, 230, 0); }
-    }
-
-    @keyframes pulse-speaking {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 80, 80, 0.4); }
-      50% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(255, 80, 80, 0); }
-    }
-
-    .control-group {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: rgba(0, 0, 0, 0.7);
-      border: 0px solid rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      padding: 6px;
-    }
-
-    .control-button {
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      width: 36px;
-      height: 36px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s ease;
-      padding: 0;
-    }
-
-    .control-button:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .control-button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-
-    .control-button.recording {
-      background: rgba(200, 0, 0, 0.7);
-      border-color: rgba(200, 0, 0, 0.5);
-      animation: pulse-recording 1s ease-in-out infinite;
-    }
-
-    @keyframes pulse-recording {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(200, 0, 0, 0.4); }
-      50% { box-shadow: 0 0 0 8px rgba(200, 0, 0, 0); }
-    }
-
-    .viz-toggle {
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      white-space: nowrap;
-    }
-
-    .viz-toggle:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .viz-toggle.active {
-      background: rgba(25, 162, 230, 0.7);
-      border-color: rgba(25, 162, 230, 0.5);
-    }
-
-    .model-selector {
-      flex-shrink: 0;
-    }
-
-    .model-selector select {
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 14px;
-      font-family: inherit;
-      cursor: pointer;
-      outline: none;
-      transition: all 0.3s ease;
-    }
-
-    .model-selector select:hover {
-      background: rgba(0, 0, 0, 0.8);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .model-selector select:focus {
-      border-color: rgba(25, 162, 230, 0.5);
-      box-shadow: 0 0 0 2px rgba(25, 162, 230, 0.2);
-    }
-
-    .model-selector option {
-      background: #1a1a1a;
-      color: white;
-      padding: 8px;
-    }
-
-    .console-toggle {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      z-index: 10;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .console-toggle:hover {
-      background: rgba(0, 0, 0, 0.8);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .console-panel {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 30vh;
-      background: rgba(0, 0, 0, 0.9);
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
-      z-index: 20;
-      transform: translateY(100%);
-      transition: transform 0.3s ease;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .console-panel.show {
-      transform: translateY(0);
-    }
-
-    .console-header {
-      padding: 8px 16px;
-      background: rgba(255, 255, 255, 0.1);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      display: flex;
-      justify-content: between;
-      align-items: center;
-      font-size: 12px;
-      color: #ccc;
-    }
-
-    .console-close {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 0;
-      margin-left: auto;
-    }
-
-    .console-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 11px;
-      line-height: 1.4;
-    }
-
-    .console-log {
-      padding: 2px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      display: flex;
-      gap: 8px;
-    }
-
-    .console-timestamp {
-      color: #666;
-      flex-shrink: 0;
-      width: 60px;
-    }
-
-    .console-level {
-      flex-shrink: 0;
-      width: 50px;
-      font-weight: bold;
-    }
-
-    .console-level.log {
-      color: #fff;
-    }
-
-    .console-level.error {
-      color: #ff6b6b;
-    }
-
-    .console-level.warn {
-      color: #ffa726;
-    }
-
-    .console-level.info {
-      color: #42a5f5;
-    }
-
-    .console-message {
-      flex: 1;
-      color: #ccc;
-      word-break: break-word;
-    }
-
-    .audio-visualizer {
-      position: absolute;
-      top: 70px;
-      left: 20px;
-      z-index: 10;
-      width: 200px;
-      height: 80px;
-      background: rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 8px;
-    }
-
-    .visualizer-canvas {
-      width: 100%;
-      height: 100%;
-      background: #000;
-      border-radius: 4px;
-    }
-
-    .output-visualizer {
-      position: absolute;
-      top: 70px;
-      right: 20px;
-      z-index: 10;
-      width: 200px;
-      height: 80px;
-      background: rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 8px;
-    }
-
-  `;
+  static styles = styles;
 
   constructor() {
     super();
     this.audioManager = new AudioManager();
     this.sessionManager = new SessionManager(process.env.GEMINI_API_KEY!);
     this.visualizerManager = new VisualizerManager();
-    this.setupConsoleInterception();
+    this.consoleManager = new ConsoleManager(() => this.requestUpdate());
+    this.errorManager = new ErrorManager((error) => { this.error = error; this.requestUpdate(); });
     this.initClient();
   }
 
-  private setupConsoleInterception() {
-    const originalConsole = {
-      log: console.log,
-      error: console.error,
-      warn: console.warn,
-      info: console.info
-    };
-
-    const addLog = (level: string, ...args: any[]) => {
-      const timestamp = new Date().toLocaleTimeString();
-      const message = args.map(arg =>
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
-
-      this.consoleLogs = [...this.consoleLogs.slice(-99), { timestamp, level, message }];
-    };
-
-    console.log = (...args: any[]) => {
-      originalConsole.log(...args);
-      addLog('log', ...args);
-    };
-
-    console.error = (...args: any[]) => {
-      originalConsole.error(...args);
-      addLog('error', ...args);
-    };
-
-    console.warn = (...args: any[]) => {
-      originalConsole.warn(...args);
-      addLog('warn', ...args);
-    };
-
-    console.info = (...args: any[]) => {
-      originalConsole.info(...args);
-      addLog('info', ...args);
-    };
-  }
 
   private async initClient() {
     this.audioManager.initAudio(this.showInputAnalyzer, this.showOutputAnalyzer);
@@ -423,7 +69,7 @@ export class GdmLiveAudio extends LitElement {
         onMessage: this.handleMessage.bind(this),
         onError: (e: ErrorEvent) => {
           this.sessionState = 'closed';
-          this.handleGoogleAIError(e);
+          this.errorManager.handleGoogleAIError(e);
         },
         onClose: (e: CloseEvent) => {
           this.sessionState = 'closed';
@@ -432,7 +78,7 @@ export class GdmLiveAudio extends LitElement {
       });
     } catch (e) {
       this.sessionState = 'closed';
-      this.handleGoogleAIError(e);
+      this.errorManager.handleGoogleAIError(e);
     }
   }
 
@@ -500,64 +146,7 @@ export class GdmLiveAudio extends LitElement {
     this.status = msg;
   }
 
-  private updateError(msg: string) {
-    this.error = msg;
-  }
 
-  private handleGoogleAIError(error: any) {
-    console.error('Google AI API Error:', error);
-
-    // Check for HTTP status codes
-    if (error.status || error.code) {
-      const statusCode = error.status || error.code;
-
-      switch (statusCode) {
-        case 429:
-          console.error('❌ Rate limit exceeded (429): Too many requests');
-          this.updateError('Rate limit exceeded. Please wait before trying again.');
-          break;
-        case 500:
-          console.error('❌ Internal server error (500): Google AI service error');
-          this.updateError('Google AI service temporarily unavailable.');
-          break;
-        case 503:
-          console.error('❌ Service unavailable (503): Google AI overloaded');
-          this.updateError('Google AI service overloaded. Please try again later.');
-          break;
-        case 401:
-          console.error('❌ Unauthorized (401): Invalid API key');
-          this.updateError('Invalid API key. Please check your credentials.');
-          break;
-        case 403:
-          console.error('❌ Forbidden (403): Access denied');
-          this.updateError('Access denied. Please check your permissions.');
-          break;
-        case 400:
-          console.error('❌ Bad request (400): Invalid request format');
-          this.updateError('Invalid request format.');
-          break;
-        case 502:
-          console.error('❌ Bad gateway (502): Upstream server error');
-          this.updateError('Google AI gateway error. Please try again.');
-          break;
-        case 504:
-          console.error('❌ Gateway timeout (504): Request timeout');
-          this.updateError('Request timeout. Please try again.');
-          break;
-        default:
-          console.error(`❌ HTTP Error (${statusCode}):`, error.message || 'Unknown error');
-          this.updateError(`API error (${statusCode}): ${error.message || 'Unknown error'}`);
-      }
-    } else if (error.message) {
-      // Handle generic errors
-      console.error('❌ Google AI Error:', error.message);
-      this.updateError(`Google AI error: ${error.message}`);
-    } else {
-      // Handle unknown errors
-      console.error('❌ Unknown Google AI Error:', error);
-      this.updateError('Unknown Google AI error occurred.');
-    }
-  }
 
   private async startRecording() {
     console.log('🎤 [RECORDING] Start recording requested, current session state:', this.sessionState);
@@ -675,7 +264,7 @@ export class GdmLiveAudio extends LitElement {
       this.sessionManager.close();
     } catch (e) {
       console.error('❌ [RESET] Error closing session:', e);
-      this.handleGoogleAIError(e);
+      this.errorManager.handleGoogleAIError(e);
     }
 
     this.sessionState = 'disconnected';
@@ -710,7 +299,7 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private clearConsole = () => {
-    this.consoleLogs = [];
+    this.consoleManager.clearLogs();
   }
 
   private toggleInputAnalyzer = () => {
@@ -737,7 +326,7 @@ export class GdmLiveAudio extends LitElement {
     super.updated(changedProperties);
 
     // Auto-scroll console to bottom when new logs are added
-    if (changedProperties.has('consoleLogs') && this.showConsole) {
+    if (this.showConsole) {
       const consoleContent = this.shadowRoot?.querySelector('.console-content');
       if (consoleContent) {
         consoleContent.scrollTop = consoleContent.scrollHeight;
@@ -789,123 +378,28 @@ export class GdmLiveAudio extends LitElement {
   }
 
   render() {
-    return html`
-      <div>
-        <div class="top-bar">
-          <div class="mode-indicator ${this.robotMode}">
-            ${this.robotMode}
-          </div>
-
-          <div class="control-group">
-            <button
-              class="control-button"
-              @click=${this.reset}
-              ?disabled=${this.isRecording}
-              title="Reset Session">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                height="20px"
-                viewBox="0 -960 960 960"
-                width="20px"
-                fill="currentColor">
-                <path
-                  d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z" />
-              </svg>
-            </button>
-            
-            ${!this.isRecording ? html`
-              <button
-                class="control-button"
-                @click=${this.startRecording}
-                title="Start Recording">
-                <svg
-                  viewBox="0 0 100 100"
-                  width="18px"
-                  height="18px"
-                  fill="#c80000"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="50" />
-                </svg>
-              </button>
-            ` : html`
-              <button
-                class="control-button recording"
-                @click=${this.stopRecording}
-                title="Stop Recording">
-                <svg
-                  viewBox="0 0 100 100"
-                  width="16px"
-                  height="16px"
-                  fill="currentColor"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <rect x="25" y="25" width="50" height="50" rx="5" />
-                </svg>
-              </button>
-            `}
-
-            <div style="width: 1px; height: 24px; background: rgba(255, 255, 255, 0.2);"></div>
-
-            <button 
-              class="viz-toggle ${this.showInputAnalyzer ? 'active' : ''}"
-              @click=${this.toggleInputAnalyzer}
-              title="Toggle Input Visualizer">
-              In Viz
-            </button>
-            <button 
-              class="viz-toggle ${this.showOutputAnalyzer ? 'active' : ''}"
-              @click=${this.toggleOutputAnalyzer}
-              title="Toggle Output Visualizer">
-              Out Viz
-            </button>
-          </div>
-
-          <div class="model-selector">
-            <select @change=${this.onModelChange} .value=${this.selectedModel}>
-              <option value="gemini-live-2.5-flash-preview">Gemini Live 2.5 Flash</option>
-              <option value="gemini-2.5-flash-preview-native-audio-dialog">Gemini 2.5 Flash Native Audio</option>
-            </select>
-          </div>
-        </div>
-
-        ${this.showInputAnalyzer ? html`
-          <div class="audio-visualizer">
-            <canvas class="visualizer-canvas"></canvas>
-          </div>
-        ` : ''}
-
-        ${this.showOutputAnalyzer ? html`
-          <div class="output-visualizer">
-            <canvas class="visualizer-canvas"></canvas>
-          </div>
-        ` : ''}
-
-        <div id="status"> ${this.error} </div>
-        <gdm-robot-face
-          .inputNode=${this.audioManager.getInputNode()}
-          .outputNode=${this.audioManager.getOutputNode()}
-          @mode-change=${this.onRobotModeChange}></gdm-robot-face>
-
-        <button class="console-toggle" @click=${this.toggleConsole}>
-          ${this.showConsole ? 'Hide Console' : 'Show Console'}
-        </button>
-
-        <div class="console-panel ${this.showConsole ? 'show' : ''}">
-          <div class="console-header">
-            <span>Console (${this.consoleLogs.length} logs)</span>
-            <button @click=${this.clearConsole} style="margin-left: 10px; background: none; border: 1px solid #666; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">Clear</button>
-            <button class="console-close" @click=${this.toggleConsole}>×</button>
-          </div>
-          <div class="console-content">
-            ${this.consoleLogs.map(log => html`
-              <div class="console-log">
-                <span class="console-timestamp">${log.timestamp}</span>
-                <span class="console-level ${log.level}">${log.level.toUpperCase()}</span>
-                <span class="console-message">${log.message}</span>
-              </div>
-            `)}
-          </div>
-        </div>
-      </div>
-    `;
+    const props: TemplateProps = {
+      robotMode: this.robotMode,
+      selectedModel: this.selectedModel,
+      onModelChange: this.onModelChange,
+      onReset: this.reset.bind(this),
+      onStartRecording: this.startRecording.bind(this),
+      onStopRecording: this.stopRecording.bind(this),
+      onToggleInputAnalyzer: this.toggleInputAnalyzer,
+      onToggleOutputAnalyzer: this.toggleOutputAnalyzer,
+      onToggleConsole: this.toggleConsole,
+      onClearConsole: this.clearConsole,
+      onRobotModeChange: this.onRobotModeChange,
+      isRecording: this.isRecording,
+      showInputAnalyzer: this.showInputAnalyzer,
+      showOutputAnalyzer: this.showOutputAnalyzer,
+      showConsole: this.showConsole,
+      consoleLogs: this.consoleManager.getLogs(),
+      error: this.error,
+      inputNode: this.audioManager.getInputNode(),
+      outputNode: this.audioManager.getOutputNode()
+    };
+    
+    return renderTemplate(props);
   }
 }
