@@ -27,25 +27,25 @@ function initRobotWebSocket(): Promise<WebSocket> {
       // Use appropriate WebSocket protocol based on current page protocol
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${wsProtocol}//localhost:8765`;
-      
+
       console.log(`🤖 [ROBOT] Attempting to connect to robot server at ${wsUrl}...`);
       robotWebSocket = new WebSocket(wsUrl);
-      
+
       robotWebSocket.addEventListener("open", () => {
         console.log("🤖 [ROBOT] WebSocket connection established");
         resolve(robotWebSocket!);
       });
-      
+
       robotWebSocket.addEventListener("message", (event) => {
         const response = JSON.parse(event.data);
         console.log("🤖 [ROBOT] Response:", response);
       });
-      
+
       robotWebSocket.addEventListener("close", () => {
         console.log("🤖 [ROBOT] WebSocket connection closed");
         robotWebSocket = null;
       });
-      
+
       robotWebSocket.addEventListener("error", (error) => {
         console.error("🤖 [ROBOT] WebSocket connection error - server may not be running:", error);
         robotWebSocket = null;
@@ -62,7 +62,7 @@ function initRobotWebSocket(): Promise<WebSocket> {
 async function sendRobotCommand(name: string, args: any = {}): Promise<boolean> {
   try {
     const ws = await initRobotWebSocket();
-    
+
     if (ws && ws.readyState === WebSocket.OPEN) {
       const msg = JSON.stringify({ name, args });
       ws.send(msg);
@@ -89,8 +89,44 @@ export const activate_robot = {
 };
 
 export const deactivate_robot = {
-  name: "deactivate_robot", 
+  name: "deactivate_robot",
   description: "Deactivate the robot to stop operations",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {}
+  }
+};
+
+export const move_robot = {
+  name: "move_robot",
+  description: `Move the robot with specified velocities. 
+  Constraints: max vx=0.75m/s, max vy=0.5m/s, max wz=2.0rad/s. 
+  Minimum movement threshold: vx/vy must be 0 or >=0.2m/s to actually move the robot. 
+  If the user doesn't specify a speed, choose a medium speed.
+  Forward => positive vx. Backward => negative vx. Left => positive vy. Right => negative vy. Turn right => negative wz. Turn left => positive wz.`,
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      vx: {
+        type: Type.NUMBER,
+        description: "Linear velocity in x direction (forward/backward) in m/s. Range: 0 or 0.2 to 0.75. Values <0.2 won't move the robot."
+      },
+      vy: {
+        type: Type.NUMBER,
+        description: "Linear velocity in y direction (left/right) in m/s. Range: 0 or 0.2 to 0.5. Values <0.2 won't move the robot."
+      },
+      wz: {
+        type: Type.NUMBER,
+        description: "Angular velocity around z axis (rotation) in rad/s. Range: -2.0 to 2.0. Values <0.4 won't move the robot."
+      }
+    },
+    required: ["vx", "vy", "wz"]
+  }
+};
+
+export const get_battery_percentage = {
+  name: "get_battery_percentage",
+  description: "Get the current battery percentage of the robot",
   parameters: {
     type: Type.OBJECT,
     properties: {}
@@ -138,6 +174,8 @@ export const tools = [{
   functionDeclarations: [
     activate_robot,
     deactivate_robot,
+    move_robot,
+    get_battery_percentage,
     turn_on_audio_visualizers,
     turn_off_audio_visualizers
   ]
@@ -169,6 +207,24 @@ export async function handleToolCall(
       const success = await sendRobotCommand("deactivate");
       response = {
         result: success ? "Robot deactivated successfully" : "Failed to deactivate robot - connection error"
+      };
+    }
+    else if (fc.name === "move_robot") {
+      const vx = fc.args?.vx ?? 0;
+      const vy = fc.args?.vy ?? 0;
+      const wz = fc.args?.wz ?? 0;
+
+      console.log(`🤖 [TOOLS] Moving robot - vx: ${vx}, vy: ${vy}, wz: ${wz}`);
+      const success = await sendRobotCommand("move", { vx, vy, wz });
+      response = {
+        result: success ? `Robot moving with velocities vx=${vx}, vy=${vy}, wz=${wz}` : "Failed to move robot - connection error"
+      };
+    }
+    else if (fc.name === "get_battery_percentage") {
+      console.log('🔋 [TOOLS] Getting battery percentage');
+      const success = await sendRobotCommand("get_battery");
+      response = {
+        result: success ? "Battery percentage retrieved" : "Failed to get battery percentage - connection error"
       };
     }
     else if (fc.name === "turn_on_audio_visualizers") {
