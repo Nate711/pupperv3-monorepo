@@ -183,7 +183,7 @@ export class GdmLiveAudio extends LitElement {
 
       // Create AudioWorklet node
       this.audioWorkletNode = await this.audioManager.createAudioWorkletNode(this.sourceNode);
-      
+
       // Set up message handler for audio data
       this.audioWorkletNode.port.onmessage = (event) => {
         if (event.data.type === 'audioData') {
@@ -199,8 +199,8 @@ export class GdmLiveAudio extends LitElement {
           const pcmData = event.data.data;
 
           try {
-            // Only log every 100th audio frame to avoid spam
-            if (Math.random() < 0.01) {
+            // Only log every 1000th audio frame (10s or so) to avoid spam
+            if (Math.random() < 0.001) {
               console.log('🎤 [AUDIO] Sending realtime input, session state:', this.sessionState);
             }
             this.sessionManager.sendRealtimeInput({ media: createBlob(pcmData) });
@@ -244,7 +244,7 @@ export class GdmLiveAudio extends LitElement {
 
     // Disable recording in the worklet
     this.audioManager.setWorkletRecording(false);
-    
+
     if (this.audioWorkletNode && this.sourceNode && this.audioManager.getInputAudioContext()) {
       this.audioManager.disconnectWorklet();
       this.sourceNode.disconnect();
@@ -306,7 +306,7 @@ export class GdmLiveAudio extends LitElement {
 
   private toggleInputAnalyzer = () => {
     this.showInputAnalyzer = this.audioManager.toggleInputAnalyzer(this.showInputAnalyzer);
-    
+
     if (!this.showInputAnalyzer) {
       this.visualizerManager.stopVisualizer(this.shadowRoot);
     } else if (this.isRecording) {
@@ -316,7 +316,7 @@ export class GdmLiveAudio extends LitElement {
 
   private toggleOutputAnalyzer = () => {
     this.showOutputAnalyzer = this.audioManager.toggleOutputAnalyzer(this.showOutputAnalyzer);
-    
+
     if (!this.showOutputAnalyzer) {
       this.visualizerManager.stopOutputVisualizer(this.shadowRoot);
     } else {
@@ -401,7 +401,7 @@ export class GdmLiveAudio extends LitElement {
       inputNode: this.audioManager.getInputNode(),
       outputNode: this.audioManager.getOutputNode()
     };
-    
+
     return renderTemplate(props);
   }
 }
