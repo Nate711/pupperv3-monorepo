@@ -428,7 +428,7 @@ export class GdmLiveAudio extends LitElement {
     this.updateSystemStats();
     this.batteryUpdateInterval = window.setInterval(() => {
       this.updateSystemStats();
-    }, 1000);
+    }, 2000);
   }
 
   private stopSystemMonitoring() {

@@ -203,8 +203,8 @@ async def handle_command(command_name: str, command_args: dict) -> dict:
     
     elif command_name == "get_cpu_usage":
         try:
-            # Get CPU usage (average over 1 second for better accuracy)
-            cpu_usage = psutil.cpu_percent(interval=0.1)
+            # Get CPU usage (instant measurement, no blocking)
+            cpu_usage = psutil.cpu_percent()
             system_info = {
                 "platform": platform.system(),
                 "cpu_count": psutil.cpu_count(),

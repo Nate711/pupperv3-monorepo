@@ -11,6 +11,8 @@ import logging
 import websockets
 import os
 import subprocess
+import psutil
+import platform
 from datetime import datetime
 from functools import partial
 from typing import Union
@@ -174,6 +176,34 @@ class WebSocketRobotServer(Node):
                 "command_count": self.robot_state.command_count,
             }
 
+        elif command_name == "get_cpu_usage":
+            try:
+                # Get CPU usage (instant measurement, no blocking)
+                cpu_usage = psutil.cpu_percent()
+                system_info = {
+                    "platform": platform.system(),
+                    "cpu_count": psutil.cpu_count(),
+                    "cpu_count_logical": psutil.cpu_count(logical=True)
+                }
+                
+                logger.info(f"💻 CPU usage: {cpu_usage}%")
+                return {
+                    "status": "success",
+                    "message": f"CPU usage at {cpu_usage}%",
+                    "cpu_usage": round(cpu_usage, 1),
+                    "system_info": system_info,
+                    "timestamp": datetime.now().isoformat(),
+                    "command_count": self.robot_state.command_count
+                }
+            except Exception as e:
+                logger.error(f"❌ Failed to get CPU usage: {e}")
+                return {
+                    "status": "error",
+                    "message": f"Failed to get CPU usage: {str(e)}",
+                    "timestamp": datetime.now().isoformat(),
+                    "command_count": self.robot_state.command_count
+                }
+
         elif command_name == "status":
             battery_percentage, battery_voltage = await self.get_battery_info()
             return {
@@ -192,7 +222,7 @@ class WebSocketRobotServer(Node):
             return {
                 "status": "error",
                 "message": f"Unknown command: {command_name}",
-                "available_commands": ["activate", "deactivate", "move", "get_battery", "status"],
+                "available_commands": ["activate", "deactivate", "move", "get_battery", "get_cpu_usage", "status"],
                 "timestamp": datetime.now().isoformat(),
                 "command_count": self.robot_state.command_count,
             }
