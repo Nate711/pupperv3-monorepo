@@ -17,6 +17,8 @@ export class GdmRobotFace extends LitElement {
   @state() private pingClass = '';
   @state() private gazeX = 0;
   @state() private gazeY = 0;
+  private gazeStartTime = Date.now();
+  private gazeUpdateInterval!: number;
 
   private _outputNode!: AudioNode;
   private _inputNode!: AudioNode;
@@ -167,13 +169,13 @@ export class GdmRobotFace extends LitElement {
 
     /* Blink animation */
     .blink .lidTop {
-      animation: blinkOnce 500ms cubic-bezier(.3, .7, .2, 1) 1;
+      animation: blinkOnce 800ms cubic-bezier(.3, .7, .2, 1) 1;
     }
 
     @keyframes blinkOnce {
       0% { transform: translateY(0); }
-      45% { transform: translateY(288px); }
-      55% { transform: translateY(288px); }
+      45% { transform: translateY(370px); }
+      55% { transform: translateY(370px); }
       100% { transform: translateY(0); }
     }
 
@@ -225,11 +227,13 @@ export class GdmRobotFace extends LitElement {
     super.connectedCallback();
     this.startAnimation();
     this.scheduleIdleBlink();
+    this.startGazeAnimation();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.stopAnimation();
+    this.stopGazeAnimation();
     if (this.blinkTimer) {
       clearTimeout(this.blinkTimer);
     }
@@ -308,7 +312,7 @@ export class GdmRobotFace extends LitElement {
 
     if (this.currentState === 'idle') {
       const wait = 1800 + Math.random() * 4200;
-      this.blinkTimer = setTimeout(() => {
+      this.blinkTimer = window.setTimeout(() => {
         this.blink();
         this.scheduleIdleBlink();
       }, wait);
@@ -322,13 +326,48 @@ export class GdmRobotFace extends LitElement {
     setTimeout(() => {
       this.blinkClass = '';
       this.requestUpdate();
-    }, 260);
+    }, 800);
+  }
+
+  private updateGaze() {
+    const currentTime = Date.now();
+    const elapsedTime = (currentTime - this.gazeStartTime) / 1000; // Convert to seconds
+
+    // 0.1Hz frequency means one complete cycle every 10 seconds
+    // Use different phases for X and Y to create more natural wandering
+    const frequencyX = 0.1;
+    const frequencyY = 0.08; // Slightly different frequency for Y
+
+    // Create smooth sinusoidal movement with limited range
+    // Range: ±15 pixels for subtle eye movement
+    this.gazeX = Math.sin(2 * Math.PI * frequencyX * elapsedTime) * 6;
+    this.gazeY = Math.cos(2 * Math.PI * frequencyY * elapsedTime) * 4; // Slightly less vertical movement
+
+    this.requestUpdate();
+  }
+
+  private startGazeAnimation() {
+    // Update gaze every 100ms (10Hz) for smooth interpolation
+    // This is much more efficient than 60fps requestAnimationFrame
+    this.gazeUpdateInterval = window.setInterval(() => {
+      if (this.currentState === 'idle' || this.currentState === 'thinking') {
+        this.updateGaze();
+      }
+    }, 100);
+  }
+
+  private stopGazeAnimation() {
+    if (this.gazeUpdateInterval) {
+      clearInterval(this.gazeUpdateInterval);
+      this.gazeUpdateInterval = undefined as any;
+    }
   }
 
   protected render() {
     return html`
       <div class="robot-face-container">
-        <div class="stage ${this.blinkClass} ${this.pingClass}" data-state="${this.currentState}">
+        <div class="stage ${this.blinkClass} ${this.pingClass}" data-state="${this.currentState}" 
+             style="--gaze-x: ${this.gazeX}px; --gaze-y: ${this.gazeY}px;">
           <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
               <filter id="blur8">
