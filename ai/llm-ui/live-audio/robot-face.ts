@@ -236,8 +236,14 @@ export class GdmRobotFace extends LitElement {
   }
 
   private startAnimation() {
+    let frameCount = 0;
+    const AUDIO_CHECK_INTERVAL = 6; // Check audio every 3rd frame (~20fps instead of 60fps)
+
     const animate = () => {
-      if (this.inputAnalyser && this.outputAnalyser) {
+      frameCount++;
+
+      // Only check audio levels every 3rd frame to reduce CPU usage
+      if (frameCount % AUDIO_CHECK_INTERVAL === 0 && this.inputAnalyser && this.outputAnalyser) {
         this.inputAnalyser.update();
         this.outputAnalyser.update();
 
