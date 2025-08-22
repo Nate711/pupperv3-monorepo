@@ -26,7 +26,7 @@ function initRobotWebSocket(): Promise<WebSocket> {
     try {
       // Use appropriate WebSocket protocol based on current page protocol
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${wsProtocol}//localhost:8765`;
+      const wsUrl = `${wsProtocol}//localhost:8008`;
 
       console.log(`🤖 [ROBOT] Attempting to connect to robot server at ${wsUrl}...`);
       robotWebSocket = new WebSocket(wsUrl);

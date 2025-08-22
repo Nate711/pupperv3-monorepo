@@ -222,7 +222,7 @@ async def handle_command(command_name: str, command_args: dict) -> dict:
 async def main():
     """Start the WebSocket server."""
     host = "localhost"
-    port = 8765
+    port = 8008
     
     logger.info(f"🚀 Starting robot WebSocket server on {host}:{port}")
     logger.info(f"🤖 Initial robot state: {'ACTIVE' if robot_state.is_active else 'INACTIVE'}")

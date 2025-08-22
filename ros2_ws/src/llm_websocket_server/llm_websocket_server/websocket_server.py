@@ -33,6 +33,8 @@ CONTROLLER_NAME_MAP = {
     "3-legged": "neural_controller_three_legged",
 }
 
+PORT = 8008
+
 
 class RobotState:
     def __init__(self):
@@ -296,7 +298,7 @@ class WebSocketRobotServer(Node):
         try:
             # Use the same battery check script as openai_bridge
             result = subprocess.run(
-                ["python3", "/Users/nathankau/pupperv3-monorepo/robot/utils/check_batt_voltage.py"],
+                ["python3", "/home/pi/pupperv3-monorepo/robot/utils/check_batt_voltage.py"],
                 capture_output=True,
                 text=True,
                 timeout=5.0,
@@ -325,7 +327,7 @@ class WebSocketRobotServer(Node):
     async def start_websocket_server(self):
         """Start the WebSocket server."""
         host = "localhost"
-        port = 8765
+        port = PORT
 
         logger.info(f"🚀 Starting LLM WebSocket server on {host}:{port}")
         logger.info(f"🤖 Initial robot state: {'ACTIVE' if self.robot_state.is_active else 'INACTIVE'}")
