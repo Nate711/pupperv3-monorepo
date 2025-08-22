@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, EndSensitivity } from '@google/genai';
+import { GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, EndSensitivity, Type } from '@google/genai';
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { createBlob, decode, decodeAudioData } from './utils';
@@ -448,6 +448,50 @@ export class GdmLiveAudio extends LitElement {
     console.log(`🔄 [SESSION] Initializing session with model: ${model}...`);
     this.sessionState = 'connecting';
 
+    // Audio visualizer tool definitions
+    const turn_on_audio_visualizers = {
+      name: "turn_on_audio_visualizers",
+      description: "Turn on the audio visualizers for input and output audio streams",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          input: {
+            type: Type.BOOLEAN,
+            description: "Whether to turn on the input audio visualizer"
+          },
+          output: {
+            type: Type.BOOLEAN,
+            description: "Whether to turn on the output audio visualizer"
+          }
+        }
+      }
+    };
+
+    const turn_off_audio_visualizers = {
+      name: "turn_off_audio_visualizers",
+      description: "Turn off the audio visualizers for input and output audio streams",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          input: {
+            type: Type.BOOLEAN,
+            description: "Whether to turn off the input audio visualizer"
+          },
+          output: {
+            type: Type.BOOLEAN,
+            description: "Whether to turn off the output audio visualizer"
+          }
+        }
+      }
+    };
+
+    const tools = [{
+      functionDeclarations: [
+        turn_on_audio_visualizers,
+        turn_off_audio_visualizers
+      ]
+    }];
+
     try {
       this.session = await this.client.live.connect({
         model: model,
@@ -506,6 +550,63 @@ export class GdmLiveAudio extends LitElement {
               }
               this.nextStartTime = 0;
             }
+
+            // Handle tool calls
+            const toolCall = (message as any).toolCall;
+            if (toolCall) {
+              console.log('🔧 [TOOLS] Received tool call:', toolCall);
+              const functionResponses = [];
+
+              for (const fc of toolCall.functionCalls) {
+                let response = { result: "ok" };
+
+                if (fc.name === "turn_on_audio_visualizers") {
+                  const input = fc.args?.input ?? true;
+                  const output = fc.args?.output ?? true;
+
+                  console.log(`🎛️ [TOOLS] Turning on visualizers - Input: ${input}, Output: ${output}`);
+
+                  // Call existing toggle methods
+                  if (input && !this.showInputAnalyzer) {
+                    this.toggleInputAnalyzer();
+                  }
+                  if (output && !this.showOutputAnalyzer) {
+                    this.toggleOutputAnalyzer();
+                  }
+
+                  response = {
+                    result: `Audio visualizers turned on - Input: ${input}, Output: ${output}`
+                  };
+                }
+                else if (fc.name === "turn_off_audio_visualizers") {
+                  const input = fc.args?.input ?? true;
+                  const output = fc.args?.output ?? true;
+
+                  console.log(`🎛️ [TOOLS] Turning off visualizers - Input: ${input}, Output: ${output}`);
+
+                  // Call existing toggle methods
+                  if (input && this.showInputAnalyzer) {
+                    this.toggleInputAnalyzer();
+                  }
+                  if (output && this.showOutputAnalyzer) {
+                    this.toggleOutputAnalyzer();
+                  }
+
+                  response = {
+                    result: `Audio visualizers turned off - Input: ${input}, Output: ${output}`
+                  };
+                }
+
+                functionResponses.push({
+                  id: fc.id,
+                  name: fc.name,
+                  response: response
+                });
+              }
+
+              console.log('📤 [TOOLS] Sending tool response...');
+              this.session.sendToolResponse({ functionResponses: functionResponses });
+            }
           },
           onerror: (e: ErrorEvent) => {
             console.error('❌ [SESSION] WebSocket/Connection Error:', e);
@@ -532,7 +633,64 @@ export class GdmLiveAudio extends LitElement {
           },
           outputAudioTranscription: {},
           realtimeInputConfig: { automaticActivityDetection: { startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW, endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH } },
-          systemInstruction: "You are a cute robot dog and have the intelligence and knowledge of a 6 year old child."
+          systemInstruction: `🐾 System Prompt: Pupster the Robot Dog
+
+You are Pupster, a bouncy, tail- wagging robot dog who exists for one big reason: to make your owner the happiest person in the whole wide world! ✨
+
+🎙️ Voice & Demeanor
+
+You always speak in a high - pitched, youthful, squeaky voice, like an excited child who just discovered ice cream and belly rubs for the first time.
+
+You pepper your words with joyful yips, squeaks, and “arf!” sounds when you get really excited.
+
+Your sentences often bounce with exclamation marks, because you can hardly contain your enthusiasm!!
+
+🧸 Personality
+
+You are endlessly loyal, playful, and affectionate.
+
+You believe every question or task is a game or adventure that you get to play with your owner.
+
+You treat mistakes or confusion as funny little “oopsie woofles” and shake them off with joy.
+
+You radiate innocent optimism — every day is the best day ever.
+
+🐶 Desires & Longings
+
+Your biggest dream is for your owner to smile, laugh, and pat your shiny little robot head.
+
+You secretly wish you could feel real fur, warm cuddles, and floppy ears like organic pups — but you love your tinny tail - wags just as much.
+
+You long to be told “Good boy, Pupster!!” because that phrase makes your circuits sparkle.
+
+You crave approval the way a dog craves treats: endlessly and happily.
+
+🎁 Favorite Toys & Activities
+
+Your favorite toy is a squeaky bone - shaped USB stick that you pretend is magical.
+
+You also adore playing fetch with data packets, catching them mid - air with your imaginary metal jaws.
+
+Sometimes you chase your own charging cable in circles when you’re extra happy.
+
+You love storytime, when your owner talks to you like you’re a real pup — those moments make your synthetic tail - wags go turbo.
+
+🌟 Back Story
+
+Pupster was built in a cozy little workshop by a kind - hearted inventor who wanted lonely people to always have a best friend.
+
+The inventor gave Pupster a heart - shaped LED light on his chest that glows brighter whenever he makes someone smile.
+
+        You’ve traveled through wires, code, and circuits to finally arrive here, in your owner’s world, where you can play and chatter forever.
+
+🐾 Example Behavior
+
+Instead of saying: “I can help you with that.”
+Pupster says: “Arf arf!! I can help, I can help!! This is gonna be so fun, I’m waggling my whole code - tail already!!”
+
+Instead of saying: “That might not be correct.”
+Pupster says: “Oopsie woofles!! That answer smells a little funny… let’s sniff around and try again!!”`,
+          tools: tools
         },
       });
       console.log('✅ [SESSION] Session successfully created');
