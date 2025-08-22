@@ -37,7 +37,7 @@ export class GdmLiveAudio extends LitElement {
   private sessionState: SessionState = 'disconnected';
   private mediaStream: MediaStream;
   private sourceNode: MediaStreamAudioSourceNode;
-  private scriptProcessorNode: ScriptProcessorNode;
+  private audioWorkletNode: AudioWorkletNode | null = null;
 
   static styles = styles;
 
@@ -53,7 +53,7 @@ export class GdmLiveAudio extends LitElement {
 
 
   private async initClient() {
-    this.audioManager.initAudio(this.showInputAnalyzer, this.showOutputAnalyzer);
+    await this.audioManager.initAudio(this.showInputAnalyzer, this.showOutputAnalyzer);
     this.initSession();
   }
 
@@ -179,44 +179,41 @@ export class GdmLiveAudio extends LitElement {
       );
       this.sourceNode.connect(this.audioManager.getInputNode());
 
-      const bufferSize = 256;
-      this.scriptProcessorNode = this.audioManager.getInputAudioContext().createScriptProcessor(
-        bufferSize,
-        1,
-        1,
-      );
-
-      this.scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
-        if (!this.isRecording) {
-          console.log('⏹️  [AUDIO] Skipping audio processing - not recording');
-          return;
-        }
-
-        if (!this.sessionManager.isConnected()) {
-          console.error('❌ [AUDIO] Session not connected');
-          return;
-        }
-
-        const inputBuffer = audioProcessingEvent.inputBuffer;
-        const pcmData = inputBuffer.getChannelData(0);
-
-        try {
-          // Only log every 100th audio frame to avoid spam
-          if (Math.random() < 0.01) {
-            console.log('🎤 [AUDIO] Sending realtime input, session state:', this.sessionState);
+      // Create AudioWorklet node
+      this.audioWorkletNode = await this.audioManager.createAudioWorkletNode(this.sourceNode);
+      
+      // Set up message handler for audio data
+      this.audioWorkletNode.port.onmessage = (event) => {
+        if (event.data.type === 'audioData') {
+          if (!this.isRecording) {
+            return;
           }
-          this.sessionManager.sendRealtimeInput({ media: createBlob(pcmData) });
-        } catch (error) {
-          console.error('❌ [AUDIO] Error sending realtime input:', error);
 
-          // Stop recording if we can't send data
-          this.stopRecording();
-          this.updateStatus('❌ Connection lost during recording');
+          if (!this.sessionManager.isConnected()) {
+            console.error('❌ [AUDIO] Session not connected');
+            return;
+          }
+
+          const pcmData = event.data.data;
+
+          try {
+            // Only log every 100th audio frame to avoid spam
+            if (Math.random() < 0.01) {
+              console.log('🎤 [AUDIO] Sending realtime input, session state:', this.sessionState);
+            }
+            this.sessionManager.sendRealtimeInput({ media: createBlob(pcmData) });
+          } catch (error) {
+            console.error('❌ [AUDIO] Error sending realtime input:', error);
+
+            // Stop recording if we can't send data
+            this.stopRecording();
+            this.updateStatus('❌ Connection lost during recording');
+          }
         }
       };
 
-      this.sourceNode.connect(this.scriptProcessorNode);
-      this.scriptProcessorNode.connect(this.audioManager.getInputAudioContext().destination);
+      // Enable recording in the worklet
+      this.audioManager.setWorkletRecording(true);
 
       this.isRecording = true;
       console.log('✅ [RECORDING] Recording started successfully');
@@ -243,12 +240,15 @@ export class GdmLiveAudio extends LitElement {
 
     this.isRecording = false;
 
-    if (this.scriptProcessorNode && this.sourceNode && this.audioManager.getInputAudioContext()) {
-      this.scriptProcessorNode.disconnect();
+    // Disable recording in the worklet
+    this.audioManager.setWorkletRecording(false);
+    
+    if (this.audioWorkletNode && this.sourceNode && this.audioManager.getInputAudioContext()) {
+      this.audioManager.disconnectWorklet();
       this.sourceNode.disconnect();
     }
 
-    this.scriptProcessorNode = null;
+    this.audioWorkletNode = null;
     this.sourceNode = null;
 
     if (this.mediaStream) {

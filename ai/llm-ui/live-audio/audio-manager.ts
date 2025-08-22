@@ -12,6 +12,8 @@ export class AudioManager {
   private inputAnalyser: AnalyserNode | null = null;
   private outputAnalyser: AnalyserNode | null = null;
   private sources = new Set<AudioBufferSourceNode>();
+  private audioWorkletNode: AudioWorkletNode | null = null;
+  private isWorkletLoaded = false;
 
   constructor() {
     this.inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -20,8 +22,11 @@ export class AudioManager {
     this.outputNode = this.outputAudioContext.createGain();
   }
 
-  initAudio(showInputAnalyzer: boolean, showOutputAnalyzer: boolean) {
+  async initAudio(showInputAnalyzer: boolean, showOutputAnalyzer: boolean) {
     this.nextStartTime = this.outputAudioContext.currentTime;
+
+    // Load AudioWorklet processor
+    await this.loadAudioWorklet();
 
     // Set up input analyzer for visualizer if enabled
     if (showInputAnalyzer) {
@@ -41,6 +46,52 @@ export class AudioManager {
 
     // Connect output to destination
     this.outputNode.connect(this.outputAudioContext.destination);
+  }
+
+  private async loadAudioWorklet() {
+    if (!this.isWorkletLoaded) {
+      try {
+        await this.inputAudioContext.audioWorklet.addModule('./audio-processor.js');
+        this.isWorkletLoaded = true;
+        console.log('✅ [AUDIO] AudioWorklet processor loaded successfully');
+      } catch (error) {
+        console.error('❌ [AUDIO] Failed to load AudioWorklet processor:', error);
+        throw error;
+      }
+    }
+  }
+
+  async createAudioWorkletNode(sourceNode: MediaStreamAudioSourceNode): Promise<AudioWorkletNode> {
+    if (!this.isWorkletLoaded) {
+      await this.loadAudioWorklet();
+    }
+
+    this.audioWorkletNode = new AudioWorkletNode(this.inputAudioContext, 'audio-processor');
+    
+    // Connect source to worklet
+    sourceNode.connect(this.audioWorkletNode);
+    
+    return this.audioWorkletNode;
+  }
+
+  setWorkletRecording(recording: boolean) {
+    if (this.audioWorkletNode) {
+      this.audioWorkletNode.port.postMessage({
+        type: 'setRecording',
+        recording
+      });
+    }
+  }
+
+  getAudioWorkletNode() {
+    return this.audioWorkletNode;
+  }
+
+  disconnectWorklet() {
+    if (this.audioWorkletNode) {
+      this.audioWorkletNode.disconnect();
+      this.audioWorkletNode = null;
+    }
   }
 
   toggleInputAnalyzer(showInputAnalyzer: boolean): boolean {
