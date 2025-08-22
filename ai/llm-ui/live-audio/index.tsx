@@ -14,6 +14,7 @@ import { VisualizerManager } from './visualizer-manager';
 import { ConsoleManager } from './console-manager';
 import { ErrorManager } from './error-manager';
 import { handleToolCall } from './tools';
+import { sendRobotCommand } from './tools';
 import { styles } from './styles';
 import { renderTemplate, TemplateProps } from './template';
 import './robot-face';
@@ -28,6 +29,7 @@ export class GdmLiveAudio extends LitElement {
   @state() showConsole = false;
   @state() showInputAnalyzer = true;
   @state() showOutputAnalyzer = true;
+  @state() batteryPercentage: string = 'N/A';
 
   private audioManager: AudioManager;
   private sessionManager: SessionManager;
@@ -38,6 +40,7 @@ export class GdmLiveAudio extends LitElement {
   private mediaStream: MediaStream;
   private sourceNode: MediaStreamAudioSourceNode;
   private audioWorkletNode: AudioWorkletNode | null = null;
+  private batteryUpdateInterval: number | null = null;
 
   static styles = styles;
 
@@ -355,11 +358,14 @@ export class GdmLiveAudio extends LitElement {
         this.startOutputVisualizer();
       }
     }, 100);
+    // Start battery monitoring
+    this.startBatteryMonitoring();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.visualizerManager.cleanup();
+    this.stopBatteryMonitoring();
   }
 
   private startVisualizer() {
@@ -379,10 +385,39 @@ export class GdmLiveAudio extends LitElement {
     );
   }
 
+  private async updateBatteryPercentage() {
+    try {
+      const result = await sendRobotCommand("get_battery");
+      if (result.success && result.response && result.response.battery_percentage !== undefined) {
+        this.batteryPercentage = `${result.response.battery_percentage}%`;
+      } else {
+        this.batteryPercentage = 'N/A';
+      }
+    } catch (error) {
+      this.batteryPercentage = 'N/A';
+    }
+    this.requestUpdate();
+  }
+
+  private startBatteryMonitoring() {
+    this.updateBatteryPercentage();
+    this.batteryUpdateInterval = window.setInterval(() => {
+      this.updateBatteryPercentage();
+    }, 1000);
+  }
+
+  private stopBatteryMonitoring() {
+    if (this.batteryUpdateInterval) {
+      clearInterval(this.batteryUpdateInterval);
+      this.batteryUpdateInterval = null;
+    }
+  }
+
   render() {
     const props: TemplateProps = {
       robotMode: this.robotMode,
       selectedModel: this.selectedModel,
+      batteryPercentage: this.batteryPercentage,
       onModelChange: this.onModelChange,
       onReset: this.reset.bind(this),
       onStartRecording: this.startRecording.bind(this),

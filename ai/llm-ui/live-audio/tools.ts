@@ -59,7 +59,7 @@ function initRobotWebSocket(): Promise<WebSocket> {
   });
 }
 
-async function sendRobotCommand(name: string, args: any = {}): Promise<{ success: boolean; response?: any; error?: string }> {
+export async function sendRobotCommand(name: string, args: any = {}): Promise<{ success: boolean; response?: any; error?: string }> {
   try {
     const ws = await initRobotWebSocket();
 

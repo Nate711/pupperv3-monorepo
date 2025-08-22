@@ -22,16 +22,32 @@ export const styles = css`
     right: 20px;
     z-index: 10;
     display: grid;
-    grid-template-columns: 120px 1fr 200px;
+    grid-template-columns: 80px 120px 1fr 200px;
     align-items: center;
     gap: 12px;
+  }
+
+  .battery-indicator {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mode-indicator {
     background: rgba(0, 0, 0, 0.7);
     color: white;
     padding: 8px 16px;
-    border-radius: 20px;
+    border-radius: 12px;
     font-size: 14px;
     font-weight: 500;
     text-transform: uppercase;

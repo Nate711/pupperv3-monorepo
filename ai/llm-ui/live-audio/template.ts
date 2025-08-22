@@ -8,6 +8,7 @@ import { html, TemplateResult } from 'lit';
 export interface TemplateProps {
   robotMode: string;
   selectedModel: string;
+  batteryPercentage: string;
   onModelChange: (event: Event) => void;
   onReset: () => void;
   onStartRecording: () => void;
@@ -31,6 +32,9 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
   return html`
     <div>
       <div class="top-bar">
+        <div class="battery-indicator">
+          ${props.batteryPercentage}
+        </div>
         <div class="mode-indicator ${props.robotMode}">
           ${props.robotMode}
         </div>
