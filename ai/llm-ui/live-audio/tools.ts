@@ -8,15 +8,32 @@ import { Type } from '@google/genai';
 // WebSocket connection for robot control
 let robotWebSocket: WebSocket | null = null;
 
-function initRobotWebSocket() {
-  // Always attempt a fresh connection if not connected or connection failed
-  if (!robotWebSocket || robotWebSocket.readyState === WebSocket.CLOSED || robotWebSocket.readyState === WebSocket.CLOSING) {
+function initRobotWebSocket(): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    // If already connected, return existing connection
+    if (robotWebSocket && robotWebSocket.readyState === WebSocket.OPEN) {
+      resolve(robotWebSocket);
+      return;
+    }
+
+    // If connecting, wait for it to complete
+    if (robotWebSocket && robotWebSocket.readyState === WebSocket.CONNECTING) {
+      robotWebSocket.addEventListener("open", () => resolve(robotWebSocket!));
+      robotWebSocket.addEventListener("error", reject);
+      return;
+    }
+
     try {
-      console.log("🤖 [ROBOT] Attempting to connect to robot server...");
-      robotWebSocket = new WebSocket("ws://robot-host:8765");
+      // Use appropriate WebSocket protocol based on current page protocol
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProtocol}//localhost:8765`;
+      
+      console.log(`🤖 [ROBOT] Attempting to connect to robot server at ${wsUrl}...`);
+      robotWebSocket = new WebSocket(wsUrl);
       
       robotWebSocket.addEventListener("open", () => {
         console.log("🤖 [ROBOT] WebSocket connection established");
+        resolve(robotWebSocket!);
       });
       
       robotWebSocket.addEventListener("message", (event) => {
@@ -32,24 +49,31 @@ function initRobotWebSocket() {
       robotWebSocket.addEventListener("error", (error) => {
         console.error("🤖 [ROBOT] WebSocket connection error - server may not be running:", error);
         robotWebSocket = null;
+        reject(error);
       });
     } catch (error) {
       console.error("🤖 [ROBOT] Failed to create WebSocket connection - server may not be running:", error);
       robotWebSocket = null;
+      reject(error);
     }
-  }
+  });
 }
 
-function sendRobotCommand(name: string, args: any = {}) {
-  initRobotWebSocket();
-  
-  if (robotWebSocket && robotWebSocket.readyState === WebSocket.OPEN) {
-    const msg = JSON.stringify({ name, args });
-    robotWebSocket.send(msg);
-    console.log(`🤖 [ROBOT] Sent command: ${name}`, args);
-    return true;
-  } else {
-    console.error(`🤖 [ROBOT] Cannot send command '${name}' - WebSocket not connected. Server may not be running.`);
+async function sendRobotCommand(name: string, args: any = {}): Promise<boolean> {
+  try {
+    const ws = await initRobotWebSocket();
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const msg = JSON.stringify({ name, args });
+      ws.send(msg);
+      console.log(`🤖 [ROBOT] Sent command: ${name}`, args);
+      return true;
+    } else {
+      console.error(`🤖 [ROBOT] Cannot send command '${name}' - WebSocket not connected.`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`🤖 [ROBOT] Failed to send command '${name}' - connection error:`, error);
     return false;
   }
 }
@@ -120,7 +144,7 @@ export const tools = [{
 }];
 
 // Tool handler function
-export function handleToolCall(
+export async function handleToolCall(
   toolCall: any,
   toggleInputAnalyzer: () => void,
   toggleOutputAnalyzer: () => void,
@@ -135,14 +159,14 @@ export function handleToolCall(
 
     if (fc.name === "activate_robot") {
       console.log('🤖 [TOOLS] Activating robot');
-      const success = sendRobotCommand("activate");
+      const success = await sendRobotCommand("activate");
       response = {
         result: success ? "Robot activated successfully" : "Failed to activate robot - connection error"
       };
     }
     else if (fc.name === "deactivate_robot") {
       console.log('🤖 [TOOLS] Deactivating robot');
-      const success = sendRobotCommand("deactivate");
+      const success = await sendRobotCommand("deactivate");
       response = {
         result: success ? "Robot deactivated successfully" : "Failed to deactivate robot - connection error"
       };

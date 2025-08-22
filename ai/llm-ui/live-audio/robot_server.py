@@ -25,7 +25,7 @@ class RobotState:
 
 robot_state = RobotState()
 
-async def handle_client(websocket, path):
+async def handle_client(websocket):
     """Handle incoming WebSocket connections and messages."""
     client_addr = websocket.remote_address
     logger.info(f"🔌 New client connected: {client_addr}")

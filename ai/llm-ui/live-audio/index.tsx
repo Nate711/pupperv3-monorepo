@@ -130,15 +130,17 @@ export class GdmLiveAudio extends LitElement {
     // Handle tool calls
     const toolCall = (message as any).toolCall;
     if (toolCall) {
-      const functionResponses = handleToolCall(
+      handleToolCall(
         toolCall,
         this.toggleInputAnalyzer.bind(this),
         this.toggleOutputAnalyzer.bind(this),
         this.showInputAnalyzer,
         this.showOutputAnalyzer
-      );
-      
-      this.sessionManager.sendToolResponse({ functionResponses });
+      ).then(functionResponses => {
+        this.sessionManager.sendToolResponse({ functionResponses });
+      }).catch(error => {
+        console.error('❌ [TOOLS] Error handling tool call:', error);
+      });
     }
   }
 
