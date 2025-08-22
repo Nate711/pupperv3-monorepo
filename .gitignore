@@ -4,3 +4,5 @@ ros2_ws/log/
 ros2_ws/install/
 
 *.DS_Store
+*.pem
+*.pyc
