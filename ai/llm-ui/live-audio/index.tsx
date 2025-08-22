@@ -18,7 +18,7 @@ export class GdmLiveAudio extends LitElement {
   @state() robotMode = 'idle';
   @state() selectedModel = 'gemini-live-2.5-flash-preview';
   @state() showConsole = false;
-  @state() consoleLogs: Array<{timestamp: string, level: string, message: string}> = [];
+  @state() consoleLogs: Array<{ timestamp: string, level: string, message: string }> = [];
   @state() showInputAnalyzer = true;
   @state() showOutputAnalyzer = true;
 
@@ -125,7 +125,7 @@ export class GdmLiveAudio extends LitElement {
       justify-content: center;
       gap: 8px;
       background: rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 0px solid rgba(255, 255, 255, 0.2);
       border-radius: 12px;
       padding: 6px;
     }
@@ -382,10 +382,10 @@ export class GdmLiveAudio extends LitElement {
 
     const addLog = (level: string, ...args: any[]) => {
       const timestamp = new Date().toLocaleTimeString();
-      const message = args.map(arg => 
+      const message = args.map(arg =>
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
-      
+
       this.consoleLogs = [...this.consoleLogs.slice(-99), { timestamp, level, message }];
     };
 
@@ -412,7 +412,7 @@ export class GdmLiveAudio extends LitElement {
 
   private initAudio() {
     this.nextStartTime = this.outputAudioContext.currentTime;
-    
+
     // Set up input analyzer for visualizer if enabled
     if (this.showInputAnalyzer) {
       this.inputAnalyser = this.inputAudioContext.createAnalyser();
@@ -751,16 +751,16 @@ export class GdmLiveAudio extends LitElement {
   private onModelChange = (event: Event) => {
     const target = event.target as HTMLSelectElement;
     const newModel = target.value;
-    
+
     if (newModel !== this.selectedModel) {
       console.log(`🔄 [MODEL] Switching from ${this.selectedModel} to ${newModel}`);
       this.selectedModel = newModel;
-      
+
       // Stop recording if active
       if (this.isRecording) {
         this.stopRecording();
       }
-      
+
       // Reset session with new model
       this.reset();
     }
@@ -777,7 +777,7 @@ export class GdmLiveAudio extends LitElement {
   private toggleInputAnalyzer = () => {
     this.showInputAnalyzer = !this.showInputAnalyzer;
     console.log(`🎛️ [ANALYZER] Input analyzer toggled: ${this.showInputAnalyzer ? 'ON' : 'OFF'}`);
-    
+
     if (!this.showInputAnalyzer) {
       // Stop visualizer and disconnect analyzer
       this.stopVisualizer();
@@ -795,7 +795,7 @@ export class GdmLiveAudio extends LitElement {
       this.inputAnalyser.fftSize = 256;
       this.inputAnalyser.smoothingTimeConstant = 0.8;
       this.inputNode.connect(this.inputAnalyser);
-      
+
       if (this.isRecording) {
         setTimeout(() => this.startVisualizer(), 50);
       }
@@ -805,7 +805,7 @@ export class GdmLiveAudio extends LitElement {
   private toggleOutputAnalyzer = () => {
     this.showOutputAnalyzer = !this.showOutputAnalyzer;
     console.log(`🎛️ [ANALYZER] Output analyzer toggled: ${this.showOutputAnalyzer ? 'ON' : 'OFF'}`);
-    
+
     if (!this.showOutputAnalyzer) {
       // Stop visualizer and disconnect analyzer
       this.stopOutputVisualizer();
@@ -823,14 +823,14 @@ export class GdmLiveAudio extends LitElement {
       this.outputAnalyser.fftSize = 256;
       this.outputAnalyser.smoothingTimeConstant = 0.8;
       this.outputNode.connect(this.outputAnalyser);
-      
+
       setTimeout(() => this.startOutputVisualizer(), 50);
     }
   }
 
   protected updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
-    
+
     // Auto-scroll console to bottom when new logs are added
     if (changedProperties.has('consoleLogs') && this.showConsole) {
       const consoleContent = this.shadowRoot?.querySelector('.console-content');
@@ -893,11 +893,11 @@ export class GdmLiveAudio extends LitElement {
 
       for (let i = 0; i < bufferLength / 2; i++) { // Only show lower frequencies
         const barHeight = (dataArray[i] / 255) * canvas.height;
-        
+
         // Color based on frequency - blue for low, green for mid, red for high
         const hue = (i / (bufferLength / 2)) * 120; // 0-120 (blue to green)
         ctx.fillStyle = `hsl(${120 - hue}, 80%, 60%)`;
-        
+
         ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
         x += barWidth + 1;
       }
@@ -953,11 +953,11 @@ export class GdmLiveAudio extends LitElement {
 
       for (let i = 0; i < bufferLength / 2; i++) { // Only show lower frequencies
         const barHeight = (dataArray[i] / 255) * canvas.height;
-        
+
         // Color based on frequency - orange to red for output
         const hue = 30 - (i / (bufferLength / 2)) * 30; // 30-0 (orange to red)
         ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
-        
+
         ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
         x += barWidth + 1;
       }

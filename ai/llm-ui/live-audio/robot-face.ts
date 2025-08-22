@@ -356,7 +356,7 @@ export class GdmRobotFace extends LitElement {
               </g>
               
               <g id="eyebrowComponent">
-                <path class="brow" d="M 0 -180 Q -40 -190 -60 -220 Q -65 -240 -50 -250 Q -30 -260 0 -255 Q 30 -260 50 -250 Q 65 -240 60 -220 Q 40 -190 0 -180 Z" fill="#6b6b6b" opacity=".9" />
+                <rect class="brow" x="-80" y="-160" width="160" height="12" rx="6" fill="#6b6b6b" opacity=".9" />
               </g>
             </defs>
 
