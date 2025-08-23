@@ -22,6 +22,7 @@ import './robot-face';
 @customElement('gdm-live-audio')
 export class GdmLiveAudio extends LitElement {
   @state() isRecording = false;
+  private autoStartRecording = true;
   @state() status = '';
   @state() error = '';
   @state() robotMode = 'idle';
@@ -69,6 +70,19 @@ export class GdmLiveAudio extends LitElement {
         onOpen: () => {
           this.sessionState = 'connected';
           this.updateStatus('Opened');
+
+          // Auto-start recording if enabled and audio context allows it
+          if (this.autoStartRecording && !this.isRecording) {
+            setTimeout(() => {
+              // Only auto-start if AudioContext is running (user has interacted)
+              if (this.audioManager.getInputAudioContext().state === 'running') {
+                this.startRecording();
+              } else {
+                console.log('🎤 [RECORDING] Auto-start skipped - audio context suspended (user interaction required)');
+                this.updateStatus('🎤 Click "Start Recording" to begin (browser autoplay policy)');
+              }
+            }, 500); // Small delay to ensure everything is ready
+          }
         },
         onMessage: this.handleMessage.bind(this),
         onError: (e: ErrorEvent) => {
@@ -168,7 +182,8 @@ export class GdmLiveAudio extends LitElement {
       return;
     }
 
-    this.audioManager.getInputAudioContext().resume();
+    // Resume audio context (will only work after user interaction)
+    await this.audioManager.getInputAudioContext().resume();
 
     this.updateStatus('Requesting microphone access...');
 
@@ -207,7 +222,7 @@ export class GdmLiveAudio extends LitElement {
             if (Math.random() < 0.001) {
               console.log('🎤 [AUDIO] Sending realtime input, session state:', this.sessionState);
             }
-            this.sessionManager.sendRealtimeInput({ media: createBlob(pcmData) });
+            this.sessionManager.sendRealtimeInput({ media: createBlob(pcmData) as any });
           } catch (error) {
             console.error('❌ [AUDIO] Error sending realtime input:', error);
 
@@ -402,12 +417,9 @@ export class GdmLiveAudio extends LitElement {
   private async updateCpuUsage() {
     try {
       const result = await sendRobotCommand("get_cpu_usage");
-      console.log('💻 [CPU] Raw result:', result);
       if (result.success && result.response && result.response.cpu_usage !== undefined) {
-        console.log('💻 [CPU] Setting CPU usage to:', result.response.cpu_usage);
         this.cpuUsage = `${Math.round(result.response.cpu_usage)}%`;
       } else {
-        console.log('💻 [CPU] Setting CPU to N/A - success:', result.success, 'response:', result.response);
         this.cpuUsage = 'N/A';
       }
     } catch (error) {
@@ -428,7 +440,7 @@ export class GdmLiveAudio extends LitElement {
     this.updateSystemStats();
     this.batteryUpdateInterval = window.setInterval(() => {
       this.updateSystemStats();
-    }, 2000);
+    }, 5000);
   }
 
   private stopSystemMonitoring() {
@@ -437,6 +449,7 @@ export class GdmLiveAudio extends LitElement {
       this.batteryUpdateInterval = null;
     }
   }
+
 
   render() {
     const props: TemplateProps = {
