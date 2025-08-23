@@ -99,61 +99,6 @@ export const styles = css`
     contain: layout style paint;
   }
 
-  .mode-indicator {
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 6px 0px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-    text-align: center;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mode-indicator.idle {
-    background: rgba(100, 100, 100, 0.7);
-    border-color: rgba(150, 150, 150, 0.3);
-  }
-
-  .mode-indicator.listening {
-    background: rgba(25, 162, 230, 0.7);
-    border-color: rgba(25, 162, 230, 0.5);
-    animation: pulse-listening 0.9s ease-in-out infinite;
-  }
-
-  .mode-indicator.thinking {
-    background: rgba(128, 90, 213, 0.7);
-    border-color: rgba(128, 90, 213, 0.5);
-  }
-
-  .mode-indicator.speaking {
-    background: rgba(255, 80, 80, 0.7);
-    border-color: rgba(255, 80, 80, 0.5);
-    animation: pulse-speaking 0.32s ease-in-out infinite;
-  }
-
-  .mode-indicator.muted {
-    background: rgba(60, 60, 60, 0.7);
-    border-color: rgba(80, 80, 80, 0.3);
-    filter: grayscale(1);
-  }
-
-  @keyframes pulse-listening {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 162, 230, 0.4); }
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(25, 162, 230, 0); }
-  }
-
-  @keyframes pulse-speaking {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 80, 80, 0.4); }
-    50% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(255, 80, 80, 0); }
-  }
 
   .control-group {
     display: flex;
@@ -194,12 +139,7 @@ export const styles = css`
   .control-button.recording {
     background: rgba(200, 0, 0, 0.7);
     border-color: rgba(200, 0, 0, 0.5);
-    animation: pulse-recording 1s ease-in-out infinite;
-  }
-
-  @keyframes pulse-recording {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(200, 0, 0, 0.4); }
-    50% { box-shadow: 0 0 0 8px rgba(200, 0, 0, 0); }
+    box-shadow: 0 0 10px rgba(200, 0, 0, 0.5);
   }
 
   .viz-toggle {

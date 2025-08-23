@@ -12,9 +12,6 @@ export class GdmRobotFace extends LitElement {
   private inputAnalyser!: Analyser;
   private outputAnalyser!: Analyser;
 
-  @state() private currentState: 'idle' | 'listening' | 'thinking' | 'speaking' | 'muted' = 'idle';
-  @state() private blinkClass = '';
-  @state() private pingClass = '';
   @state() private gazeX = 0;
   @state() private gazeY = 0;
   private gazeStartTime = Date.now();
@@ -22,9 +19,6 @@ export class GdmRobotFace extends LitElement {
 
   private _outputNode!: AudioNode;
   private _inputNode!: AudioNode;
-  private animationFrameId!: number;
-  private blinkTimer!: number;
-  private speakingAnimationFrameId!: number;
 
   @property()
   set outputNode(node: AudioNode) {
@@ -97,50 +91,17 @@ export class GdmRobotFace extends LitElement {
       filter: saturate(var(--dim));
     }
 
-    /* States */
-    .stage[data-state="idle"] {
+    /* Default state */
+    .stage {
       --iris-s: 90;
       --glow-alpha: .12;
-    }
-
-    .stage[data-state="listening"] {
-      --iris-s: 98;
-      --glow-alpha: .20;
-    }
-
-    .stage[data-state="thinking"] {
-      --iris-s: 65;
-      --glow-alpha: 0;
-    }
-
-    .stage[data-state="speaking"] {
-      --iris-s: 100;
-      --glow-alpha: .32;
-    }
-
-    .stage[data-state="muted"] {
-      --iris-s: 0;
-      --glow-alpha: 0;
-      --dim: .7;
-      filter: grayscale(.2) brightness(.85);
     }
 
     /* Halos */
     .halo {
       opacity: var(--glow-alpha);
       transform-origin: center;
-    }
-
-    .stage[data-state="idle"] .halo {
       animation: breathe 7s ease-in-out infinite;
-    }
-
-    .stage[data-state="listening"] .halo {
-      animation: pulse 900ms ease-in-out infinite;
-    }
-
-    .stage[data-state="speaking"] .halo {
-      animation: throb 320ms ease-in-out infinite;
     }
 
     @keyframes breathe {
@@ -148,15 +109,6 @@ export class GdmRobotFace extends LitElement {
       50% { transform: scale(1.02); }
     }
 
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.07); }
-    }
-
-    @keyframes throb {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.06); }
-    }
 
     /* Gaze */
     .pupil, .glints {
@@ -166,66 +118,68 @@ export class GdmRobotFace extends LitElement {
     /* Eyelids */
     .lidTop {
       transform: translateY(0);
+      animation: blinkAnimation 15s infinite;
+      animation-timing-function: ease-in-out;
+    }
+    
+    /* Right eye blinks slightly offset for more natural look */
+    #rightEye .lidTop {
+      animation-delay: 0.08s;
+    }
+    
+    .brow {
+      animation: browAnimation 15s infinite;
+      animation-timing-function: ease-in-out;
+    }
+    
+    /* Blink animation - slower, more relaxed timing */
+    @keyframes blinkAnimation {
+      0%, 18% { transform: translateY(0); }
+      18.5% { transform: translateY(185px); }
+      19% { transform: translateY(370px); }
+      19.5% { transform: translateY(370px); }
+      20% { transform: translateY(370px); }
+      20.5% { transform: translateY(185px); }
+      21%, 58% { transform: translateY(0); }
+      58.5% { transform: translateY(185px); }
+      59% { transform: translateY(370px); }
+      59.5% { transform: translateY(370px); }
+      60% { transform: translateY(370px); }
+      60.5% { transform: translateY(185px); }
+      61%, 92% { transform: translateY(0); }
+      92.5% { transform: translateY(185px); }
+      93% { transform: translateY(370px); }
+      93.5% { transform: translateY(370px); }
+      94% { transform: translateY(370px); }
+      94.5% { transform: translateY(185px); }
+      95%, 100% { transform: translateY(0); }
+    }
+    
+    @keyframes browAnimation {
+      0%, 18% { transform: translateY(0); }
+      18.5% { transform: translateY(5px); }
+      19% { transform: translateY(10px); }
+      19.5% { transform: translateY(10px); }
+      20% { transform: translateY(10px); }
+      20.5% { transform: translateY(5px); }
+      21%, 58% { transform: translateY(0); }
+      58.5% { transform: translateY(5px); }
+      59% { transform: translateY(10px); }
+      59.5% { transform: translateY(10px); }
+      60% { transform: translateY(10px); }
+      60.5% { transform: translateY(5px); }
+      61%, 92% { transform: translateY(0); }
+      92.5% { transform: translateY(5px); }
+      93% { transform: translateY(10px); }
+      93.5% { transform: translateY(10px); }
+      94% { transform: translateY(10px); }
+      94.5% { transform: translateY(5px); }
+      95%, 100% { transform: translateY(0); }
     }
 
-    /* Blink animation */
-    .blink .lidTop {
-      animation: blinkOnce 800ms cubic-bezier(.3, .7, .2, 1) 1;
-    }
 
-    .blink .brow {
-      animation: browBlink 800ms cubic-bezier(.3, .7, .2, 1) 1;
-    }
 
-    @keyframes blinkOnce {
-      0% { transform: translateY(0); }
-      45% { transform: translateY(370px); }
-      55% { transform: translateY(370px); }
-      100% { transform: translateY(0); }
-    }
 
-    @keyframes browBlink {
-      0% { transform: translateY(0); }
-      45% { transform: translateY(10px); }
-      55% { transform: translateY(10px); }
-      100% { transform: translateY(0); }
-    }
-
-    /* Listening ping */
-    .ping .ripple {
-      animation: ripple 700ms ease-out 1;
-    }
-
-    @keyframes ripple {
-      0% { transform: scale(.2); opacity: .35; }
-      100% { transform: scale(1.6); opacity: 0; }
-    }
-
-    /* Thinking dots */
-    .dots {
-      opacity: 0;
-    }
-
-    .stage[data-state="thinking"] .dots {
-      opacity: 1;
-    }
-
-    .stage[data-state="thinking"] .dots circle {
-      animation: dot 900ms ease-in-out infinite;
-    }
-
-    .stage[data-state="thinking"] .dots circle:nth-child(2) {
-      animation-delay: .12s;
-    }
-
-    .stage[data-state="thinking"] .dots circle:nth-child(3) {
-      animation-delay: .24s;
-    }
-
-    @keyframes dot {
-      0%, 100% { opacity: .25; transform: translateY(0); }
-      50% { opacity: 1; transform: translateY(-5px); }
-    }
 
 
     @media (prefers-reduced-motion: reduce) {
@@ -237,102 +191,21 @@ export class GdmRobotFace extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.startAnimation();
-    this.scheduleIdleBlink();
     this.startGazeAnimation();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.stopAnimation();
     this.stopGazeAnimation();
-    if (this.blinkTimer) {
-      clearTimeout(this.blinkTimer);
-    }
-  }
-
-  private startAnimation() {
-    // Use setInterval at 2Hz (500ms) instead of requestAnimationFrame at 60fps
-    // This reduces CPU usage by ~96% (from 60fps to 2fps)
-    this.animationFrameId = window.setInterval(() => {
-      if (this.inputAnalyser && this.outputAnalyser) {
-        this.inputAnalyser.update();
-        this.outputAnalyser.update();
-
-        // Determine state based on audio levels
-        const inputLevel = this.inputAnalyser.data[0] / 255;
-        const outputLevel = this.outputAnalyser.data[0] / 255;
-
-        if (outputLevel > 0.05) {
-          this.setState('speaking');
-        } else if (inputLevel > 0.02) {
-          this.setState('listening');
-        } else {
-          this.setState('idle');
-        }
-      }
-    }, 500); // 500ms = 2Hz
-  }
-
-  private stopAnimation() {
-    if (this.animationFrameId) {
-      clearInterval(this.animationFrameId);
-      this.animationFrameId = null as any;
-    }
-    if (this.speakingAnimationFrameId) {
-      cancelAnimationFrame(this.speakingAnimationFrameId);
-    }
-  }
-
-  private setState(newState: typeof this.currentState) {
-    if (this.currentState !== newState) {
-      this.currentState = newState;
-      this.requestUpdate();
-
-      // Emit custom event for mode change
-      this.dispatchEvent(new CustomEvent('mode-change', {
-        detail: { mode: newState },
-        bubbles: true,
-        composed: true
-      }));
-    }
   }
 
 
 
-  private triggerListeningPing() {
-    this.pingClass = 'ping';
-    this.requestUpdate();
 
-    setTimeout(() => {
-      this.pingClass = '';
-      this.requestUpdate();
-    }, 750);
-  }
 
-  private scheduleIdleBlink() {
-    if (this.blinkTimer) {
-      clearTimeout(this.blinkTimer);
-    }
 
-    if (this.currentState === 'idle') {
-      const wait = 1800 + Math.random() * 4200;
-      this.blinkTimer = window.setTimeout(() => {
-        this.blink();
-        this.scheduleIdleBlink();
-      }, wait);
-    }
-  }
 
-  private blink() {
-    this.blinkClass = 'blink';
-    this.requestUpdate();
 
-    setTimeout(() => {
-      this.blinkClass = '';
-      this.requestUpdate();
-    }, 800);
-  }
 
   private updateGaze() {
     const currentTime = Date.now();
@@ -355,9 +228,7 @@ export class GdmRobotFace extends LitElement {
     // Update gaze every 250ms (4Hz) for smooth interpolation
     // Reduced frequency to minimize style recalculation
     this.gazeUpdateInterval = window.setInterval(() => {
-      if (this.currentState === 'idle' || this.currentState === 'thinking') {
-        this.updateGaze();
-      }
+      this.updateGaze();
     }, 250);
   }
 
@@ -371,7 +242,7 @@ export class GdmRobotFace extends LitElement {
   protected render() {
     return html`
       <div class="robot-face-container">
-        <div class="stage ${this.blinkClass} ${this.pingClass}" data-state="${this.currentState}" 
+        <div class="stage" 
              style="--gaze-x: ${this.gazeX}px; --gaze-y: ${this.gazeY}px;">
           <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>

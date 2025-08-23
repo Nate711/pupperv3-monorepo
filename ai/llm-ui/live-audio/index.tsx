@@ -25,7 +25,6 @@ export class GdmLiveAudio extends LitElement {
   private autoStartRecording = true;
   @state() status = '';
   @state() error = '';
-  @state() robotMode = 'idle';
   @state() selectedModel = 'gemini-live-2.5-flash-preview';
   @state() showConsole = false;
   @state() showInputAnalyzer = true;
@@ -128,8 +127,7 @@ export class GdmLiveAudio extends LitElement {
     // Check if this is a setup message (indicates AI is thinking)
     const setupComplete = message.setupComplete;
     if (setupComplete) {
-      // AI is now ready and thinking/processing
-      this.robotMode = 'thinking';
+      // AI is now ready and processing
     }
 
     const audio = message.serverContent?.modelTurn?.parts[0]?.inlineData;
@@ -318,9 +316,6 @@ export class GdmLiveAudio extends LitElement {
     this.updateStatus('Session cleared.');
   }
 
-  private onRobotModeChange = (event: CustomEvent) => {
-    this.robotMode = event.detail.mode;
-  }
 
   private onModelChange = (event: Event) => {
     const target = event.target as HTMLSelectElement;
@@ -606,7 +601,6 @@ export class GdmLiveAudio extends LitElement {
 
   render() {
     const props: TemplateProps = {
-      robotMode: this.robotMode,
       selectedModel: this.selectedModel,
       batteryPercentage: this.batteryPercentage,
       cpuUsage: this.cpuUsage,
@@ -618,7 +612,6 @@ export class GdmLiveAudio extends LitElement {
       onToggleOutputAnalyzer: this.toggleOutputAnalyzer,
       onToggleConsole: this.toggleConsole,
       onClearConsole: this.clearConsole,
-      onRobotModeChange: this.onRobotModeChange,
       isRecording: this.isRecording,
       showInputAnalyzer: this.showInputAnalyzer,
       showOutputAnalyzer: this.showOutputAnalyzer,

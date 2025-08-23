@@ -14,7 +14,6 @@ function getBatteryColor(percentage: string): string {
 }
 
 export interface TemplateProps {
-  robotMode: string;
   selectedModel: string;
   batteryPercentage: string;
   cpuUsage: string;
@@ -26,7 +25,6 @@ export interface TemplateProps {
   onToggleOutputAnalyzer: () => void;
   onToggleConsole: () => void;
   onClearConsole: () => void;
-  onRobotModeChange: (event: CustomEvent) => void;
   isRecording: boolean;
   showInputAnalyzer: boolean;
   showOutputAnalyzer: boolean;
@@ -143,8 +141,7 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
       <div id="status"> ${props.error} </div>
       <gdm-robot-face
         .inputNode=${props.inputNode}
-        .outputNode=${props.outputNode}
-        @mode-change=${props.onRobotModeChange}></gdm-robot-face>
+        .outputNode=${props.outputNode}></gdm-robot-face>
 
       <div class="transcriptions-container">
         <div class="transcription-box input-box">
