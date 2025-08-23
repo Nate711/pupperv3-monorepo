@@ -172,10 +172,21 @@ export class GdmRobotFace extends LitElement {
       animation: blinkOnce 800ms cubic-bezier(.3, .7, .2, 1) 1;
     }
 
+    .blink .brow {
+      animation: browBlink 800ms cubic-bezier(.3, .7, .2, 1) 1;
+    }
+
     @keyframes blinkOnce {
       0% { transform: translateY(0); }
       45% { transform: translateY(370px); }
       55% { transform: translateY(370px); }
+      100% { transform: translateY(0); }
+    }
+
+    @keyframes browBlink {
+      0% { transform: translateY(0); }
+      45% { transform: translateY(10px); }
+      55% { transform: translateY(10px); }
       100% { transform: translateY(0); }
     }
 
@@ -240,14 +251,10 @@ export class GdmRobotFace extends LitElement {
   }
 
   private startAnimation() {
-    let frameCount = 0;
-    const AUDIO_CHECK_INTERVAL = 12; // Check audio every 12th frame (~5fps instead of 60fps)
-
-    const animate = () => {
-      frameCount++;
-
-      // Only check audio levels every N frames to reduce CPU usage
-      if (frameCount % AUDIO_CHECK_INTERVAL === 0 && this.inputAnalyser && this.outputAnalyser) {
+    // Use setInterval at 2Hz (500ms) instead of requestAnimationFrame at 60fps
+    // This reduces CPU usage by ~96% (from 60fps to 2fps)
+    this.animationFrameId = window.setInterval(() => {
+      if (this.inputAnalyser && this.outputAnalyser) {
         this.inputAnalyser.update();
         this.outputAnalyser.update();
 
@@ -263,16 +270,13 @@ export class GdmRobotFace extends LitElement {
           this.setState('idle');
         }
       }
-
-      this.animationFrameId = requestAnimationFrame(animate);
-    };
-
-    this.animationFrameId = requestAnimationFrame(animate);
+    }, 500); // 500ms = 2Hz
   }
 
   private stopAnimation() {
     if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
+      clearInterval(this.animationFrameId);
+      this.animationFrameId = null as any;
     }
     if (this.speakingAnimationFrameId) {
       cancelAnimationFrame(this.speakingAnimationFrameId);
@@ -397,7 +401,7 @@ export class GdmRobotFace extends LitElement {
                   <use href="#pupilComponent" />
                 </g>
 
-                <rect class="lidTop" x="-228" y="-516" width="456" height="270" rx="126" fill="#000" />
+                <rect class="lidTop" x="-228" y="-700" width="456" height="500" rx="126" fill="#000" />
               </g>
               
               <g id="eyebrowComponent">
