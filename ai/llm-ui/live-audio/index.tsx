@@ -32,6 +32,11 @@ export class GdmLiveAudio extends LitElement {
   @state() showOutputAnalyzer = true;
   @state() batteryPercentage: string = 'N/A';
   @state() cpuUsage: string = 'N/A';
+  @state() transcriptions: Array<{type: 'input' | 'output', text: string, timestamp: number}> = [];
+  private inputTranscriptionBuffer: string = '';
+  private outputTranscriptionBuffer: string = '';
+  private lastInputTimestamp: number = 0;
+  private lastOutputTimestamp: number = 0;
 
   private audioManager: AudioManager;
   private sessionManager: SessionManager;
@@ -105,11 +110,19 @@ export class GdmLiveAudio extends LitElement {
     const outputTranscription = message.serverContent?.outputTranscription;
     if (outputTranscription) {
       console.log('🤖 [OUTPUT]:', outputTranscription.text);
+      this.processTranscriptionFragment('output', outputTranscription.text);
     }
     
     const inputTranscription = message.serverContent?.inputTranscription;
     if (inputTranscription) {
       console.log('🎤 [INPUT]:', inputTranscription.text);
+      this.processTranscriptionFragment('input', inputTranscription.text);
+    }
+    
+    // Check for turn completion to flush buffers
+    const turnComplete = message.serverContent?.turnComplete;
+    if (turnComplete) {
+      this.flushTranscriptionBuffers();
     }
 
     // Check if this is a setup message (indicates AI is thinking)
@@ -263,6 +276,9 @@ export class GdmLiveAudio extends LitElement {
       return;
 
     this.updateStatus('Stopping recording...');
+    
+    // Flush any remaining transcription fragments
+    this.flushTranscriptionBuffers();
 
     this.isRecording = false;
 
@@ -292,6 +308,10 @@ export class GdmLiveAudio extends LitElement {
       console.error('❌ [RESET] Error closing session:', e);
       this.errorManager.handleGoogleAIError(e);
     }
+    
+    // Clear transcription buffers and history
+    this.flushTranscriptionBuffers();
+    this.transcriptions = [];
 
     this.sessionState = 'disconnected';
     this.initSession();
@@ -356,6 +376,18 @@ export class GdmLiveAudio extends LitElement {
       const consoleContent = this.shadowRoot?.querySelector('.console-content');
       if (consoleContent) {
         consoleContent.scrollTop = consoleContent.scrollHeight;
+      }
+    }
+    
+    // Auto-scroll transcriptions to bottom when new ones are added
+    if (changedProperties.has('transcriptions')) {
+      const inputScroll = this.shadowRoot?.querySelector('.input-scroll');
+      const outputScroll = this.shadowRoot?.querySelector('.output-scroll');
+      if (inputScroll) {
+        inputScroll.scrollTop = inputScroll.scrollHeight;
+      }
+      if (outputScroll) {
+        outputScroll.scrollTop = outputScroll.scrollHeight;
       }
     }
 
@@ -455,6 +487,96 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
+  private processTranscriptionFragment(type: 'input' | 'output', fragment: string) {
+    const now = Date.now();
+    const TIMEOUT_MS = 2000; // 2 seconds timeout for incomplete sentences
+    
+    // Check if we should flush due to timeout
+    if (type === 'input' && this.lastInputTimestamp && (now - this.lastInputTimestamp) > TIMEOUT_MS && this.inputTranscriptionBuffer) {
+      this.flushInputBuffer();
+    }
+    if (type === 'output' && this.lastOutputTimestamp && (now - this.lastOutputTimestamp) > TIMEOUT_MS && this.outputTranscriptionBuffer) {
+      this.flushOutputBuffer();
+    }
+    
+    // Add fragment to appropriate buffer
+    if (type === 'input') {
+      this.inputTranscriptionBuffer += fragment;
+      this.lastInputTimestamp = now;
+      
+      // Check for sentence endings
+      const sentences = this.extractCompleteSentences(this.inputTranscriptionBuffer);
+      if (sentences.complete.length > 0) {
+        sentences.complete.forEach(sentence => {
+          this.addTranscription('input', sentence);
+        });
+        this.inputTranscriptionBuffer = sentences.remaining;
+      }
+    } else {
+      this.outputTranscriptionBuffer += fragment;
+      this.lastOutputTimestamp = now;
+      
+      // Check for sentence endings
+      const sentences = this.extractCompleteSentences(this.outputTranscriptionBuffer);
+      if (sentences.complete.length > 0) {
+        sentences.complete.forEach(sentence => {
+          this.addTranscription('output', sentence);
+        });
+        this.outputTranscriptionBuffer = sentences.remaining;
+      }
+    }
+  }
+  
+  private extractCompleteSentences(text: string): { complete: string[], remaining: string } {
+    // Match sentences ending with . ! ? or ... followed by space or end of string
+    const sentenceRegex = /[.!?]+(?:\s+|$)/g;
+    const matches = Array.from(text.matchAll(sentenceRegex));
+    
+    if (matches.length === 0) {
+      return { complete: [], remaining: text };
+    }
+    
+    const complete: string[] = [];
+    let lastIndex = 0;
+    
+    matches.forEach(match => {
+      const endIndex = match.index! + match[0].length;
+      const sentence = text.substring(lastIndex, endIndex).trim();
+      if (sentence) {
+        complete.push(sentence);
+      }
+      lastIndex = endIndex;
+    });
+    
+    const remaining = text.substring(lastIndex).trim();
+    return { complete, remaining };
+  }
+  
+  private flushTranscriptionBuffers() {
+    this.flushInputBuffer();
+    this.flushOutputBuffer();
+  }
+  
+  private flushInputBuffer() {
+    if (this.inputTranscriptionBuffer.trim()) {
+      this.addTranscription('input', this.inputTranscriptionBuffer.trim());
+      this.inputTranscriptionBuffer = '';
+    }
+  }
+  
+  private flushOutputBuffer() {
+    if (this.outputTranscriptionBuffer.trim()) {
+      this.addTranscription('output', this.outputTranscriptionBuffer.trim());
+      this.outputTranscriptionBuffer = '';
+    }
+  }
+  
+  private addTranscription(type: 'input' | 'output', text: string) {
+    const MAX_TRANSCRIPTIONS = 50; // Keep only last 50 for CPU efficiency
+    this.transcriptions = [...this.transcriptions, { type, text, timestamp: Date.now() }].slice(-MAX_TRANSCRIPTIONS);
+    this.requestUpdate();
+  }
+
 
   render() {
     const props: TemplateProps = {
@@ -478,7 +600,8 @@ export class GdmLiveAudio extends LitElement {
       consoleLogs: this.consoleManager.getLogs(),
       error: this.error,
       inputNode: this.audioManager.getInputNode(),
-      outputNode: this.audioManager.getOutputNode()
+      outputNode: this.audioManager.getOutputNode(),
+      transcriptions: this.transcriptions
     };
 
     return renderTemplate(props);

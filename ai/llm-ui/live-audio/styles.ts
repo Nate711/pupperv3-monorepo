@@ -291,6 +291,81 @@ export const styles = css`
     padding: 8px;
   }
 
+  .transcriptions-container {
+    position: absolute;
+    bottom: 60px;
+    left: 20px;
+    right: 20px;
+    height: 140px;
+    display: flex;
+    gap: 10px;
+  }
+  
+  .transcription-box {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .transcription-header {
+    color: #bbb;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+  
+  .transcriptions-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+  
+  .transcriptions-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .transcriptions-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+  
+  .transcriptions-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+  
+  .transcription {
+    padding: 4px 0;
+    color: #999;
+    font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+  
+  .input-box .transcription {
+    color: #999;
+  }
+  
+  .output-box .transcription {
+    color: #aaa;
+  }
+  
+  .transcription-text {
+    white-space: pre-wrap;
+  }
+
   .console-toggle {
     position: absolute;
     bottom: 20px;
