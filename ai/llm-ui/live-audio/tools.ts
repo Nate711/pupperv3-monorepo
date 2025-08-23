@@ -8,6 +8,9 @@ import { Type } from '@google/genai';
 // WebSocket connection for robot control
 let robotWebSocket: WebSocket | null = null;
 
+// Commands that should use debug logging (high-frequency/polling commands)
+const DEBUG_LOG_COMMANDS = new Set(['get_battery', 'get_cpu_usage']);
+
 // Request tracking system
 interface PendingRequest {
   requestId: string;
@@ -54,19 +57,30 @@ function initRobotWebSocket(): Promise<WebSocket> {
       robotWebSocket.addEventListener("message", (event) => {
         try {
           const response = JSON.parse(event.data);
-          console.log("🤖 [ROBOT] Response:", response);
-          
-          // Handle response with request ID
           const requestId = response.request_id;
+
+          // Determine if this is a debug command based on pending request or response hints
+          let isDebugCommand = false;
+          let commandName = "unknown";
+
           if (requestId && pendingRequests.has(requestId)) {
             const pendingRequest = pendingRequests.get(requestId)!;
-            
+            commandName = pendingRequest.commandName;
+            isDebugCommand = DEBUG_LOG_COMMANDS.has(commandName);
+
             // Clear timeout and remove from pending
             clearTimeout(pendingRequest.timeoutId);
             pendingRequests.delete(requestId);
-            
+
+            // Log the matched response
+            const logMessage = `🤖 [ROBOT] Matched response for request ${requestId} (${commandName})`;
+            if (isDebugCommand) {
+              console.debug(logMessage, response);
+            } else {
+              console.log(logMessage, response);
+            }
+
             // Resolve the promise
-            console.log(`🤖 [ROBOT] Matched response for request ${requestId} (${pendingRequest.commandName})`);
             pendingRequest.resolve({ success: true, response });
           } else if (requestId) {
             console.warn(`🤖 [ROBOT] Received response for unknown request ID: ${requestId}`);
@@ -110,7 +124,12 @@ export async function sendRobotCommand(name: string, args: any = {}): Promise<{ 
         // Set up timeout
         const timeoutId = window.setTimeout(() => {
           pendingRequests.delete(requestId);
-          console.warn(`🤖 [ROBOT] Command '${name}' timed out (request ${requestId})`);
+          const timeoutMessage = `🤖 [ROBOT] Command '${name}' timed out (request ${requestId})`;
+          if (DEBUG_LOG_COMMANDS.has(name)) {
+            console.debug(timeoutMessage);
+          } else {
+            console.warn(timeoutMessage);
+          }
           resolve({ success: false, error: "Response timeout" });
         }, 2000); // Increased to 2 seconds
 
@@ -125,7 +144,14 @@ export async function sendRobotCommand(name: string, args: any = {}): Promise<{ 
 
         // Send the command
         ws.send(msg);
-        console.log(`🤖 [ROBOT] Sent command: ${name} (request ${requestId})`, args);
+
+        // Use debug logging for high-frequency commands
+        const logMessage = `🤖 [ROBOT] Sent command: ${name} (request ${requestId})`;
+        if (DEBUG_LOG_COMMANDS.has(name)) {
+          console.debug(logMessage, args);
+        } else {
+          console.log(logMessage, args);
+        }
       });
     } else {
       console.error(`🤖 [ROBOT] Cannot send command '${name}' - WebSocket not connected.`);
