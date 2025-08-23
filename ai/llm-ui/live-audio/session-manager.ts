@@ -60,6 +60,7 @@ export class SessionManager {
         },
         config: {
           responseModalities: [Modality.AUDIO],
+          inputAudioTranscription: {},
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Orus' } },
           },

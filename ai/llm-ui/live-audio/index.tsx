@@ -102,9 +102,14 @@ export class GdmLiveAudio extends LitElement {
 
   private async handleMessage(message: LiveServerMessage) {
     // console.log(message);
-    const transcription = message.serverContent?.outputTranscription;
-    if (transcription) {
-      console.log(transcription);
+    const outputTranscription = message.serverContent?.outputTranscription;
+    if (outputTranscription) {
+      console.log('🤖 [OUTPUT]:', outputTranscription.text);
+    }
+    
+    const inputTranscription = message.serverContent?.inputTranscription;
+    if (inputTranscription) {
+      console.log('🎤 [INPUT]:', inputTranscription.text);
     }
 
     // Check if this is a setup message (indicates AI is thinking)
