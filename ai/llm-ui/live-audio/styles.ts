@@ -126,7 +126,7 @@ export const styles = css`
     padding: 0;
   }
 
-  .control-button:hover:not(:disabled) {
+  .control-button:hover {
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.3);
   }
@@ -134,6 +134,11 @@ export const styles = css`
   .control-button:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+  }
+  
+  .control-button:disabled:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .control-button.recording {
