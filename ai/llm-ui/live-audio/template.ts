@@ -33,8 +33,6 @@ export interface TemplateProps {
   error: string;
   inputNode: GainNode;
   outputNode: GainNode;
-  inputTranscriptions: Array<{ text: string, timestamp: number }>;
-  outputTranscriptions: Array<{ text: string, timestamp: number }>;
 }
 
 export function renderTemplate(props: TemplateProps): TemplateResult {
@@ -143,29 +141,6 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
       <gdm-robot-face
         .inputNode=${props.inputNode}
         .outputNode=${props.outputNode}></gdm-robot-face>
-
-      <div class="transcriptions-container">
-        <div class="transcription-box input-box">
-          <div class="transcription-header">🎤 Input</div>
-          <div class="transcriptions-scroll input-scroll">
-            ${props.inputTranscriptions.map(t => html`
-              <div class="transcription">
-                <span class="transcription-text">${t.text}</span>
-              </div>
-            `)}
-          </div>
-        </div>
-        <div class="transcription-box output-box">
-          <div class="transcription-header">🤖 Output</div>
-          <div class="transcriptions-scroll output-scroll">
-            ${props.outputTranscriptions.map(t => html`
-              <div class="transcription">
-                <span class="transcription-text">${t.text}</span>
-              </div>
-            `)}
-          </div>
-        </div>
-      </div>
 
       <button class="console-toggle" @click=${props.onToggleConsole}>
         ${props.showConsole ? 'Hide Console' : 'Show Console'}

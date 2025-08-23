@@ -31,13 +31,10 @@ export class GdmLiveAudio extends LitElement {
   @state() showOutputAnalyzer = true;
   @state() batteryPercentage: string = 'N/A';
   @state() cpuUsage: string = 'N/A';
-  @state() inputTranscriptions: Array<{text: string, timestamp: number}> = [];
-  @state() outputTranscriptions: Array<{text: string, timestamp: number}> = [];
   private inputTranscriptionBuffer: string[] = [];
   private outputTranscriptionBuffer: string[] = [];
   private lastInputTimestamp: number = 0;
   private lastOutputTimestamp: number = 0;
-  private transcriptionDebounceTimer: number | null = null;
 
   private audioManager: AudioManager;
   private sessionManager: SessionManager;
@@ -309,9 +306,8 @@ export class GdmLiveAudio extends LitElement {
       this.errorManager.handleGoogleAIError(e);
     }
     
-    // Clear transcription buffers and history
+    // Clear transcription buffers
     this.flushTranscriptionBuffers();
-    this.transcriptions = [];
 
     this.sessionState = 'disconnected';
     this.initSession();
@@ -508,7 +504,7 @@ export class GdmLiveAudio extends LitElement {
       const sentences = this.extractCompleteSentences(bufferText);
       if (sentences.complete.length > 0) {
         sentences.complete.forEach(sentence => {
-          this.addTranscription('input', sentence);
+          console.log(`🎤 [INPUT]: ${sentence}`);
         });
         this.inputTranscriptionBuffer = sentences.remaining ? [sentences.remaining] : [];
       }
@@ -521,7 +517,7 @@ export class GdmLiveAudio extends LitElement {
       const sentences = this.extractCompleteSentences(bufferText);
       if (sentences.complete.length > 0) {
         sentences.complete.forEach(sentence => {
-          this.addTranscription('output', sentence);
+          console.log(`🤖 [OUTPUT]: ${sentence}`);
         });
         this.outputTranscriptionBuffer = sentences.remaining ? [sentences.remaining] : [];
       }
@@ -562,7 +558,7 @@ export class GdmLiveAudio extends LitElement {
     if (this.inputTranscriptionBuffer.length > 0) {
       const text = this.inputTranscriptionBuffer.join('').trim();
       if (text) {
-        this.addTranscription('input', text);
+        console.log(`🎤 [INPUT]: ${text}`);
       }
       this.inputTranscriptionBuffer = [];
     }
@@ -572,55 +568,12 @@ export class GdmLiveAudio extends LitElement {
     if (this.outputTranscriptionBuffer.length > 0) {
       const text = this.outputTranscriptionBuffer.join('').trim();
       if (text) {
-        this.addTranscription('output', text);
+        console.log(`🤖 [OUTPUT]: ${text}`);
       }
       this.outputTranscriptionBuffer = [];
     }
   }
   
-  private debouncedTranscriptionUpdate() {
-    if (this.transcriptionDebounceTimer) {
-      clearTimeout(this.transcriptionDebounceTimer);
-    }
-    this.transcriptionDebounceTimer = window.setTimeout(() => {
-      this.requestUpdate();
-      this.transcriptionDebounceTimer = null;
-    }, 50); // Batch updates every 50ms
-  }
-
-  private addTranscription(type: 'input' | 'output', text: string) {
-    const MAX_TRANSCRIPTIONS = 20; // Keep only last 20 for display
-    const targetArray = type === 'input' ? this.inputTranscriptions : this.outputTranscriptions;
-    
-    // Use circular buffer pattern - remove oldest if at capacity
-    if (targetArray.length >= MAX_TRANSCRIPTIONS) {
-      targetArray.shift(); // Remove oldest (O(n) but small array)
-    }
-    
-    targetArray.push({ text, timestamp: Date.now() });
-    
-    // Debounced update instead of immediate
-    this.debouncedTranscriptionUpdate();
-    
-    // Scroll immediately (simple fix)
-    this.scrollToBottom();
-  }
-  
-  private scrollToBottom() {
-    // Use requestAnimationFrame to batch DOM operations and avoid forced reflow
-    requestAnimationFrame(() => {
-      const inputScroll = this.shadowRoot?.querySelector('.input-scroll');
-      const outputScroll = this.shadowRoot?.querySelector('.output-scroll');
-      
-      // Use scrollIntoView on last element instead of scrollHeight (avoids forced reflow)
-      if (inputScroll?.lastElementChild) {
-        inputScroll.lastElementChild.scrollIntoView({ block: 'end', behavior: 'auto' });
-      }
-      if (outputScroll?.lastElementChild) {
-        outputScroll.lastElementChild.scrollIntoView({ block: 'end', behavior: 'auto' });
-      }
-    });
-  }
 
 
   render() {
@@ -644,8 +597,6 @@ export class GdmLiveAudio extends LitElement {
       error: this.error,
       inputNode: this.audioManager.getInputNode(),
       outputNode: this.audioManager.getOutputNode(),
-      inputTranscriptions: this.inputTranscriptions,
-      outputTranscriptions: this.outputTranscriptions
     };
 
     return renderTemplate(props);
