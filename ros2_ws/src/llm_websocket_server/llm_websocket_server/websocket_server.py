@@ -52,7 +52,7 @@ class WebSocketRobotServer(Node):
         self.robot_state = RobotState()
 
         # Create ROS2 publishers and clients
-        self.twist_pub = self.create_publisher(Twist, "/cmd_vel", 10)
+        self.twist_pub = self.create_publisher(Twist, "/llm_cmd_vel", 10)
         self.switch_controller_client = self.create_client(SwitchController, "/controller_manager/switch_controller")
 
         # Wait for controller manager service to be available
