@@ -47,18 +47,20 @@ export class VisualizerManager {
         ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
         x += barWidth + 1;
       }
-
-      if (isRecording) {
-        this.visualizerAnimationId = requestAnimationFrame(animate);
-      }
     };
 
-    this.visualizerAnimationId = requestAnimationFrame(animate);
+    // Use setInterval at 20Hz (50ms) instead of requestAnimationFrame at 60Hz
+    // This reduces CPU usage while maintaining smooth visualization
+    this.visualizerAnimationId = window.setInterval(() => {
+      if (isRecording) {
+        animate();
+      }
+    }, 50);
   }
 
   stopVisualizer(shadowRoot: ShadowRoot | null) {
     if (this.visualizerAnimationId) {
-      cancelAnimationFrame(this.visualizerAnimationId);
+      clearInterval(this.visualizerAnimationId);
     }
 
     // Clear canvas
@@ -111,16 +113,16 @@ export class VisualizerManager {
         ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
         x += barWidth + 1;
       }
-
-      this.outputVisualizerAnimationId = requestAnimationFrame(animate);
     };
 
-    this.outputVisualizerAnimationId = requestAnimationFrame(animate);
+    // Use setInterval at 20Hz (50ms) instead of requestAnimationFrame at 60Hz
+    // This reduces CPU usage while maintaining smooth visualization
+    this.outputVisualizerAnimationId = window.setInterval(animate, 50);
   }
 
   stopOutputVisualizer(shadowRoot: ShadowRoot | null) {
     if (this.outputVisualizerAnimationId) {
-      cancelAnimationFrame(this.outputVisualizerAnimationId);
+      clearInterval(this.outputVisualizerAnimationId);
     }
 
     // Clear canvas
@@ -136,10 +138,10 @@ export class VisualizerManager {
 
   cleanup() {
     if (this.visualizerAnimationId) {
-      cancelAnimationFrame(this.visualizerAnimationId);
+      clearInterval(this.visualizerAnimationId);
     }
     if (this.outputVisualizerAnimationId) {
-      cancelAnimationFrame(this.outputVisualizerAnimationId);
+      clearInterval(this.outputVisualizerAnimationId);
     }
   }
 }

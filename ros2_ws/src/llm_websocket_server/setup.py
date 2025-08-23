@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'psutil', 'websockets'],
     zip_safe=True,
     maintainer='parallels',
     maintainer_email='nathankau@gmail.com',

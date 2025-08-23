@@ -11,6 +11,8 @@ import logging
 import websockets
 import os
 import subprocess
+import psutil
+import platform
 from datetime import datetime
 from functools import partial
 from typing import Union
@@ -72,6 +74,7 @@ class WebSocketRobotServer(Node):
                     data = json.loads(message)
                     command_name = data.get("name", "unknown")
                     command_args = data.get("args", {})
+                    request_id = data.get("request_id")
 
                     self.robot_state.command_count += 1
                     self.robot_state.last_command = command_name
@@ -79,7 +82,7 @@ class WebSocketRobotServer(Node):
                     logger.info(f"📨 Received command from {client_addr}: {command_name}")
 
                     # Handle different commands
-                    response = await self.handle_command(command_name, command_args)
+                    response = await self.handle_command(command_name, command_args, request_id)
 
                     # Send response back to client
                     await websocket.send(json.dumps(response))
@@ -108,28 +111,34 @@ class WebSocketRobotServer(Node):
         except Exception as e:
             logger.error(f"❌ Connection error with {client_addr}: {e}")
 
-    async def handle_command(self, command_name: str, command_args: dict) -> dict:
+    def add_request_id(self, response: dict, request_id: str = None) -> dict:
+        """Add request_id to response if provided."""
+        if request_id:
+            response["request_id"] = request_id
+        return response
+
+    async def handle_command(self, command_name: str, command_args: dict, request_id: str = None) -> dict:
         """Handle specific robot commands and return appropriate responses."""
 
         if command_name == "activate":
             success, message = await self.activate_robot()
-            return {
+            return self.add_request_id({
                 "status": "success" if success else "error",
                 "message": message,
                 "robot_state": "active" if self.robot_state.is_active else "inactive",
                 "timestamp": datetime.now().isoformat(),
                 "command_count": self.robot_state.command_count,
-            }
+            }, request_id)
 
         elif command_name == "deactivate":
             success, message = await self.deactivate_robot()
-            return {
+            return self.add_request_id({
                 "status": "success" if success else "error",
                 "message": message,
                 "robot_state": "active" if self.robot_state.is_active else "inactive",
                 "timestamp": datetime.now().isoformat(),
                 "command_count": self.robot_state.command_count,
-            }
+            }, request_id)
 
         elif command_name == "move":
             vx = command_args.get("vx", 0.0)
@@ -151,7 +160,7 @@ class WebSocketRobotServer(Node):
                 response["warnings"] = warnings
                 response["constraints"] = {"max_vx": 0.75, "max_vy": 0.5, "max_wz": 2.0, "min_movement_threshold": 0.2}
 
-            return response
+            return self.add_request_id(response, request_id)
 
         elif command_name == "get_battery":
             battery_percentage, battery_voltage = await self.get_battery_info()
@@ -163,7 +172,7 @@ class WebSocketRobotServer(Node):
                 battery_status = "low"
 
             logger.info(f"🔋 Battery level: {battery_percentage}% ({battery_voltage}V) ({battery_status})")
-            return {
+            return self.add_request_id({
                 "status": "success",
                 "message": f"Battery at {battery_percentage}% ({battery_voltage}V)",
                 "battery_percentage": battery_percentage,
@@ -172,11 +181,39 @@ class WebSocketRobotServer(Node):
                 "robot_state": "active" if self.robot_state.is_active else "inactive",
                 "timestamp": datetime.now().isoformat(),
                 "command_count": self.robot_state.command_count,
-            }
+            }, request_id)
+
+        elif command_name == "get_cpu_usage":
+            try:
+                # Get CPU usage (instant measurement, no blocking)
+                cpu_usage = psutil.cpu_percent()
+                system_info = {
+                    "platform": platform.system(),
+                    "cpu_count": psutil.cpu_count(),
+                    "cpu_count_logical": psutil.cpu_count(logical=True)
+                }
+                
+                logger.info(f"💻 CPU usage: {cpu_usage}%")
+                return self.add_request_id({
+                    "status": "success",
+                    "message": f"CPU usage at {cpu_usage}%",
+                    "cpu_usage": round(cpu_usage, 1),
+                    "system_info": system_info,
+                    "timestamp": datetime.now().isoformat(),
+                    "command_count": self.robot_state.command_count
+                }, request_id)
+            except Exception as e:
+                logger.error(f"❌ Failed to get CPU usage: {e}")
+                return self.add_request_id({
+                    "status": "error",
+                    "message": f"Failed to get CPU usage: {str(e)}",
+                    "timestamp": datetime.now().isoformat(),
+                    "command_count": self.robot_state.command_count
+                }, request_id)
 
         elif command_name == "status":
             battery_percentage, battery_voltage = await self.get_battery_info()
-            return {
+            return self.add_request_id({
                 "status": "success",
                 "message": "Status retrieved",
                 "robot_state": "active" if self.robot_state.is_active else "inactive",
@@ -186,16 +223,16 @@ class WebSocketRobotServer(Node):
                 "last_command": self.robot_state.last_command,
                 "command_count": self.robot_state.command_count,
                 "timestamp": datetime.now().isoformat(),
-            }
+            }, request_id)
 
         else:
-            return {
+            return self.add_request_id({
                 "status": "error",
                 "message": f"Unknown command: {command_name}",
-                "available_commands": ["activate", "deactivate", "move", "get_battery", "status"],
+                "available_commands": ["activate", "deactivate", "move", "get_battery", "get_cpu_usage", "status"],
                 "timestamp": datetime.now().isoformat(),
                 "command_count": self.robot_state.command_count,
-            }
+            }, request_id)
 
     async def activate_robot(self) -> tuple[bool, str]:
         """Activate the robot by switching to the default controller."""
