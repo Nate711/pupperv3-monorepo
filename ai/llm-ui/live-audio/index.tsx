@@ -368,19 +368,23 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
-  protected updated(changedProperties: Map<string, any>) {
-    super.updated(changedProperties);
-
-    // Auto-scroll console to bottom when new logs are added
-    if (this.showConsole) {
-      const consoleContent = this.shadowRoot?.querySelector('.console-content');
-      if (consoleContent) {
-        consoleContent.scrollTop = consoleContent.scrollHeight;
-      }
+  private scrollDebounceTimer: number | null = null;
+  
+  private debouncedScrollToBottom = () => {
+    if (this.scrollDebounceTimer) {
+      clearTimeout(this.scrollDebounceTimer);
     }
     
-    // Auto-scroll transcriptions to bottom when new ones are added
-    if (changedProperties.has('transcriptions')) {
+    this.scrollDebounceTimer = window.setTimeout(() => {
+      // Auto-scroll console to bottom when new logs are added
+      if (this.showConsole) {
+        const consoleContent = this.shadowRoot?.querySelector('.console-content');
+        if (consoleContent) {
+          consoleContent.scrollTop = consoleContent.scrollHeight;
+        }
+      }
+      
+      // Auto-scroll transcriptions to bottom when new ones are added
       const inputScroll = this.shadowRoot?.querySelector('.input-scroll');
       const outputScroll = this.shadowRoot?.querySelector('.output-scroll');
       if (inputScroll) {
@@ -389,6 +393,17 @@ export class GdmLiveAudio extends LitElement {
       if (outputScroll) {
         outputScroll.scrollTop = outputScroll.scrollHeight;
       }
+      
+      this.scrollDebounceTimer = null;
+    }, 100); // Debounce for 100ms
+  }
+
+  protected updated(changedProperties: Map<string, any>) {
+    super.updated(changedProperties);
+
+    // Debounced auto-scrolling
+    if (changedProperties.has('transcriptions') || (changedProperties.has('consoleLogs') && this.showConsole)) {
+      this.debouncedScrollToBottom();
     }
 
     // Start visualizers when component is ready
@@ -465,19 +480,30 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
+  private systemStatsDebounceTimer: number | null = null;
+  
   private async updateSystemStats() {
     await Promise.all([
       this.updateBatteryPercentage(),
       this.updateCpuUsage()
     ]);
-    this.requestUpdate();
+    
+    // Debounce the requestUpdate to avoid excessive re-renders
+    if (this.systemStatsDebounceTimer) {
+      clearTimeout(this.systemStatsDebounceTimer);
+    }
+    
+    this.systemStatsDebounceTimer = window.setTimeout(() => {
+      this.requestUpdate();
+      this.systemStatsDebounceTimer = null;
+    }, 50); // Small debounce to batch updates
   }
 
   private startSystemMonitoring() {
     this.updateSystemStats();
     this.batteryUpdateInterval = window.setInterval(() => {
       this.updateSystemStats();
-    }, 5000);
+    }, 10000); // Increased to 10 seconds for less frequent updates
   }
 
   private stopSystemMonitoring() {

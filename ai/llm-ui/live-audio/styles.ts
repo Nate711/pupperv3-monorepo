@@ -48,6 +48,7 @@ export const styles = css`
     display: flex;
     align-items: center;
     gap: 8px;
+    contain: layout style paint;
   }
 
   .battery-icon {
@@ -67,47 +68,12 @@ export const styles = css`
 
   .battery-fill {
     height: 100%;
-    background: #4CAF50;
+    background: var(--battery-color, #4CAF50);
     border-radius: 0;
-    transition: all 0.3s ease;
-  }
-
-  /* Color based on battery level */
-  .battery-fill[style*="width: 0%"],
-  .battery-fill[style*="width: 1%"],
-  .battery-fill[style*="width: 2%"],
-  .battery-fill[style*="width: 3%"],
-  .battery-fill[style*="width: 4%"],
-  .battery-fill[style*="width: 5%"],
-  .battery-fill[style*="width: 6%"],
-  .battery-fill[style*="width: 7%"],
-  .battery-fill[style*="width: 8%"],
-  .battery-fill[style*="width: 9%"],
-  .battery-fill[style*="width: 10%"],
-  .battery-fill[style*="width: 11%"],
-  .battery-fill[style*="width: 12%"],
-  .battery-fill[style*="width: 13%"],
-  .battery-fill[style*="width: 14%"],
-  .battery-fill[style*="width: 15%"] {
-    background: #f44336; /* Red for critical (0-15%) */
-  }
-
-  .battery-fill[style*="width: 16%"],
-  .battery-fill[style*="width: 17%"],
-  .battery-fill[style*="width: 18%"],
-  .battery-fill[style*="width: 19%"],
-  .battery-fill[style*="width: 20%"],
-  .battery-fill[style*="width: 21%"],
-  .battery-fill[style*="width: 22%"],
-  .battery-fill[style*="width: 23%"],
-  .battery-fill[style*="width: 24%"],
-  .battery-fill[style*="width: 25%"],
-  .battery-fill[style*="width: 26%"],
-  .battery-fill[style*="width: 27%"],
-  .battery-fill[style*="width: 28%"],
-  .battery-fill[style*="width: 29%"],
-  .battery-fill[style*="width: 30%"] {
-    background: #ff9800; /* Orange for low (16-30%) */
+    transition: background-color 0.3s ease;
+    transform-origin: left;
+    transform: scaleX(var(--battery-level, 0));
+    width: 100%;
   }
 
   .battery-tip {
@@ -130,6 +96,7 @@ export const styles = css`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    contain: layout style paint;
   }
 
   .mode-indicator {
@@ -299,6 +266,7 @@ export const styles = css`
     height: 140px;
     display: flex;
     gap: 10px;
+    contain: layout style;
   }
   
   .transcription-box {
@@ -310,6 +278,7 @@ export const styles = css`
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    contain: layout style paint;
   }
   
   .transcription-header {
@@ -329,6 +298,8 @@ export const styles = css`
     overflow-y: auto;
     overflow-x: hidden;
     scroll-behavior: smooth;
+    contain: layout style paint;
+    will-change: transform;
   }
   
   .transcriptions-scroll::-webkit-scrollbar {

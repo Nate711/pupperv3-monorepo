@@ -62,6 +62,7 @@ export class GdmRobotFace extends LitElement {
       align-items: center;
       justify-content: center;
       background: #000000ff;
+      contain: layout style paint;
     }
 
     .stage {
@@ -351,13 +352,13 @@ export class GdmRobotFace extends LitElement {
   }
 
   private startGazeAnimation() {
-    // Update gaze every 100ms (10Hz) for smooth interpolation
-    // This is much more efficient than 60fps requestAnimationFrame
+    // Update gaze every 250ms (4Hz) for smooth interpolation
+    // Reduced frequency to minimize style recalculation
     this.gazeUpdateInterval = window.setInterval(() => {
       if (this.currentState === 'idle' || this.currentState === 'thinking') {
         this.updateGaze();
       }
-    }, 100);
+    }, 250);
   }
 
   private stopGazeAnimation() {

@@ -5,6 +5,14 @@
 
 import { html, TemplateResult } from 'lit';
 
+function getBatteryColor(percentage: string): string {
+  if (percentage === 'N/A') return '#4CAF50';
+  const value = parseInt(percentage.replace('%', ''));
+  if (value <= 15) return '#f44336'; // Red for critical
+  if (value <= 30) return '#ff9800'; // Orange for low
+  return '#4CAF50'; // Green for normal
+}
+
 export interface TemplateProps {
   robotMode: string;
   selectedModel: string;
@@ -37,7 +45,9 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
         <div class="battery-indicator">
           <div class="battery-icon">
             <div class="battery-shell">
-              <div class="battery-fill" style="width: ${props.batteryPercentage === 'N/A' ? '0' : props.batteryPercentage.replace('%', '')}%"></div>
+              <div class="battery-fill" 
+                   style="--battery-level: ${props.batteryPercentage === 'N/A' ? '0' : (parseInt(props.batteryPercentage.replace('%', '')) / 100)};
+                          --battery-color: ${getBatteryColor(props.batteryPercentage)}"></div>
             </div>
             <div class="battery-tip"></div>
           </div>
@@ -140,7 +150,7 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
         <div class="transcription-box input-box">
           <div class="transcription-header">🎤 Input</div>
           <div class="transcriptions-scroll input-scroll">
-            ${props.transcriptions.filter(t => t.type === 'input').map(t => html`
+            ${props.transcriptions.filter(t => t.type === 'input').slice(-20).map(t => html`
               <div class="transcription">
                 <span class="transcription-text">${t.text}</span>
               </div>
@@ -150,7 +160,7 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
         <div class="transcription-box output-box">
           <div class="transcription-header">🤖 Output</div>
           <div class="transcriptions-scroll output-scroll">
-            ${props.transcriptions.filter(t => t.type === 'output').map(t => html`
+            ${props.transcriptions.filter(t => t.type === 'output').slice(-20).map(t => html`
               <div class="transcription">
                 <span class="transcription-text">${t.text}</span>
               </div>
