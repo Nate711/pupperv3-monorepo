@@ -131,23 +131,29 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
 
     elif command_name == "deactivate":
         if not robot_state.is_active:
-            return {
-                "status": "warning",
-                "message": "Robot is already inactive",
-                "robot_state": "inactive",
-                "timestamp": datetime.now().isoformat(),
-                "command_count": robot_state.command_count,
-            }
+            return add_request_id(
+                {
+                    "status": "warning",
+                    "message": "Robot is already inactive",
+                    "robot_state": "inactive",
+                    "timestamp": datetime.now().isoformat(),
+                    "command_count": robot_state.command_count,
+                },
+                request_id,
+            )
         else:
             robot_state.is_active = False
             logger.info("🤖 Robot DEACTIVATED")
-            return {
-                "status": "success",
-                "message": "Robot deactivated successfully",
-                "robot_state": "inactive",
-                "timestamp": datetime.now().isoformat(),
-                "command_count": robot_state.command_count,
-            }
+            return add_request_id(
+                {
+                    "status": "success",
+                    "message": "Robot deactivated successfully",
+                    "robot_state": "inactive",
+                    "timestamp": datetime.now().isoformat(),
+                    "command_count": robot_state.command_count,
+                },
+                request_id,
+            )
 
     elif command_name == "move":
         vx = command_args.get("vx", 0.0)
@@ -155,13 +161,16 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
         wz = command_args.get("wz", 0.0)
 
         if not robot_state.is_active:
-            return {
-                "status": "warning",
-                "message": "Cannot move - robot is not active. Activate robot first.",
-                "robot_state": "inactive",
-                "timestamp": datetime.now().isoformat(),
-                "command_count": robot_state.command_count,
-            }
+            return add_request_id(
+                {
+                    "status": "warning",
+                    "message": "Cannot move - robot is not active. Activate robot first.",
+                    "robot_state": "inactive",
+                    "timestamp": datetime.now().isoformat(),
+                    "command_count": robot_state.command_count,
+                },
+                request_id,
+            )
 
         # Validate velocity constraints
         warnings = []
@@ -193,16 +202,19 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
         if warnings:
             logger.warning(f"🤖 Movement warnings: {'; '.join(warnings)}")
 
-        return {
-            "status": "success",
-            "message": message,
-            "robot_state": "active",
-            "velocities": {"vx": vx, "vy": vy, "wz": wz},
-            "warnings": warnings if warnings else None,
-            "constraints": {"max_vx": 0.75, "max_vy": 0.5, "max_wz": 2.0, "min_movement_threshold": 0.2},
-            "timestamp": datetime.now().isoformat(),
-            "command_count": robot_state.command_count,
-        }
+        return add_request_id(
+            {
+                "status": "success",
+                "message": message,
+                "robot_state": "active",
+                "velocities": {"vx": vx, "vy": vy, "wz": wz},
+                "warnings": warnings if warnings else None,
+                "constraints": {"max_vx": 0.75, "max_vy": 0.5, "max_wz": 2.0, "min_movement_threshold": 0.2},
+                "timestamp": datetime.now().isoformat(),
+                "command_count": robot_state.command_count,
+            },
+            request_id,
+        )
 
     elif command_name == "get_battery":
         # Get dynamic sinusoidal battery percentage
@@ -278,13 +290,16 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
         )
 
     else:
-        return {
-            "status": "error",
-            "message": f"Unknown command: {command_name}",
-            "available_commands": ["activate", "deactivate", "move", "get_battery", "get_cpu_usage", "status"],
-            "timestamp": datetime.now().isoformat(),
-            "command_count": robot_state.command_count,
-        }
+        return add_request_id(
+            {
+                "status": "error",
+                "message": f"Unknown command: {command_name}",
+                "available_commands": ["activate", "deactivate", "move", "get_battery", "get_cpu_usage", "status"],
+                "timestamp": datetime.now().isoformat(),
+                "command_count": robot_state.command_count,
+            },
+            request_id,
+        )
 
 
 async def main():
