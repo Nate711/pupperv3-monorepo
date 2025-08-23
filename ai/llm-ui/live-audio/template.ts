@@ -27,7 +27,7 @@ export interface TemplateProps {
   error: string;
   inputNode: GainNode;
   outputNode: GainNode;
-  transcriptions: Array<{type: 'input' | 'output', text: string, timestamp: number}>;
+  transcriptions: Array<{ type: 'input' | 'output', text: string, timestamp: number }>;
 }
 
 export function renderTemplate(props: TemplateProps): TemplateResult {
@@ -45,9 +45,6 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
         </div>
         <div class="cpu-indicator">
           CPU ${props.cpuUsage}
-        </div>
-        <div class="mode-indicator ${props.robotMode}">
-          ${props.robotMode}
         </div>
 
         <div class="control-group">
@@ -103,13 +100,13 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
             class="viz-toggle ${props.showInputAnalyzer ? 'active' : ''}"
             @click=${props.onToggleInputAnalyzer}
             title="Toggle Input Visualizer">
-            In Viz
+            In Vis
           </button>
           <button 
             class="viz-toggle ${props.showOutputAnalyzer ? 'active' : ''}"
             @click=${props.onToggleOutputAnalyzer}
             title="Toggle Output Visualizer">
-            Out Viz
+            Out Vis
           </button>
         </div>
 

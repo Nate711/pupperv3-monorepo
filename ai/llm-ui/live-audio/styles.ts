@@ -27,7 +27,7 @@ export const styles = css`
     right: 20px;
     z-index: 10;
     display: grid;
-    grid-template-columns: 90px 90px 120px 1fr 200px;
+    grid-template-columns: 90px 90px 230px 1fr;
     align-items: center;
     gap: 12px;
   }
@@ -135,7 +135,7 @@ export const styles = css`
   .mode-indicator {
     background: rgba(0, 0, 0, 0.7);
     color: white;
-    padding: 8px 16px;
+    padding: 6px 0px;
     border-radius: 12px;
     font-size: 14px;
     font-weight: 500;
