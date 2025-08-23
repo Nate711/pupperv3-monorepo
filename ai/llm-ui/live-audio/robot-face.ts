@@ -110,9 +110,9 @@ export class GdmRobotFace extends LitElement {
     }
 
 
-    /* Gaze */
+    /* Gaze - will be updated directly via JavaScript */
     .pupil, .glints {
-      transform: translate(var(--gaze-x), var(--gaze-y));
+      transform: translate(0px, 0px);
     }
 
     /* Eyelids */
@@ -217,11 +217,29 @@ export class GdmRobotFace extends LitElement {
     const frequencyY = 0.08; // Slightly different frequency for Y
 
     // Create smooth sinusoidal movement with limited range
-    // Range: ±15 pixels for subtle eye movement
+    // Range: ±6 pixels for subtle eye movement
     this.gazeX = Math.sin(2 * Math.PI * frequencyX * elapsedTime) * 6;
     this.gazeY = Math.cos(2 * Math.PI * frequencyY * elapsedTime) * 4; // Slightly less vertical movement
 
-    this.requestUpdate();
+    // Update transform directly on elements (more efficient than CSS vars)
+    this.updateGazeElements();
+  }
+
+  private updateGazeElements() {
+    if (!this.shadowRoot) return;
+    
+    const pupils = this.shadowRoot.querySelectorAll('.pupil');
+    const glints = this.shadowRoot.querySelectorAll('.glints');
+    
+    const transform = `translate(${this.gazeX}px, ${this.gazeY}px)`;
+    
+    pupils.forEach(pupil => {
+      (pupil as HTMLElement).style.transform = transform;
+    });
+    
+    glints.forEach(glint => {
+      (glint as HTMLElement).style.transform = transform;
+    });
   }
 
   private startGazeAnimation() {
@@ -242,8 +260,7 @@ export class GdmRobotFace extends LitElement {
   protected render() {
     return html`
       <div class="robot-face-container">
-        <div class="stage" 
-             style="--gaze-x: ${this.gazeX}px; --gaze-y: ${this.gazeY}px;">
+        <div class="stage">
           <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
               <filter id="blur8">
