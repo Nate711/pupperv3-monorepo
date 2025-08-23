@@ -369,14 +369,14 @@ export class GdmLiveAudio extends LitElement {
   protected updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
 
-    // Auto-scroll console when logs change
+    // Auto-scroll console when logs change (avoid forced reflow)
     if (changedProperties.has('consoleLogs') && this.showConsole) {
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         const consoleContent = this.shadowRoot?.querySelector('.console-content');
-        if (consoleContent) {
-          consoleContent.scrollTop = consoleContent.scrollHeight;
+        if (consoleContent?.lastElementChild) {
+          consoleContent.lastElementChild.scrollIntoView({ block: 'end', behavior: 'auto' });
         }
-      }, 0);
+      });
     }
 
     // Start visualizers when component is ready
@@ -607,18 +607,19 @@ export class GdmLiveAudio extends LitElement {
   }
   
   private scrollToBottom() {
-    // Use setTimeout to ensure DOM is updated
-    setTimeout(() => {
+    // Use requestAnimationFrame to batch DOM operations and avoid forced reflow
+    requestAnimationFrame(() => {
       const inputScroll = this.shadowRoot?.querySelector('.input-scroll');
       const outputScroll = this.shadowRoot?.querySelector('.output-scroll');
       
-      if (inputScroll) {
-        inputScroll.scrollTop = inputScroll.scrollHeight;
+      // Use scrollIntoView on last element instead of scrollHeight (avoids forced reflow)
+      if (inputScroll?.lastElementChild) {
+        inputScroll.lastElementChild.scrollIntoView({ block: 'end', behavior: 'auto' });
       }
-      if (outputScroll) {
-        outputScroll.scrollTop = outputScroll.scrollHeight;
+      if (outputScroll?.lastElementChild) {
+        outputScroll.lastElementChild.scrollIntoView({ block: 'end', behavior: 'auto' });
       }
-    }, 0);
+    });
   }
 
 
