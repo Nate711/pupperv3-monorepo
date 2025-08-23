@@ -67,14 +67,21 @@ async def handle_client(websocket):
                 robot_state.command_count += 1
                 robot_state.last_command = command_name
 
-                logger.info(f"📨 Received command from {client_addr}: {command_name}")
+                if command_name in ("get_battery", "get_cpu_usage"):
+                    logger.debug(f"📨 Received command from {client_addr}: {command_name}")
+                else:
+                    logger.info(f"📨 Received command from {client_addr}: {command_name}")
 
                 # Handle different commands
                 response = await handle_command(command_name, command_args, request_id)
 
                 # Send response back to client
                 await websocket.send(json.dumps(response))
-                logger.info(f"📤 Sent response to {client_addr}: {response}")
+
+                if command_name in ("get_battery", "get_cpu_usage"):
+                    logger.debug(f"📤 Sent response to {client_addr}: {response}")
+                else:
+                    logger.info(f"📤 Sent response to {client_addr}: {response}")
 
             except json.JSONDecodeError:
                 error_response = {
@@ -226,7 +233,7 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
         elif battery_percentage <= 30:
             battery_status = "low"
 
-        logger.info(f"🔋 Battery level: {battery_percentage}% ({battery_status})")
+        logger.debug(f"🔋 Battery level: {battery_percentage}% ({battery_status})")
         return add_request_id(
             {
                 "status": "success",
@@ -250,7 +257,7 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
                 "cpu_count_logical": psutil.cpu_count(logical=True),
             }
 
-            logger.info(f"💻 CPU usage: {cpu_usage}%")
+            logger.debug(f"💻 CPU usage: {cpu_usage}%")
             return add_request_id(
                 {
                     "status": "success",
