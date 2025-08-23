@@ -33,7 +33,8 @@ export interface TemplateProps {
   error: string;
   inputNode: GainNode;
   outputNode: GainNode;
-  transcriptions: Array<{ type: 'input' | 'output', text: string, timestamp: number }>;
+  inputTranscriptions: Array<{ text: string, timestamp: number }>;
+  outputTranscriptions: Array<{ text: string, timestamp: number }>;
 }
 
 export function renderTemplate(props: TemplateProps): TemplateResult {
@@ -147,7 +148,7 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
         <div class="transcription-box input-box">
           <div class="transcription-header">🎤 Input</div>
           <div class="transcriptions-scroll input-scroll">
-            ${props.transcriptions.filter(t => t.type === 'input').slice(-20).map(t => html`
+            ${props.inputTranscriptions.map(t => html`
               <div class="transcription">
                 <span class="transcription-text">${t.text}</span>
               </div>
@@ -157,7 +158,7 @@ export function renderTemplate(props: TemplateProps): TemplateResult {
         <div class="transcription-box output-box">
           <div class="transcription-header">🤖 Output</div>
           <div class="transcriptions-scroll output-scroll">
-            ${props.transcriptions.filter(t => t.type === 'output').slice(-20).map(t => html`
+            ${props.outputTranscriptions.map(t => html`
               <div class="transcription">
                 <span class="transcription-text">${t.text}</span>
               </div>

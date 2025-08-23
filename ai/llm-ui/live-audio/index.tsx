@@ -31,11 +31,13 @@ export class GdmLiveAudio extends LitElement {
   @state() showOutputAnalyzer = true;
   @state() batteryPercentage: string = 'N/A';
   @state() cpuUsage: string = 'N/A';
-  @state() transcriptions: Array<{type: 'input' | 'output', text: string, timestamp: number}> = [];
-  private inputTranscriptionBuffer: string = '';
-  private outputTranscriptionBuffer: string = '';
+  @state() inputTranscriptions: Array<{text: string, timestamp: number}> = [];
+  @state() outputTranscriptions: Array<{text: string, timestamp: number}> = [];
+  private inputTranscriptionBuffer: string[] = [];
+  private outputTranscriptionBuffer: string[] = [];
   private lastInputTimestamp: number = 0;
   private lastOutputTimestamp: number = 0;
+  private transcriptionDebounceTimer: number | null = null;
 
   private audioManager: AudioManager;
   private sessionManager: SessionManager;
@@ -363,42 +365,18 @@ export class GdmLiveAudio extends LitElement {
     }
   }
 
-  private scrollDebounceTimer: number | null = null;
-  
-  private debouncedScrollToBottom = () => {
-    if (this.scrollDebounceTimer) {
-      clearTimeout(this.scrollDebounceTimer);
-    }
-    
-    this.scrollDebounceTimer = window.setTimeout(() => {
-      // Auto-scroll console to bottom when new logs are added
-      if (this.showConsole) {
-        const consoleContent = this.shadowRoot?.querySelector('.console-content');
-        if (consoleContent) {
-          consoleContent.scrollTop = consoleContent.scrollHeight;
-        }
-      }
-      
-      // Auto-scroll transcriptions to bottom when new ones are added
-      const inputScroll = this.shadowRoot?.querySelector('.input-scroll');
-      const outputScroll = this.shadowRoot?.querySelector('.output-scroll');
-      if (inputScroll) {
-        inputScroll.scrollTop = inputScroll.scrollHeight;
-      }
-      if (outputScroll) {
-        outputScroll.scrollTop = outputScroll.scrollHeight;
-      }
-      
-      this.scrollDebounceTimer = null;
-    }, 100); // Debounce for 100ms
-  }
 
   protected updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
 
-    // Debounced auto-scrolling
-    if (changedProperties.has('transcriptions') || (changedProperties.has('consoleLogs') && this.showConsole)) {
-      this.debouncedScrollToBottom();
+    // Auto-scroll console when logs change
+    if (changedProperties.has('consoleLogs') && this.showConsole) {
+      setTimeout(() => {
+        const consoleContent = this.shadowRoot?.querySelector('.console-content');
+        if (consoleContent) {
+          consoleContent.scrollTop = consoleContent.scrollHeight;
+        }
+      }, 0);
     }
 
     // Start visualizers when component is ready
@@ -513,37 +491,39 @@ export class GdmLiveAudio extends LitElement {
     const TIMEOUT_MS = 2000; // 2 seconds timeout for incomplete sentences
     
     // Check if we should flush due to timeout
-    if (type === 'input' && this.lastInputTimestamp && (now - this.lastInputTimestamp) > TIMEOUT_MS && this.inputTranscriptionBuffer) {
+    if (type === 'input' && this.lastInputTimestamp && (now - this.lastInputTimestamp) > TIMEOUT_MS && this.inputTranscriptionBuffer.length > 0) {
       this.flushInputBuffer();
     }
-    if (type === 'output' && this.lastOutputTimestamp && (now - this.lastOutputTimestamp) > TIMEOUT_MS && this.outputTranscriptionBuffer) {
+    if (type === 'output' && this.lastOutputTimestamp && (now - this.lastOutputTimestamp) > TIMEOUT_MS && this.outputTranscriptionBuffer.length > 0) {
       this.flushOutputBuffer();
     }
     
-    // Add fragment to appropriate buffer
+    // Add fragment to appropriate buffer (using array for efficiency)
     if (type === 'input') {
-      this.inputTranscriptionBuffer += fragment;
+      this.inputTranscriptionBuffer.push(fragment);
       this.lastInputTimestamp = now;
       
       // Check for sentence endings
-      const sentences = this.extractCompleteSentences(this.inputTranscriptionBuffer);
+      const bufferText = this.inputTranscriptionBuffer.join('');
+      const sentences = this.extractCompleteSentences(bufferText);
       if (sentences.complete.length > 0) {
         sentences.complete.forEach(sentence => {
           this.addTranscription('input', sentence);
         });
-        this.inputTranscriptionBuffer = sentences.remaining;
+        this.inputTranscriptionBuffer = sentences.remaining ? [sentences.remaining] : [];
       }
     } else {
-      this.outputTranscriptionBuffer += fragment;
+      this.outputTranscriptionBuffer.push(fragment);
       this.lastOutputTimestamp = now;
       
       // Check for sentence endings
-      const sentences = this.extractCompleteSentences(this.outputTranscriptionBuffer);
+      const bufferText = this.outputTranscriptionBuffer.join('');
+      const sentences = this.extractCompleteSentences(bufferText);
       if (sentences.complete.length > 0) {
         sentences.complete.forEach(sentence => {
           this.addTranscription('output', sentence);
         });
-        this.outputTranscriptionBuffer = sentences.remaining;
+        this.outputTranscriptionBuffer = sentences.remaining ? [sentences.remaining] : [];
       }
     }
   }
@@ -579,23 +559,66 @@ export class GdmLiveAudio extends LitElement {
   }
   
   private flushInputBuffer() {
-    if (this.inputTranscriptionBuffer.trim()) {
-      this.addTranscription('input', this.inputTranscriptionBuffer.trim());
-      this.inputTranscriptionBuffer = '';
+    if (this.inputTranscriptionBuffer.length > 0) {
+      const text = this.inputTranscriptionBuffer.join('').trim();
+      if (text) {
+        this.addTranscription('input', text);
+      }
+      this.inputTranscriptionBuffer = [];
     }
   }
   
   private flushOutputBuffer() {
-    if (this.outputTranscriptionBuffer.trim()) {
-      this.addTranscription('output', this.outputTranscriptionBuffer.trim());
-      this.outputTranscriptionBuffer = '';
+    if (this.outputTranscriptionBuffer.length > 0) {
+      const text = this.outputTranscriptionBuffer.join('').trim();
+      if (text) {
+        this.addTranscription('output', text);
+      }
+      this.outputTranscriptionBuffer = [];
     }
   }
   
+  private debouncedTranscriptionUpdate() {
+    if (this.transcriptionDebounceTimer) {
+      clearTimeout(this.transcriptionDebounceTimer);
+    }
+    this.transcriptionDebounceTimer = window.setTimeout(() => {
+      this.requestUpdate();
+      this.transcriptionDebounceTimer = null;
+    }, 50); // Batch updates every 50ms
+  }
+
   private addTranscription(type: 'input' | 'output', text: string) {
-    const MAX_TRANSCRIPTIONS = 50; // Keep only last 50 for CPU efficiency
-    this.transcriptions = [...this.transcriptions, { type, text, timestamp: Date.now() }].slice(-MAX_TRANSCRIPTIONS);
-    this.requestUpdate();
+    const MAX_TRANSCRIPTIONS = 20; // Keep only last 20 for display
+    const targetArray = type === 'input' ? this.inputTranscriptions : this.outputTranscriptions;
+    
+    // Use circular buffer pattern - remove oldest if at capacity
+    if (targetArray.length >= MAX_TRANSCRIPTIONS) {
+      targetArray.shift(); // Remove oldest (O(n) but small array)
+    }
+    
+    targetArray.push({ text, timestamp: Date.now() });
+    
+    // Debounced update instead of immediate
+    this.debouncedTranscriptionUpdate();
+    
+    // Scroll immediately (simple fix)
+    this.scrollToBottom();
+  }
+  
+  private scrollToBottom() {
+    // Use setTimeout to ensure DOM is updated
+    setTimeout(() => {
+      const inputScroll = this.shadowRoot?.querySelector('.input-scroll');
+      const outputScroll = this.shadowRoot?.querySelector('.output-scroll');
+      
+      if (inputScroll) {
+        inputScroll.scrollTop = inputScroll.scrollHeight;
+      }
+      if (outputScroll) {
+        outputScroll.scrollTop = outputScroll.scrollHeight;
+      }
+    }, 0);
   }
 
 
@@ -620,7 +643,8 @@ export class GdmLiveAudio extends LitElement {
       error: this.error,
       inputNode: this.audioManager.getInputNode(),
       outputNode: this.audioManager.getOutputNode(),
-      transcriptions: this.transcriptions
+      inputTranscriptions: this.inputTranscriptions,
+      outputTranscriptions: this.outputTranscriptions
     };
 
     return renderTemplate(props);
