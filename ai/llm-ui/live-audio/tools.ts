@@ -227,6 +227,21 @@ export const get_cpu_usage = {
   }
 };
 
+export const wait = {
+  name: "wait",
+  description: "Wait/pause for a specified duration in seconds. Useful for sequencing commands with delays between them.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      duration: {
+        type: Type.NUMBER,
+        description: "Duration to wait in seconds (0.1 to 60 seconds). Default: 1 second."
+      }
+    },
+    required: []
+  }
+};
+
 // Audio visualizer tool definitions
 export const turn_on_audio_visualizers = {
   name: "turn_on_audio_visualizers",
@@ -269,6 +284,7 @@ export const tools = [{
     activate_robot,
     deactivate_robot,
     move_robot,
+    wait,
     get_battery_percentage,
     get_cpu_usage,
     turn_on_audio_visualizers,
@@ -342,6 +358,14 @@ export async function handleToolCall(
           result: `Failed to get CPU usage: ${result.error}`
         };
       }
+    }
+    else if (fc.name === "wait") {
+      const duration = fc.args?.duration ?? 1.0;
+      console.log(`⏱️ [TOOLS] Waiting for ${duration} seconds`);
+      const result = await sendRobotCommand("wait", { duration });
+      response = {
+        result: result.success ? result.response?.message || `Waited for ${duration} seconds` : `Failed to wait: ${result.error}`
+      };
     }
     else if (fc.name === "turn_on_audio_visualizers") {
       const input = fc.args?.input ?? true;

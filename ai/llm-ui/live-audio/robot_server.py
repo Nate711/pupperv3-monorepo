@@ -13,6 +13,8 @@ import platform
 import math
 import time
 from datetime import datetime
+from collections import deque
+from typing import Dict, Any, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -25,6 +27,9 @@ class RobotState:
         self.last_command = None
         self.command_count = 0
         self.start_time = time.time()
+        self.command_queue = deque()  # Queue for commands
+        self.queue_processor_task = None  # Task for processing queue
+        self.is_processing_queue = False
 
     def get_battery_percentage(self):
         """Generate sinusoidal battery percentage at 10Hz frequency."""
@@ -55,6 +60,10 @@ async def handle_client(websocket):
     client_addr = websocket.remote_address
     logger.info(f"🔌 New client connected: {client_addr}")
 
+    # Start the queue processor if not already running
+    if robot_state.queue_processor_task is None or robot_state.queue_processor_task.done():
+        robot_state.queue_processor_task = asyncio.create_task(process_command_queue(websocket))
+
     try:
         async for message in websocket:
             try:
@@ -72,16 +81,22 @@ async def handle_client(websocket):
                 else:
                     logger.info(f"📨 Received command from {client_addr}: {command_name}")
 
-                # Handle different commands
-                response = await handle_command(command_name, command_args, request_id)
+                # Add command to queue
+                robot_state.command_queue.append({
+                    "name": command_name,
+                    "args": command_args,
+                    "request_id": request_id,
+                    "websocket": websocket
+                })
 
-                # Send response back to client
-                await websocket.send(json.dumps(response))
-
-                if command_name in ("get_battery", "get_cpu_usage"):
-                    logger.debug(f"📤 Sent response to {client_addr}: {response}")
-                else:
-                    logger.info(f"📤 Sent response to {client_addr}: {response}")
+                # Send immediate acknowledgment for queued command
+                ack_response = add_request_id({
+                    "status": "queued",
+                    "message": f"Command '{command_name}' queued for execution",
+                    "queue_position": len(robot_state.command_queue),
+                    "timestamp": datetime.now().isoformat()
+                }, request_id)
+                await websocket.send(json.dumps(ack_response))
 
             except json.JSONDecodeError:
                 error_response = {
@@ -106,6 +121,40 @@ async def handle_client(websocket):
     except Exception as e:
         logger.error(f"❌ Connection error with {client_addr}: {e}")
 
+
+async def process_command_queue(websocket):
+    """Process commands from the queue sequentially."""
+    while True:
+        try:
+            if robot_state.command_queue and not robot_state.is_processing_queue:
+                robot_state.is_processing_queue = True
+                command_data = robot_state.command_queue.popleft()
+                
+                # Execute the command
+                response = await handle_command(
+                    command_data["name"],
+                    command_data["args"],
+                    command_data["request_id"]
+                )
+                
+                # Send response
+                try:
+                    if command_data["websocket"]:
+                        await command_data["websocket"].send(json.dumps(response))
+                        if command_data["name"] in ("get_battery", "get_cpu_usage"):
+                            logger.debug(f"📤 Executed queued command: {command_data['name']}")
+                        else:
+                            logger.info(f"📤 Executed queued command: {command_data['name']}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not send response for {command_data['name']}: {e}")
+                
+                robot_state.is_processing_queue = False
+            else:
+                await asyncio.sleep(0.1)  # Small delay when queue is empty
+        except Exception as e:
+            logger.error(f"❌ Error processing command queue: {e}")
+            robot_state.is_processing_queue = False
+            await asyncio.sleep(0.1)
 
 async def handle_command(command_name: str, command_args: dict, request_id: str = None) -> dict:
     """Handle specific robot commands and return appropriate responses."""
@@ -281,6 +330,24 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
                 request_id,
             )
 
+    elif command_name == "wait":
+        duration = command_args.get("duration", 1.0)
+        duration = min(max(duration, 0.1), 60.0)  # Clamp between 0.1 and 60 seconds
+        
+        logger.info(f"⏱️ Waiting for {duration} seconds")
+        await asyncio.sleep(duration)
+        
+        return add_request_id(
+            {
+                "status": "success",
+                "message": f"Waited for {duration} seconds",
+                "duration": duration,
+                "timestamp": datetime.now().isoformat(),
+                "command_count": robot_state.command_count,
+            },
+            request_id,
+        )
+
     elif command_name == "status":
         battery_percentage = robot_state.get_battery_percentage()
         return add_request_id(
@@ -291,6 +358,7 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
                 "battery_percentage": battery_percentage,
                 "last_command": robot_state.last_command,
                 "command_count": robot_state.command_count,
+                "queue_length": len(robot_state.command_queue),
                 "timestamp": datetime.now().isoformat(),
             },
             request_id,
@@ -301,7 +369,7 @@ async def handle_command(command_name: str, command_args: dict, request_id: str 
             {
                 "status": "error",
                 "message": f"Unknown command: {command_name}",
-                "available_commands": ["activate", "deactivate", "move", "get_battery", "get_cpu_usage", "status"],
+                "available_commands": ["activate", "deactivate", "move", "wait", "get_battery", "get_cpu_usage", "status"],
                 "timestamp": datetime.now().isoformat(),
                 "command_count": robot_state.command_count,
             },

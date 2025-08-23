@@ -16,6 +16,7 @@ import platform
 from datetime import datetime
 from functools import partial
 from typing import Union
+from collections import deque
 
 import rclpy
 from rclpy.node import Node
@@ -44,6 +45,9 @@ class RobotState:
         self.last_command = None
         self.command_count = 0
         self.current_gait = "4-legged"
+        self.command_queue = deque()  # Queue for commands
+        self.queue_processor_task = None  # Task for processing queue
+        self.is_processing_queue = False
 
 
 class WebSocketRobotServer(Node):
@@ -67,6 +71,10 @@ class WebSocketRobotServer(Node):
         client_addr = websocket.remote_address
         logger.info(f"🔌 New client connected: {client_addr}")
 
+        # Start the queue processor if not already running
+        if self.robot_state.queue_processor_task is None or self.robot_state.queue_processor_task.done():
+            self.robot_state.queue_processor_task = asyncio.create_task(self.process_command_queue(websocket))
+
         try:
             async for message in websocket:
                 try:
@@ -81,12 +89,22 @@ class WebSocketRobotServer(Node):
 
                     logger.info(f"📨 Received command from {client_addr}: {command_name}")
 
-                    # Handle different commands
-                    response = await self.handle_command(command_name, command_args, request_id)
+                    # Add command to queue
+                    self.robot_state.command_queue.append({
+                        "name": command_name,
+                        "args": command_args,
+                        "request_id": request_id,
+                        "websocket": websocket
+                    })
 
-                    # Send response back to client
-                    await websocket.send(json.dumps(response))
-                    logger.info(f"📤 Sent response to {client_addr}: {response}")
+                    # Send immediate acknowledgment for queued command
+                    ack_response = self.add_request_id({
+                        "status": "queued",
+                        "message": f"Command '{command_name}' queued for execution",
+                        "queue_position": len(self.robot_state.command_queue),
+                        "timestamp": datetime.now().isoformat()
+                    }, request_id)
+                    await websocket.send(json.dumps(ack_response))
 
                 except json.JSONDecodeError:
                     error_response = {
@@ -110,6 +128,37 @@ class WebSocketRobotServer(Node):
             logger.info(f"🔌 Client disconnected: {client_addr}")
         except Exception as e:
             logger.error(f"❌ Connection error with {client_addr}: {e}")
+
+    async def process_command_queue(self, websocket):
+        """Process commands from the queue sequentially."""
+        while True:
+            try:
+                if self.robot_state.command_queue and not self.robot_state.is_processing_queue:
+                    self.robot_state.is_processing_queue = True
+                    command_data = self.robot_state.command_queue.popleft()
+                    
+                    # Execute the command
+                    response = await self.handle_command(
+                        command_data["name"],
+                        command_data["args"],
+                        command_data["request_id"]
+                    )
+                    
+                    # Send response
+                    try:
+                        if command_data["websocket"]:
+                            await command_data["websocket"].send(json.dumps(response))
+                            logger.info(f"📤 Executed queued command: {command_data['name']}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Could not send response for {command_data['name']}: {e}")
+                    
+                    self.robot_state.is_processing_queue = False
+                else:
+                    await asyncio.sleep(0.1)  # Small delay when queue is empty
+            except Exception as e:
+                logger.error(f"❌ Error processing command queue: {e}")
+                self.robot_state.is_processing_queue = False
+                await asyncio.sleep(0.1)
 
     def add_request_id(self, response: dict, request_id: str = None) -> dict:
         """Add request_id to response if provided."""
@@ -211,6 +260,21 @@ class WebSocketRobotServer(Node):
                     "command_count": self.robot_state.command_count
                 }, request_id)
 
+        elif command_name == "wait":
+            duration = command_args.get("duration", 1.0)
+            duration = min(max(duration, 0.1), 60.0)  # Clamp between 0.1 and 60 seconds
+            
+            logger.info(f"⏱️ Waiting for {duration} seconds")
+            await asyncio.sleep(duration)
+            
+            return self.add_request_id({
+                "status": "success",
+                "message": f"Waited for {duration} seconds",
+                "duration": duration,
+                "timestamp": datetime.now().isoformat(),
+                "command_count": self.robot_state.command_count,
+            }, request_id)
+
         elif command_name == "status":
             battery_percentage, battery_voltage = await self.get_battery_info()
             return self.add_request_id({
@@ -222,6 +286,7 @@ class WebSocketRobotServer(Node):
                 "current_gait": self.robot_state.current_gait,
                 "last_command": self.robot_state.last_command,
                 "command_count": self.robot_state.command_count,
+                "queue_length": len(self.robot_state.command_queue),
                 "timestamp": datetime.now().isoformat(),
             }, request_id)
 
@@ -229,7 +294,7 @@ class WebSocketRobotServer(Node):
             return self.add_request_id({
                 "status": "error",
                 "message": f"Unknown command: {command_name}",
-                "available_commands": ["activate", "deactivate", "move", "get_battery", "get_cpu_usage", "status"],
+                "available_commands": ["activate", "deactivate", "move", "wait", "get_battery", "get_cpu_usage", "status"],
                 "timestamp": datetime.now().isoformat(),
                 "command_count": self.robot_state.command_count,
             }, request_id)
