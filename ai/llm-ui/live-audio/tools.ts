@@ -186,7 +186,7 @@ export const move_robot = {
   name: "move_robot",
   description: `Move the robot with specified velocities. 
   Constraints: max vx=0.75m/s, max vy=0.5m/s, max wz=2.0rad/s. 
-  Minimum movement threshold: vx/vy must be 0 or >=0.2m/s to actually move the robot. 
+  Minimum movement threshold: vx/vy must be 0 or >=0.4m/s to actually move the robot. 
   If the user doesn't specify a speed, choose a medium speed.
   Forward => positive vx. Backward => negative vx. Left => positive vy. Right => negative vy. Turn right => negative wz. Turn left => positive wz.`,
   parameters: {
@@ -194,11 +194,11 @@ export const move_robot = {
     properties: {
       vx: {
         type: Type.NUMBER,
-        description: "Linear velocity in x direction (forward/backward) in m/s. Range: 0 or 0.2 to 0.75. Values <0.2 won't move the robot."
+        description: "Linear velocity in x direction (forward/backward) in m/s. Range: 0 or 0.4 to 0.75. Values <0.4 won't move the robot."
       },
       vy: {
         type: Type.NUMBER,
-        description: "Linear velocity in y direction (left/right) in m/s. Range: 0 or 0.2 to 0.5. Values <0.2 won't move the robot."
+        description: "Linear velocity in y direction (left/right) in m/s. Range: 0 or 0.4 to 0.5. Values <0.4 won't move the robot."
       },
       wz: {
         type: Type.NUMBER,
