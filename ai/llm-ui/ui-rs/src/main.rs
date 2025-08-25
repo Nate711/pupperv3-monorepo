@@ -126,7 +126,7 @@ fn run_processor(duration: f32) {
     const FFT_SIZE: usize = 1024; // Must be a power of two. Determines filter length.
     const FRAME_SIZE: usize = FFT_SIZE / 2; // Should be half of FFT_SIZE.
     const STEP_SIZE: f32 = 0.1; // Learning rate. A small value between 0 and 1.
-    const NOISE_VOLUME: f32 = 0.1; // Volume for the test noise
+    const NOISE_VOLUME: f32 = 0.0; // Volume for the test noise
     const SAMPLE_RATE: u32 = 48000; // Fixed sample rate for both input and output
 
     // Create a new AEC instance
@@ -212,12 +212,12 @@ fn run_processor(duration: f32) {
     );
 
     // Create a shared buffer for the far-end (speaker) signal
-    let far_end_rb = HeapRb::<f32>::new(FRAME_SIZE * 8);
+    let far_end_rb = HeapRb::<(cpal::OutputCallbackInfo, f32)>::new(FRAME_SIZE * 8);
     let (far_end_producer, mut far_end_consumer) = far_end_rb.split();
     let far_end_producer = Arc::new(Mutex::new(far_end_producer));
 
     // Create ring buffer for microphone audio
-    let rb = HeapRb::<f32>::new(FRAME_SIZE * 4);
+    let rb = HeapRb::<(cpal::InputCallbackInfo, f32)>::new(FRAME_SIZE * 4);
     let (producer, mut consumer) = rb.split();
     let producer = Arc::new(Mutex::new(producer));
 
@@ -231,7 +231,7 @@ fn run_processor(duration: f32) {
             output_device
                 .build_output_stream(
                     &output_config,
-                    move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                    move |data: &mut [f32], info: &cpal::OutputCallbackInfo| {
                         let mut rng = rand::thread_rng();
                         let mut producer = far_end_producer_clone.lock().unwrap();
 
@@ -239,8 +239,8 @@ fn run_processor(duration: f32) {
                         for chunk in data.chunks_mut(output_channels) {
                             let noise = rng.gen_range(-1.0..1.0) * NOISE_VOLUME;
 
-                            let _ = producer.push(noise).unwrap_or_else(|e| {
-                                eprintln!("Far-end buffer full, dropping sample: {}", e);
+                            let _ = producer.push((info.clone(), noise)).unwrap_or_else(|e| {
+                                eprintln!("Far-end buffer full, dropping sample: {:?}", e);
                             });
 
                             // Play the same noise through all channels
@@ -264,10 +264,10 @@ fn run_processor(duration: f32) {
         cpal::SampleFormat::F32 => input_device
             .build_input_stream(
                 &input_config,
-                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                move |data: &[f32], info: &cpal::InputCallbackInfo| {
                     let mut producer = producer_clone.lock().unwrap();
                     for &sample in data {
-                        let _ = producer.push(sample);
+                        let _ = producer.push((info.clone(), sample));
                     }
                 },
                 |err| eprintln!("Input stream error: {}", err),
@@ -318,9 +318,14 @@ fn run_processor(duration: f32) {
             thread::sleep(Duration::from_millis(1));
         }
 
+        let mut first_mic_info = None;
         // Read microphone frames directly (no resampling needed)
         for i in 0..FRAME_SIZE {
-            mic_buffer[i] = consumer.pop().unwrap_or(0.0);
+            let (info, value) = consumer.pop().unwrap();
+            mic_buffer[i] = value;
+            if first_mic_info.is_none() {
+                first_mic_info = Some(info);
+            }
         }
 
         // Get the far-end signal (what's playing through the speakers)
@@ -330,9 +335,17 @@ fn run_processor(duration: f32) {
         }
 
         // Read the far-end frames (the noise we're playing)
+        let mut first_far_end_info = None;
         for i in 0..FRAME_SIZE {
-            far_end_buffer[i] = far_end_consumer.pop().unwrap_or(0.0);
+            let (info, value) = far_end_consumer.pop().unwrap();
+            far_end_buffer[i] = value;
+            if first_far_end_info.is_none() {
+                first_far_end_info = Some(info);
+            }
         }
+
+        println!("First far-end info: {:?}", first_far_end_info);
+        println!("First mic info: {:?}", first_mic_info);
 
         println!("Processing {} frames at {} Hz...", FRAME_SIZE, SAMPLE_RATE);
 
