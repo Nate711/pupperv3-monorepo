@@ -24,9 +24,6 @@ enum Commands {
     ListOutputs,
     /// Run the echo cancellation processor (default)
     Run {
-        /// Target sample rate in Hz (will use closest supported rate)
-        #[arg(short, long, default_value = "16000")]
-        sample_rate: u32,
         /// Duration in seconds to run the processor
         #[arg(short, long, default_value = "4.0")]
         duration: f32,
@@ -124,11 +121,11 @@ fn list_outputs() {
     println!("\n{:-<80}", "");
 }
 
-fn run_processor(_target_sample_rate: u32, duration: f32) {
+fn run_processor(duration: f32) {
     // Configuration
     const FFT_SIZE: usize = 1024; // Must be a power of two. Determines filter length.
     const FRAME_SIZE: usize = FFT_SIZE / 2; // Should be half of FFT_SIZE.
-    const STEP_SIZE: f32 = 0.02; // Learning rate. A small value between 0 and 1.
+    const STEP_SIZE: f32 = 0.1; // Learning rate. A small value between 0 and 1.
     const NOISE_VOLUME: f32 = 0.1; // Volume for the test noise
     const SAMPLE_RATE: u32 = 48000; // Fixed sample rate for both input and output
 
@@ -239,14 +236,12 @@ fn run_processor(_target_sample_rate: u32, duration: f32) {
                         let mut producer = far_end_producer_clone.lock().unwrap();
 
                         // Process in stereo chunks but only store mono for AEC
-                        for (i, chunk) in data.chunks_mut(output_channels).enumerate() {
+                        for chunk in data.chunks_mut(output_channels) {
                             let noise = rng.gen_range(-1.0..1.0) * NOISE_VOLUME;
 
-                            // Only store every Nth sample to match mono rate
-                            // Since we have stereo output but mono AEC
-                            if output_channels == 1 || i % 1 == 0 {
-                                let _ = producer.push(noise); // Silently drop if full
-                            }
+                            let _ = producer.push(noise).unwrap_or_else(|e| {
+                                eprintln!("Far-end buffer full, dropping sample: {}", e);
+                            });
 
                             // Play the same noise through all channels
                             for channel in chunk {
@@ -473,18 +468,15 @@ fn main() {
         Some(Commands::ListOutputs) => {
             list_outputs();
         }
-        Some(Commands::Run {
-            sample_rate,
-            duration,
-        }) => {
-            run_processor(sample_rate, duration);
+        Some(Commands::Run { duration }) => {
+            run_processor(duration);
         }
         Some(Commands::PlayNoise { duration, volume }) => {
             play_noise(duration, volume);
         }
         None => {
             // Default action: run processor with 16kHz for 10 seconds
-            run_processor(16000, 10.0);
+            run_processor(10.0);
         }
     }
 }
