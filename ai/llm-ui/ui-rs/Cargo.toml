@@ -1,12 +1,15 @@
 [package]
-name = "ui-rs"
+name    = "ui-rs"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 fdaf-aec = "0.1.0"
-cpal = "0.15"
-ringbuf = "0.3"
-clap = { version = "4.5", features = ["derive"] }
-hound = "3.5"
-rand = "0.8"
+cpal     = "0.15"
+ringbuf  = "0.3"
+clap     = { version = "4.5", features = ["derive"] }
+hound    = "3.5"
+rand     = "0.8"
+
+[features]
+bundled = []

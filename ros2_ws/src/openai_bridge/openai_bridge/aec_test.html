@@ -268,7 +268,7 @@
                 <div style="height:10px"></div>
                 <div class="row">
                     <div class="col6">
-                        <button class="btn ghost" id="recordBtn" disabled>Record 5 s sample</button>
+                        <button class="btn ghost" id="recordBtn" disabled>Record 10 s sample</button>
                     </div>
                     <div class="col6">
                         <div id="downloadSlot"></div>
@@ -300,11 +300,22 @@
                             <option value="noise">White noise</option>
                             <option value="sine">Sine tone</option>
                             <option value="sweep">Sine sweep (200 Hz → 6 kHz)</option>
+                            <option value="file">Upload WAV file</option>
                         </select>
                     </div>
                     <div class="col6">
                         <label for="sigGain">Volume</label>
                         <input id="sigGain" type="range" min="0" max="1" step="0.01" value="0.3" />
+                    </div>
+                </div>
+                <div style="height:10px"></div>
+                <div class="row" id="fileUploadRow" style="display:none">
+                    <div class="col6">
+                        <label for="wavFile">Select WAV file</label>
+                        <input type="file" id="wavFile" accept=".wav,audio/wav" style="width:100%" />
+                    </div>
+                    <div class="col6">
+                        <span id="fileStatus" class="pill" style="margin-top:22px">No file selected</span>
                     </div>
                 </div>
                 <div style="height:10px"></div>
@@ -358,7 +369,7 @@
                         That indicates the browser is removing speaker echo from the mic capture.</li>
                     <li>(Optional) Click <b>Create loopback call</b> to route your mic through WebRTC. Some browsers
                         maximize AEC in that mode.</li>
-                    <li>(Optional) Use <b>Record 5 s sample</b> to save a snippet (WebM/Opus) for comparison.</li>
+                    <li>(Optional) Use <b>Record 10 s sample</b> to save a snippet (WebM/Opus) for comparison.</li>
                 </ol>
                 <p class="hint">Note: Exact behavior varies by OS, audio hardware, and browser. For best results test on
                     a <b>laptop with speakers</b> (not headphones) in a quiet room.</p>
@@ -392,6 +403,9 @@
         const remoteAudio = document.getElementById('remoteAudio');
         const startRtcBtn = document.getElementById('startRtc');
         const stopRtcBtn = document.getElementById('stopRtc');
+        const fileUploadRow = document.getElementById('fileUploadRow');
+        const wavFile = document.getElementById('wavFile');
+        const fileStatus = document.getElementById('fileStatus');
 
         const settingsAec = document.getElementById('settingsAec');
         const settingsNs = document.getElementById('settingsNs');
@@ -421,6 +435,9 @@
 
         // Reference signal nodes
         let sigNodes = { gain: null, src: null };
+        
+        // Uploaded file buffer
+        let uploadedAudioBuffer = null;
 
         // WebRTC loopback
         let pc1, pc2;
@@ -619,8 +636,8 @@
                 log('Recording complete: ' + a.download);
             };
             recorder.start();
-            log('Recording 5 seconds…');
-            setTimeout(() => recorder?.state === 'recording' && recorder.stop(), 5000);
+            log('Recording 10 seconds…');
+            setTimeout(() => recorder?.state === 'recording' && recorder.stop(), 10000);
         }
 
         // --- Reference Signal generation
@@ -651,6 +668,17 @@
                 osc.frequency.setValueAtTime(200, now);
                 osc.frequency.exponentialRampToValueAtTime(6000, now + 8);
                 src = osc; src.start();
+            } else if (type === 'file') {
+                // Use uploaded WAV file
+                if (!uploadedAudioBuffer) {
+                    alert('Please select a WAV file first');
+                    return;
+                }
+                const fileSource = audioCtx.createBufferSource();
+                fileSource.buffer = uploadedAudioBuffer;
+                fileSource.loop = true;
+                src = fileSource;
+                src.start();
             } else {
                 // White noise buffer
                 const dur = 2;
@@ -731,6 +759,69 @@
             if (micStream) {
                 // Re-start the stream to apply new constraints
                 startMicrophone();
+            }
+        };
+        
+        // Show/hide file upload based on signal type
+        sigType.onchange = () => {
+            if (sigType.value === 'file') {
+                fileUploadRow.style.display = 'grid';
+            } else {
+                fileUploadRow.style.display = 'none';
+            }
+        };
+        
+        // Handle WAV file upload
+        wavFile.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                uploadedAudioBuffer = null;
+                fileStatus.textContent = 'No file selected';
+                return;
+            }
+            
+            try {
+                fileStatus.textContent = 'Loading...';
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // Create audio context if not exists
+                audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Decode the audio file
+                const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                
+                // Check if resampling is needed
+                if (decodedBuffer.sampleRate !== audioCtx.sampleRate) {
+                    log(`Resampling from ${decodedBuffer.sampleRate}Hz to ${audioCtx.sampleRate}Hz`);
+                    
+                    // Create offline context for resampling
+                    const offlineCtx = new OfflineAudioContext(
+                        decodedBuffer.numberOfChannels,
+                        decodedBuffer.duration * audioCtx.sampleRate,
+                        audioCtx.sampleRate
+                    );
+                    
+                    const source = offlineCtx.createBufferSource();
+                    source.buffer = decodedBuffer;
+                    source.connect(offlineCtx.destination);
+                    source.start();
+                    
+                    uploadedAudioBuffer = await offlineCtx.startRendering();
+                } else {
+                    uploadedAudioBuffer = decodedBuffer;
+                }
+                
+                const duration = uploadedAudioBuffer.duration.toFixed(2);
+                const channels = uploadedAudioBuffer.numberOfChannels;
+                const rate = uploadedAudioBuffer.sampleRate;
+                
+                fileStatus.textContent = `Loaded: ${duration}s, ${channels}ch, ${rate}Hz`;
+                log(`WAV file loaded: ${file.name} (${duration}s, ${channels} channels, ${rate}Hz)`);
+            } catch (error) {
+                fileStatus.textContent = 'Error loading file';
+                uploadedAudioBuffer = null;
+                log('Error loading WAV file: ' + error.message);
+                alert('Error loading WAV file: ' + error.message);
             }
         };
 

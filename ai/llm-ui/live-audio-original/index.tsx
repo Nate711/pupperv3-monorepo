@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, EndSensitivity} from '@google/genai';
-import {LitElement, css, html} from 'lit';
-import {customElement, state} from 'lit/decorators.js';
-import {createBlob, decode, decodeAudioData} from './utils';
+import { GoogleGenAI, LiveServerMessage, Modality, Session, StartSensitivity, EndSensitivity } from '@google/genai';
+import { LitElement, css, html } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import { createBlob, decode, decodeAudioData } from './utils';
 import './visual-3d';
 
 @customElement('gdm-live-audio')
@@ -19,9 +19,9 @@ export class GdmLiveAudio extends LitElement {
   private client: GoogleGenAI;
   private session: Session;
   private inputAudioContext = new (window.AudioContext ||
-    window.webkitAudioContext)({sampleRate: 16000});
+    window.webkitAudioContext)({ sampleRate: 16000 });
   private outputAudioContext = new (window.AudioContext ||
-    window.webkitAudioContext)({sampleRate: 24000});
+    window.webkitAudioContext)({ sampleRate: 24000 });
   @state() inputNode = this.inputAudioContext.createGain();
   @state() outputNode = this.outputAudioContext.createGain();
   private nextStartTime = 0;
@@ -29,6 +29,8 @@ export class GdmLiveAudio extends LitElement {
   private sourceNode: AudioBufferSourceNode;
   private scriptProcessorNode: ScriptProcessorNode;
   private sources = new Set<AudioBufferSourceNode>();
+  private recordedChunks: Float32Array[] = [];
+  private recordingSampleRate = 16000;
 
   static styles = css`
     #status {
@@ -98,7 +100,8 @@ export class GdmLiveAudio extends LitElement {
   }
 
   private async initSession() {
-    const model = 'gemini-2.5-flash-preview-native-audio-dialog';
+    // const model = 'gemini-2.5-flash-preview-native-audio-dialog';
+    const model = 'gemini-live-2.5-flash-preview';
 
     try {
       this.session = await this.client.live.connect({
@@ -126,7 +129,7 @@ export class GdmLiveAudio extends LitElement {
               const source = this.outputAudioContext.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(this.outputNode);
-              source.addEventListener('ended', () =>{
+              source.addEventListener('ended', () => {
                 this.sources.delete(source);
               });
 
@@ -136,12 +139,22 @@ export class GdmLiveAudio extends LitElement {
             }
 
             const interrupted = message.serverContent?.interrupted;
-            if(interrupted) {
-              for(const source of this.sources.values()) {
+            if (interrupted) {
+              for (const source of this.sources.values()) {
                 source.stop();
                 this.sources.delete(source);
               }
               this.nextStartTime = 0;
+            }
+
+            const input_transcription = message.serverContent?.inputTranscription;
+            if (input_transcription) {
+              console.info("Input Transcription:", input_transcription);
+            }
+
+            const output_transcription = message.serverContent?.outputTranscription;
+            if (output_transcription) {
+              console.info("Output Transcription:", output_transcription);
             }
           },
           onerror: (e: ErrorEvent) => {
@@ -154,11 +167,13 @@ export class GdmLiveAudio extends LitElement {
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: {prebuiltVoiceConfig: {voiceName: 'Orus'}},
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Orus' } },
             // languageCode: 'en-GB'
           },
-          realtimeInputConfig: {automaticActivityDetection: {startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW, endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH}},
-          systemInstruction: "You are a cute robot dog and have the intelligence and knowledge of a 6 year old child."
+          realtimeInputConfig: { automaticActivityDetection: { startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW, endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH } },
+          systemInstruction: "You are a cute robot dog and have the intelligence and knowledge of a 6 year old child.",
+          outputAudioTranscription: {},
+          inputAudioTranscription: {},
         },
       });
     } catch (e) {
@@ -174,10 +189,89 @@ export class GdmLiveAudio extends LitElement {
     this.error = msg;
   }
 
+  private encodeWAV(samples: Float32Array, sampleRate: number): ArrayBuffer {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+
+    /* RIFF identifier */
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+
+    /* RIFF chunk descriptor */
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(8, 'WAVE');
+
+    /* fmt sub-chunk */
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // fmt chunk size
+    view.setUint16(20, 1, true); // PCM format
+    view.setUint16(22, 1, true); // mono channel
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+
+    /* data sub-chunk */
+    writeString(36, 'data');
+    view.setUint32(40, samples.length * 2, true);
+
+    /* write PCM samples */
+    let offset = 44;
+    for (let i = 0; i < samples.length; i++, offset += 2) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+
+    return buffer;
+  }
+
+  private saveWAV() {
+    if (this.recordedChunks.length === 0) {
+      console.warn('No audio data to save');
+      return;
+    }
+
+    // Calculate total length
+    const totalLength = this.recordedChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const combinedData = new Float32Array(totalLength);
+    
+    // Combine all chunks
+    let offset = 0;
+    for (const chunk of this.recordedChunks) {
+      combinedData.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    // Encode to WAV
+    const wavBuffer = this.encodeWAV(combinedData, this.recordingSampleRate);
+    const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+    
+    // Create download link
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `conversation_${timestamp}.wav`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log(`Saved conversation: ${a.download} (${(blob.size / 1024).toFixed(2)} KB)`);
+    this.updateStatus(`Saved conversation: ${a.download}`);
+  }
+
   private async startRecording() {
     if (this.isRecording) {
       return;
     }
+
+    // Clear previous recording
+    this.recordedChunks = [];
 
     this.inputAudioContext.resume();
 
@@ -209,7 +303,11 @@ export class GdmLiveAudio extends LitElement {
         const inputBuffer = audioProcessingEvent.inputBuffer;
         const pcmData = inputBuffer.getChannelData(0);
 
-        this.session.sendRealtimeInput({media: createBlob(pcmData)});
+        // Save a copy of the audio data for WAV export
+        const pcmCopy = new Float32Array(pcmData);
+        this.recordedChunks.push(pcmCopy);
+
+        this.session.sendRealtimeInput({ media: createBlob(pcmData) });
       };
 
       this.sourceNode.connect(this.scriptProcessorNode);
@@ -245,7 +343,12 @@ export class GdmLiveAudio extends LitElement {
       this.mediaStream = null;
     }
 
-    this.updateStatus('Recording stopped. Click Start to begin again.');
+    // Save the recorded audio to WAV file
+    if (this.recordedChunks.length > 0) {
+      this.saveWAV();
+    }
+
+    this.updateStatus('Recording stopped. Audio saved. Click Start to begin again.');
   }
 
   private reset() {
