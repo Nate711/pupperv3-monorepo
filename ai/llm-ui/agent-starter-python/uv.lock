@@ -13,7 +13,7 @@ name = "agent-starter-python"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "livekit-agents", extra = ["cartesia", "deepgram", "google", "openai", "silero", "turn-detector"] },
+    { name = "livekit-agents", extra = ["cartesia", "deepgram", "elevenlabs", "google", "openai", "silero", "turn-detector"] },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "python-dotenv" },
 ]
@@ -27,7 +27,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "livekit-agents", extras = ["cartesia", "deepgram", "google", "openai", "silero", "turn-detector"], specifier = "~=1.2" },
+    { name = "livekit-agents", extras = ["cartesia", "deepgram", "elevenlabs", "google", "openai", "silero", "turn-detector"], specifier = "~=1.2" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2" },
     { name = "python-dotenv" },
 ]
@@ -1119,6 +1119,9 @@ codecs = [
 deepgram = [
     { name = "livekit-plugins-deepgram" },
 ]
+elevenlabs = [
+    { name = "livekit-plugins-elevenlabs" },
+]
 google = [
     { name = "livekit-plugins-google" },
 ]
@@ -1208,6 +1211,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/de/20/e0df362e081ae46758c01c68fcd63fb8c4b68661c02f7dcb1305703e749a/livekit_plugins_deepgram-1.2.6.tar.gz", hash = "sha256:2ccb260c42ea1c6d931782bd13b347130cdba95abfa55af08d92544355e9e202", size = 13098, upload-time = "2025-08-18T21:07:11.811Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2d/4f/81966625c81d6e8c206f0c2ff30951cf68f55d13386cf239b639d4979b9c/livekit_plugins_deepgram-1.2.6-py3-none-any.whl", hash = "sha256:69a617dbb985b565db7689ad256d44da5ba963b342aca59de5f2cf95c11837c4", size = 15151, upload-time = "2025-08-18T21:07:10.638Z" },
+]
+
+[[package]]
+name = "livekit-plugins-elevenlabs"
+version = "1.2.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents", extra = ["codecs"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/94/68c5a155f8f5a19f4dd74c854d8dc2705fbf985ae6b88a7cdd0234e1cc72/livekit_plugins_elevenlabs-1.2.6.tar.gz", hash = "sha256:18d9b32e218cb805c0e2a3789cc2da3ba443355909833911699861420cfaf0a4", size = 9446, upload-time = "2025-08-18T21:07:13.867Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/ff/fca45f7571c36b7d1594f139ed24c5f2cc5647be8968e933d9c328d28798/livekit_plugins_elevenlabs-1.2.6-py3-none-any.whl", hash = "sha256:0246a97d8e81664ef6243241013d35b2b4cf0927a4eaaea45b75f8515692c227", size = 11612, upload-time = "2025-08-18T21:07:12.392Z" },
 ]
 
 [[package]]

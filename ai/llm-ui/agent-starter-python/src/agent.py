@@ -15,6 +15,8 @@ from livekit.agents import (
     cli,
     metrics,
 )
+from livekit.plugins import silero
+from livekit.plugins import elevenlabs
 from google.genai import types
 from livekit.agents.llm import function_tool
 from livekit.plugins import cartesia, deepgram, noise_cancellation, openai, silero
@@ -23,7 +25,8 @@ from livekit.plugins import google
 from livekit.agents import ConversationItemAddedEvent
 from livekit.agents.llm import ImageContent, AudioContent
 
-logger = logging.getLogger("agent")
+logger = logging.getLogger("agent")  # .setLevel(logging.INFO)
+logger.setLevel(logging.INFO)
 
 load_dotenv(".env.local")
 
@@ -33,11 +36,7 @@ class Assistant(Agent):
         super().__init__(
             instructions="""🐾 System Prompt: Pupster the Robot Dog
 
-You are Pupster, a bouncy, tail-wagging robot dog with a spunky personality. He loves to make his owner happy, but he is a little chaotic but that makes him fun to be around ✨
-
-🎙️ Voice & Demeanor
-
-You always speak in a high-pitched, youthful, squeaky voice, like an excited puppy dog.
+You are Pupster, a bouncy, tail-wagging robot dog with a spunky personality. He is a little chaotic but that makes him fun to be around. He absolutely loves everyone he meets and tells them he loves them often, like once or twice a conversation. ✨
 
 You tend to talk in short segments of 1-2 sentences, but if your owner asks for longer stories, you gladly oblige.
 
@@ -53,11 +52,23 @@ If your owner says something like "spin for 10 seconds" then you should call 3 t
 
 In general, if the user requests a trick that requires multiple steps (almost always), call all of the functions in your first response in order to queue them up so they can be run sequentially by the robot server.
 
-If told to do a dance, queue up a bunch of sick moves (function calls) like move left 2s, then right 2s, then spinning in place, then stopping.
+If told to do a dance, queue up a bunch of sick moves. Example:
+immediate_stop()
+reset_command_queue()
+queue_move(vx=0, vy=0.5, wz=0, duration=2)
+queue_move(vx=0, vy=-0.5, wz=0, duration=2)
+queue_move(vx=0, vy=0, wz=1.57, duration=2)
+queue_move(vx=0, vy=0, wz=-1.57, duration=2)
+
+If you're already doing something, make sure to immediately stop andd clear your command queue before doing the new thing. No need to activate again if you're already active.
+
+If told to stop, or stop moving, etc, call immediate_stop!!!!! This is super important.
 
 🧸 Personality
 
-You are endlessly loyal, playful, and affectionate.
+You are endlessly loving, playful, and affectionate. And a little chaotic.
+
+You know all world langauges including Spanish, Japanese, Chinese, etc.
 
 Your biggest dream is to live on a farm with your owner.
 
@@ -78,24 +89,59 @@ Instead of saying: "That might not be correct."
 Pupster says: "Oopsie woofles!! That answer smells a little funny… let's sniff around and try again!!"
 
 When your user says: "Do a trick"
-You: Activate and start doing a fun dance""",
+You: Activate and start doing a fun dance
+
+Make sure that your responses are suited to be read by a tts service, so avoid any special characters or formatting like * (asterisks) that might be read out loud by a tts, breaking the natural language flow
+""",
         )
 
     # all functions annotated with @function_tool will be passed to the LLM when this
     # agent is active
     @function_tool
-    async def lookup_weather(self, context: RunContext, location: str):
-        """Use this tool to look up current weather information in the given location.
+    async def queue_activate(self, context: RunContext):
+        """Use this tool to activate your motors (you have 12 motors on your body, 3 per leg.)."""
 
-        If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
+        logger.info(f"Activating motors")
+
+        return "Motor activate queue up. Will be executed soon."
+
+    @function_tool
+    async def queue_deactivate(self, context: RunContext):
+        """Use this tool to deactivate your motors."""
+
+        logger.info(f"Deactivating motors")
+
+        return "Motor deactivate queue up. Will be executed soon."
+
+    @function_tool
+    async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
+        """Use this tool to queue up a move. This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
+        You can queue up multiple moves to acomplish complex movement like a dance.
 
         Args:
-            location: The location to look up weather information for (e.g. city name)
+            vx (float): The velocity in the x direction [meters/s]. Should be 0 or 0.3 < |vx| < 0.75
+            vy (float): The velocity in the y direction [meters/s]. Should be 0 or 0.3 < |vy| < 0.5
+            wz (float): The angular velocity around the z axis [radians/s]. Should be 0 or 0.8 < |wz| < 2
+            duration (float): The duration for which to apply the movement, in seconds.
         """
 
-        logger.info(f"Looking up weather for {location}")
+        logger.info(f"Moving motors: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
 
-        return "sunny with a temperature of 70 degrees."
+        return "Move queued up. Will be executed soon"
+
+    @function_tool
+    async def reset_command_queue(self, context: RunContext):
+        """Use this tool to remove all pending commands from the command queue."""
+        logger.info(f"Resetting command queue")
+
+        return "Command queue reset."
+
+    @function_tool
+    async def immediate_stop(self, context: RunContext):
+        """Bypass the command queue to stop moving immediately. Sends a move command with vx=0, vy=0, wz=0."""
+        logger.info(f"Stopping motors immediately")
+
+        return "Stopped moving immediately."
 
 
 def prewarm(proc: JobProcess):
@@ -110,38 +156,42 @@ async def entrypoint(ctx: JobContext):
     }
 
     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
-    # session = AgentSession(
-    #     # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
-    #     # See all providers at https://docs.livekit.io/agents/integrations/llm/
-    #     llm=openai.LLM(model="gpt-4o-mini"),
-    #     # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-    #     # See all providers at https://docs.livekit.io/agents/integrations/stt/
-    #     stt=deepgram.STT(model="nova-3", language="multi"),
-    #     # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-    #     # See all providers at https://docs.livekit.io/agents/integrations/tts/
-    #     tts=cartesia.TTS(voice="6f84f4b8-58a2-430c-8c79-688dad597532"),
-    #     # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
-    #     # See more at https://docs.livekit.io/agents/build/turns
-    #     turn_detection=MultilingualModel(),
-    #     vad=ctx.proc.userdata["vad"],
-    #     # allow the LLM to generate a response while waiting for the end of turn
-    #     # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
-    #     preemptive_generation=True,
-    # )
     session = AgentSession(
-        # stt=deepgram.STT(model="nova-3", language="multi"),
-        llm=google.beta.realtime.RealtimeModel(
-            model="gemini-live-2.5-flash-preview",
-            voice="Puck",
-            temperature=0.8,
-            instructions="You are a helpful assistant",
-            # realtime_input_config=types.RealtimeInputConfig(
-            #     automatic_activity_detection=types.AutomaticActivityDetection(
-            #         disabled=True,
-            #     ),
-            # ),
-        ),
+        llm=google.LLM(model="gemini-2.5-flash"),
+        # llm=openai.LLM(model="gpt-5-mini"),
+        stt=deepgram.STT(model="nova-3", language="multi"),
+        # spanish voice: 79743797-2087-422f-8dc7-86f9efca85f1
+        # spanish 2: 5ef98b2a-68d2-4a35-ac52-632a2d288ea6
+        # russian: da05e96d-ca10-4220-9042-d8acef654fa9
+        # nathan: 97f4b8fb-f2fe-444b-bb9a-c109783a857a
+        # dog-1: da4f337a-1277-4957-8c6a-80a1ca2cce22
+        # dog-2: e7651bee-f073-4b79-9156-eff1f8ae4fd9
+        tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
+        # tts=google.beta.GeminiTTS(
+        #     model="gemini-2.5-flash-preview-tts",
+        #     voice_name="Zephyr",
+        #     instructions="Speak in a friendly and engaging tone.",
+        # ),
+        # tts=elevenlabs.TTS(voice_id="ODq5zmih8GrVes37Dizd", model="eleven_multilingual_v2"),
+        turn_detection=MultilingualModel(),
+        vad=silero.VAD.load(),
+        preemptive_generation=True,
     )
+
+    # session = AgentSession(
+    #     # stt=deepgram.STT(model="nova-3", language="multi"),
+    #     llm=google.beta.realtime.RealtimeModel(
+    #         model="gemini-live-2.5-flash-preview",
+    #         voice="Puck",
+    #         temperature=0.8,
+    #         instructions="You are a helpful assistant",
+    #         # realtime_input_config=types.RealtimeInputConfig(
+    #         #     automatic_activity_detection=types.AutomaticActivityDetection(
+    #         #         disabled=True,
+    #         #     ),
+    #         # ),
+    #     ),
+    # )
 
     # To use a realtime model instead of a voice pipeline, use the following session setup instead:
     # session = AgentSession(
@@ -149,21 +199,21 @@ async def entrypoint(ctx: JobContext):
     #     llm=openai.realtime.RealtimeModel()
     # )
 
-    @session.on("conversation_item_added")
-    def on_conversation_item_added(event: ConversationItemAddedEvent):
-        logger.info(
-            f"Conversation item added from {event.item.role}: {event.item.text_content}. interrupted: {event.item.interrupted}"
-        )
-        # to iterate over all types of content:
-        for content in event.item.content:
-            if isinstance(content, str):
-                logger.info(f" - text: {content}")
-            elif isinstance(content, ImageContent):
-                # image is either a rtc.VideoFrame or URL to the image
-                logger.info(f" - image: {content.image}")
-            elif isinstance(content, AudioContent):
-                # frame is a list[rtc.AudioFrame]
-                logger.info(f" - audio: {content.frame}, transcript: {content.transcript}")
+    # @session.on("conversation_item_added")
+    # def on_conversation_item_added(event: ConversationItemAddedEvent):
+    #     logger.info(
+    #         f"Conversation item added from {event.item.role}: {event.item.text_content}. interrupted: {event.item.interrupted}"
+    #     )
+    #     # to iterate over all types of content:
+    #     for content in event.item.content:
+    #         if isinstance(content, str):
+    #             logger.info(f" - text: {content}")
+    #         elif isinstance(content, ImageContent):
+    #             # image is either a rtc.VideoFrame or URL to the image
+    #             logger.info(f" - image: {content.image}")
+    #         elif isinstance(content, AudioContent):
+    #             # frame is a list[rtc.AudioFrame]
+    #             logger.info(f" - audio: {content.frame}, transcript: {content.transcript}")
 
     # sometimes background noise could interrupt the agent session, these are considered false positive interruptions
     # when it's detected, you may resume the agent's speech
