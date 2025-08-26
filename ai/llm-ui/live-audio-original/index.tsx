@@ -101,20 +101,44 @@ export class GdmLiveAudio extends LitElement {
 
   private async initSession() {
     // const model = 'gemini-2.5-flash-preview-native-audio-dialog';
-    const model = 'gemini-live-2.5-flash-preview';
+    const model = 'gemini-2.0-flash-live-001';
+
+    console.log('🔄 [SESSION] Initializing session with model:', model);
 
     try {
       this.session = await this.client.live.connect({
         model: model,
         callbacks: {
           onopen: () => {
+            console.log('✅ [SESSION] WebSocket connection opened');
+            console.log('✅ [SESSION] Session object:', {
+              hasSession: !!this.session,
+              sessionType: typeof this.session,
+              sessionMethods: this.session ? Object.getOwnPropertyNames(Object.getPrototypeOf(this.session)) : []
+            });
             this.updateStatus('Opened');
           },
           onmessage: async (message: LiveServerMessage) => {
+            // Log all received messages for debugging
+            console.log('📨 [SESSION] Received message:', {
+              hasServerContent: !!message.serverContent,
+              hasModelTurn: !!message.serverContent?.modelTurn,
+              hasAudio: !!message.serverContent?.modelTurn?.parts?.[0]?.inlineData,
+              hasInputTranscription: !!message.serverContent?.inputTranscription,
+              hasOutputTranscription: !!message.serverContent?.outputTranscription,
+              isInterrupted: !!message.serverContent?.interrupted,
+              timestamp: new Date().toISOString()
+            });
+
             const audio =
               message.serverContent?.modelTurn?.parts[0]?.inlineData;
 
             if (audio) {
+              console.log('🔊 [SESSION] Processing audio response:', {
+                audioDataLength: audio.data?.length || 0,
+                mimeType: audio.mimeType
+              });
+
               this.nextStartTime = Math.max(
                 this.nextStartTime,
                 this.outputAudioContext.currentTime,
@@ -136,10 +160,13 @@ export class GdmLiveAudio extends LitElement {
               source.start(this.nextStartTime);
               this.nextStartTime = this.nextStartTime + audioBuffer.duration;
               this.sources.add(source);
+
+              console.log('✅ [SESSION] Audio response queued for playback');
             }
 
             const interrupted = message.serverContent?.interrupted;
             if (interrupted) {
+              console.log('🛑 [SESSION] Interruption detected, stopping all audio');
               for (const source of this.sources.values()) {
                 source.stop();
                 this.sources.delete(source);
@@ -149,19 +176,75 @@ export class GdmLiveAudio extends LitElement {
 
             const input_transcription = message.serverContent?.inputTranscription;
             if (input_transcription) {
-              console.info("Input Transcription:", input_transcription);
+              console.info("📝 [SESSION] Input Transcription:", input_transcription);
             }
 
             const output_transcription = message.serverContent?.outputTranscription;
             if (output_transcription) {
-              console.info("Output Transcription:", output_transcription);
+              console.info("📝 [SESSION] Output Transcription:", output_transcription);
+            }
+
+            const turn_complete = message.serverContent?.turnComplete;
+            if (turn_complete) {
+              console.log('✅ [SESSION] Turn complete');
+            }
+
+            const generation_complete = message.serverContent?.generationComplete;
+            if (generation_complete) {
+              console.log('✅ [SESSION] Generation complete');
+            }
+
+            // Check if model is not responding after reasonable time
+            if (!audio && !interrupted && !input_transcription && !output_transcription && !turn_complete && !generation_complete) {
+              console.warn('⚠️ [SESSION] Received message with no meaningful content:', message);
             }
           },
           onerror: (e: ErrorEvent) => {
+            console.error('❌ [SESSION] WebSocket/Connection Error:', {
+              error: e,
+              message: e.message,
+              type: e.type,
+              filename: e.filename,
+              lineno: e.lineno,
+              colno: e.colno,
+              timestamp: new Date().toISOString()
+            });
+
+            // Check the WebSocket state if possible
+            const ws = (this.session as any)?.ws || (this.session as any)?.websocket;
+            if (ws) {
+              console.error('❌ [SESSION] WebSocket readyState:', ws.readyState);
+            }
+
             this.updateError(e.message);
           },
           onclose: (e: CloseEvent) => {
-            this.updateStatus('Close:' + e.reason);
+            console.warn('🚪 [SESSION] WebSocket connection closed:', {
+              code: e.code,
+              reason: e.reason,
+              wasClean: e.wasClean,
+              timestamp: new Date().toISOString()
+            });
+
+            // Standard close codes
+            const closeCodes = {
+              1000: 'Normal Closure',
+              1001: 'Going Away',
+              1002: 'Protocol Error',
+              1003: 'Unsupported Data',
+              1006: 'Abnormal Closure',
+              1007: 'Invalid Frame Payload Data',
+              1008: 'Policy Violation',
+              1009: 'Message Too Big',
+              1010: 'Mandatory Extension',
+              1011: 'Internal Server Error',
+              1015: 'TLS Handshake'
+            };
+
+            const codeDescription = closeCodes[e.code as keyof typeof closeCodes] || 'Unknown';
+            console.warn('🚪 [SESSION] Close code meaning:', codeDescription);
+
+            this.updateStatus(`Close: ${e.reason || codeDescription} (${e.code})`);
           },
         },
         config: {
@@ -238,7 +321,7 @@ export class GdmLiveAudio extends LitElement {
     // Calculate total length
     const totalLength = this.recordedChunks.reduce((acc, chunk) => acc + chunk.length, 0);
     const combinedData = new Float32Array(totalLength);
-    
+
     // Combine all chunks
     let offset = 0;
     for (const chunk of this.recordedChunks) {
@@ -249,7 +332,7 @@ export class GdmLiveAudio extends LitElement {
     // Encode to WAV
     const wavBuffer = this.encodeWAV(combinedData, this.recordingSampleRate);
     const blob = new Blob([wavBuffer], { type: 'audio/wav' });
-    
+
     // Create download link
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -260,7 +343,7 @@ export class GdmLiveAudio extends LitElement {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     console.log(`Saved conversation: ${a.download} (${(blob.size / 1024).toFixed(2)} KB)`);
     this.updateStatus(`Saved conversation: ${a.download}`);
   }
@@ -307,7 +390,94 @@ export class GdmLiveAudio extends LitElement {
         const pcmCopy = new Float32Array(pcmData);
         this.recordedChunks.push(pcmCopy);
 
-        this.session.sendRealtimeInput({ media: createBlob(pcmData) });
+        try {
+          // Validate session exists
+          if (!this.session) {
+            console.error('❌ [AUDIO] No session available');
+            this.stopRecording();
+            this.updateStatus('❌ Session disconnected');
+            return;
+          }
+
+          // Validate PCM data
+          if (!pcmData || pcmData.length === 0) {
+            console.warn('⚠️ [AUDIO] Empty PCM data detected');
+            return;
+          }
+
+          // Check for silence (all zeros or very low values)
+          const maxValue = Math.max(...Array.from(pcmData).map(Math.abs));
+          if (maxValue < 0.0001) {
+            // Silent frame, but still send it
+            console.log('🔇 [AUDIO] Silent frame detected (max value:', maxValue, ')');
+          }
+
+          // Create blob and validate
+          const blob = createBlob(pcmData);
+          if (!blob) {
+            console.error('❌ [AUDIO] Failed to create blob from PCM data');
+            return;
+          }
+
+          // Log blob details periodically
+          const shouldLog = Math.random() < 0.01; // Log 1% of frames
+          if (shouldLog) {
+            console.log('📤 [AUDIO] Sending audio chunk:', {
+              blobSize: blob.size,
+              blobType: blob.type,
+              pcmLength: pcmData.length,
+              pcmSampleRate: this.inputAudioContext?.sampleRate,
+              maxAmplitude: maxValue,
+              timestamp: new Date().toISOString()
+            });
+          }
+
+          // Check WebSocket state if possible
+          const ws = (this.session as any)?.ws || (this.session as any)?.websocket;
+          if (ws) {
+            const wsState = ws.readyState;
+            const states = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+            if (wsState !== 1) { // 1 = OPEN
+              console.error('❌ [AUDIO] WebSocket not open. State:', states[wsState] || wsState);
+              this.stopRecording();
+              this.updateStatus('❌ WebSocket connection lost');
+              return;
+            }
+          }
+
+          // Send the audio data
+          const result = this.session.sendRealtimeInput({ media: blob });
+
+          // Log if result is unexpected
+          if (result !== undefined && shouldLog) {
+            console.log('📤 [AUDIO] sendRealtimeInput returned:', result);
+          }
+
+        } catch (error) {
+          console.error('❌ [AUDIO] Error in audio processing:', {
+            error: error,
+            message: (error as Error)?.message,
+            stack: (error as Error)?.stack,
+            pcmLength: pcmData?.length,
+            sessionExists: !!this.session,
+            isRecording: this.isRecording,
+            timestamp: new Date().toISOString()
+          });
+
+          // Check if it's a connection error
+          const errorMsg = (error as Error)?.message?.toLowerCase() || '';
+          if (errorMsg.includes('websocket') ||
+            errorMsg.includes('closed') ||
+            errorMsg.includes('connection') ||
+            errorMsg.includes('disconnected')) {
+            console.error('❌ [AUDIO] Connection error detected, stopping recording');
+            this.stopRecording();
+            this.updateStatus('❌ Connection lost: ' + (error as Error)?.message);
+          } else {
+            // For other errors, log but continue
+            console.error('❌ [AUDIO] Non-fatal error, continuing:', errorMsg);
+          }
+        }
       };
 
       this.sourceNode.connect(this.scriptProcessorNode);
