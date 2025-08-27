@@ -1,7 +1,0 @@
-[project]
-name            = "openai-bridge"
-version         = "0.1.0"
-description     = "Add your description here"
-readme          = "README.md"
-requires-python = ">=3.12"
-dependencies    = ["google-genai>=1.31.0", "librosa>=0.11.0", "soundfile>=0.13.1"]
