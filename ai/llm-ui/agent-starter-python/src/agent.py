@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from livekit.agents import (
     NOT_GIVEN,
     AgentFalseInterruptionEvent,
-    AgentSession,
     JobContext,
     JobProcess,
     MetricsCollectedEvent,
@@ -13,20 +12,22 @@ from livekit.agents import (
     cli,
     metrics,
 )
-from livekit.plugins import silero
-from livekit.plugins import cartesia, noise_cancellation, openai, silero
-from livekit.plugins import google
 from livekit.agents import UserInputTranscribedEvent
 
-from pupster import Assistant
+from pupster import PupsterAgent, get_pupster_session
 
 load_dotenv(".env.local")
 
 logger = logging.getLogger("agent")
 
+AGENT_DESIGN = "openai-cartesia"  # "google-cartesia" # "cascade" # "openai-cartesia"
+
 
 def prewarm(proc: JobProcess):
-    proc.userdata["vad"] = silero.VAD.load()
+    if AGENT_DESIGN == "cascade":
+        from livekit.plugins import silero
+
+        proc.userdata["vad"] = silero.VAD.load()
 
 
 async def entrypoint(ctx: JobContext):
@@ -36,45 +37,7 @@ async def entrypoint(ctx: JobContext):
         "room": ctx.room.name,
     }
 
-    # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
-    # session = AgentSession(
-    #     # FASTEST: gemini-2.5-flash and gpt-4.1
-    #     # llm=google.LLM(model="gemini-2.5-flash"),
-    #     llm=openai.LLM(model="gpt-4.1"),
-    #     # llm=openai.LLM(model="gpt-5-mini"),
-    #     max_tool_steps=20,
-    #     stt=deepgram.STT(model="nova-3", language="multi"),
-    #     # only english model supports keyterm boosting. in tests, not necessary for pupster. pupper intepreted as pepper
-    #     # stt=deepgram.STT(model="nova-3", language="en", keyterms=["pupster", "pupper"]),
-    #     # spanish voice: 79743797-2087-422f-8dc7-86f9efca85f1
-    #     # nathan: 70e274d6-3e98-49bf-b482-f7374b045dc8
-    #     # tts=cartesia.TTS(voice="70e274d6-3e98-49bf-b482-f7374b045dc8"),
-    #     # teresa
-    #     # tts=cartesia.TTS(voice="47836b34-00be-4ada-bec2-9b69c73304b5"),
-    #     # best dog: e7651bee-f073-4b79-9156-eff1f8ae4fd9
-    #     tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
-    #     # spanish
-    #     # tts=cartesia.TTS(voice="79743797-2087-422f-8dc7-86f9efca85f1"),
-    #     turn_detection=MultilingualModel(),
-    #     vad=silero.VAD.load(),
-    #     # preemptive_generation=True,
-    # )
-
-    session = AgentSession(
-        llm=openai.realtime.RealtimeModel(modalities=["text"]),
-        tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-2"),
-    )
-
-    # session = AgentSession(
-    #     llm=google.beta.realtime.RealtimeModel(
-    #         model="gemini-live-2.5-flash-preview",
-    #         voice="Puck",
-    #         temperature=0.8,
-    #         instructions="You are a helpful assistant",
-    #         modalities=["text"],
-    #     ),
-    #     tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
-    # )
+    session = get_pupster_session(AGENT_DESIGN)
 
     # @session.on("conversation_item_added")
     # def on_conversation_item_added(event: ConversationItemAddedEvent):
@@ -126,7 +89,7 @@ async def entrypoint(ctx: JobContext):
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(),
+        agent=PupsterAgent(),
         room=ctx.room,
         room_input_options=RoomInputOptions(),
     )
