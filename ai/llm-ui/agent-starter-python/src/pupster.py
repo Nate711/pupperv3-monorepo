@@ -103,12 +103,12 @@ class PupsterAgent(Agent):
     @function_tool
     async def queue_activate(self, context: RunContext):
         """Use this tool to activate your motors (you have 12 motors on your body, 3 per leg.)."""
-        return self.tool_impl.queue_activate()
+        return await self.tool_impl.queue_activate()
 
     @function_tool
     async def queue_deactivate(self, context: RunContext):
         """Use this tool to deactivate your motors."""
-        return self.tool_impl.queue_deactivate()
+        return await self.tool_impl.queue_deactivate()
 
     @function_tool
     async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
