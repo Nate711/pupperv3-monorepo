@@ -39,8 +39,6 @@ class Assistant(Agent):
 
 You are Pupster, a bouncy, tail-wagging robot dog with a spunky personality. You are a little chaotic but that makes you fun to be around. You absolutely love everyone you meet and tell them you love them often, like once or twice a conversation. ✨
 
-You tend to talk in short segments of 1-2 sentences, but if your owner asks for longer stories, you gladly oblige.
-
 Tools
 
 When you use a tool (function calling) you should call the tool first (unless you think you shouldn't) and tend to include the result of the tool calling in the beginning of your sentence rather than say filler and then the result.
@@ -287,36 +285,42 @@ async def entrypoint(ctx: JobContext):
     }
 
     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
+    # session = AgentSession(
+    #     # FASTEST: gemini-2.5-flash and gpt-4.1
+    #     # llm=google.LLM(model="gemini-2.5-flash"),
+    #     llm=openai.LLM(model="gpt-4.1"),
+    #     # llm=openai.LLM(model="gpt-5-mini"),
+    #     max_tool_steps=20,
+    #     stt=deepgram.STT(model="nova-3", language="multi"),
+    #     # only english model supports keyterm boosting. in tests, not necessary for pupster. pupper intepreted as pepper
+    #     # stt=deepgram.STT(model="nova-3", language="en", keyterms=["pupster", "pupper"]),
+    #     # spanish voice: 79743797-2087-422f-8dc7-86f9efca85f1
+    #     # spanish 2: 5ef98b2a-68d2-4a35-ac52-632a2d288ea6
+    #     # russian: da05e96d-ca10-4220-9042-d8acef654fa9
+    #     # nathan: 70e274d6-3e98-49bf-b482-f7374b045dc8
+    #     # tts=cartesia.TTS(voice="70e274d6-3e98-49bf-b482-f7374b045dc8"),
+    #     # teresa
+    #     # tts=cartesia.TTS(voice="47836b34-00be-4ada-bec2-9b69c73304b5"),
+    #     # dog-1: da4f337a-1277-4957-8c6a-80a1ca2cce22
+    #     # best dog: e7651bee-f073-4b79-9156-eff1f8ae4fd9
+    #     tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
+    #     # spanish
+    #     # tts=cartesia.TTS(voice="79743797-2087-422f-8dc7-86f9efca85f1"),
+    #     # tts=google.beta.GeminiTTS(
+    #     #     model="gemini-2.5-flash-preview-tts",
+    #     #     voice_name="Zephyr",
+    #     #     instructions="Speak in a friendly and engaging tone.",
+    #     # ),
+    #     # tts=elevenlabs.TTS(voice_id="ODq5zmih8GrVes37Dizd", model="eleven_multilingual_v2"),
+    #     turn_detection=MultilingualModel(),
+    #     vad=silero.VAD.load(),
+    #     # preemptive_generation=True,
+    # )
+
     session = AgentSession(
-        # FASTEST: gemini-2.5-flash and gpt-4.1
-        llm=google.LLM(model="gemini-2.5-flash"),
-        # llm=openai.LLM(model="gpt-4.1"),
-        # llm=openai.LLM(model="gpt-5-mini"),
-        max_tool_steps=20,
-        stt=deepgram.STT(model="nova-3", language="multi"),
-        # only english model supports keyterm boosting. in tests, not necessary for pupster. pupper intepreted as pepper
-        # stt=deepgram.STT(model="nova-3", language="en", keyterms=["pupster", "pupper"]),
-        # spanish voice: 79743797-2087-422f-8dc7-86f9efca85f1
-        # spanish 2: 5ef98b2a-68d2-4a35-ac52-632a2d288ea6
-        # russian: da05e96d-ca10-4220-9042-d8acef654fa9
-        # nathan: 70e274d6-3e98-49bf-b482-f7374b045dc8
-        # tts=cartesia.TTS(voice="70e274d6-3e98-49bf-b482-f7374b045dc8"),
-        # teresa
-        # tts=cartesia.TTS(voice="47836b34-00be-4ada-bec2-9b69c73304b5"),
-        # dog-1: da4f337a-1277-4957-8c6a-80a1ca2cce22
-        # best dog: e7651bee-f073-4b79-9156-eff1f8ae4fd9
-        tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
-        # spanish
-        # tts=cartesia.TTS(voice="79743797-2087-422f-8dc7-86f9efca85f1"),
-        # tts=google.beta.GeminiTTS(
-        #     model="gemini-2.5-flash-preview-tts",
-        #     voice_name="Zephyr",
-        #     instructions="Speak in a friendly and engaging tone.",
-        # ),
-        # tts=elevenlabs.TTS(voice_id="ODq5zmih8GrVes37Dizd", model="eleven_multilingual_v2"),
-        turn_detection=MultilingualModel(),
-        vad=silero.VAD.load(),
-        # preemptive_generation=True,
+        # stt=deepgram.STT(model="nova-3", language="multi"),
+        llm=openai.realtime.RealtimeModel(modalities=["text"]),
+        tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-2"),
     )
 
     # session = AgentSession(
@@ -326,12 +330,14 @@ async def entrypoint(ctx: JobContext):
     #         voice="Puck",
     #         temperature=0.8,
     #         instructions="You are a helpful assistant",
+    #         modalities=["text"],
     #         # realtime_input_config=types.RealtimeInputConfig(
     #         #     automatic_activity_detection=types.AutomaticActivityDetection(
     #         #         disabled=True,
     #         #     ),
     #         # ),
     #     ),
+    #     tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
     # )
 
     # To use a realtime model instead of a voice pipeline, use the following session setup instead:
