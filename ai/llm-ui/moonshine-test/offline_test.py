@@ -1,5 +1,6 @@
 import moonshine_onnx  # or import moonshine_onnx
+import os
 
-# path = "/Users/nathankau/Desktop/test audio pupster.m4a"
-path = "/Users/nathankau/Desktop/test audio 2.m4a"
-print(moonshine_onnx.transcribe(path, "moonshine/base"))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+path = os.path.join(script_dir, "test_audio.m4a")
+print(moonshine_onnx.transcribe(path, "moonshine/tiny"))
