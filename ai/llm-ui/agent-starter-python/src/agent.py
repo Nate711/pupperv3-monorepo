@@ -24,6 +24,7 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import google
 from livekit.agents import ConversationItemAddedEvent
 from livekit.agents.llm import ImageContent, AudioContent
+from livekit.agents import UserInputTranscribedEvent
 
 logger = logging.getLogger("agent")  # .setLevel(logging.INFO)
 logger.setLevel(logging.INFO)
@@ -288,11 +289,13 @@ async def entrypoint(ctx: JobContext):
     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
     session = AgentSession(
         # FASTEST: gemini-2.5-flash and gpt-4.1
-        # llm=google.LLM(model="gemini-2.5-flash"),
-        llm=openai.LLM(model="gpt-4.1"),
+        llm=google.LLM(model="gemini-2.5-flash"),
+        # llm=openai.LLM(model="gpt-4.1"),
         # llm=openai.LLM(model="gpt-5-mini"),
         max_tool_steps=20,
         stt=deepgram.STT(model="nova-3", language="multi"),
+        # only english model supports keyterm boosting. in tests, not necessary for pupster. pupper intepreted as pepper
+        # stt=deepgram.STT(model="nova-3", language="en", keyterms=["pupster", "pupper"]),
         # spanish voice: 79743797-2087-422f-8dc7-86f9efca85f1
         # spanish 2: 5ef98b2a-68d2-4a35-ac52-632a2d288ea6
         # russian: da05e96d-ca10-4220-9042-d8acef654fa9
@@ -301,7 +304,7 @@ async def entrypoint(ctx: JobContext):
         # teresa
         # tts=cartesia.TTS(voice="47836b34-00be-4ada-bec2-9b69c73304b5"),
         # dog-1: da4f337a-1277-4957-8c6a-80a1ca2cce22
-        # dog-2: e7651bee-f073-4b79-9156-eff1f8ae4fd9
+        # best dog: e7651bee-f073-4b79-9156-eff1f8ae4fd9
         tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
         # spanish
         # tts=cartesia.TTS(voice="79743797-2087-422f-8dc7-86f9efca85f1"),
@@ -364,9 +367,19 @@ async def entrypoint(ctx: JobContext):
     # For more information, see https://docs.livekit.io/agents/build/metrics/
     usage_collector = metrics.UsageCollector()
 
+    @session.on("user_input_transcribed")
+    def on_user_input_transcribed(event: UserInputTranscribedEvent):
+        print(
+            f"User input transcribed: {event.transcript}, "
+            f"language: {event.language}, "
+            f"final: {event.is_final}, "
+            f"speaker id: {event.speaker_id}"
+        )
+
     @session.on("metrics_collected")
     def _on_metrics_collected(ev: MetricsCollectedEvent):
         metrics.log_metrics(ev.metrics)
+        logger.info(f"Metrics collected: {ev.metrics}")
         usage_collector.collect(ev.metrics)
 
     async def log_usage():
