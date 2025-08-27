@@ -289,7 +289,8 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         # FASTEST: gemini-2.5-flash and gpt-4.1
         # llm=google.LLM(model="gemini-2.5-flash"),
-        llm=openai.LLM(model="gpt-4.1"),  # don't use preemptive
+        llm=openai.LLM(model="gpt-4.1"),
+        # llm=openai.LLM(model="gpt-5-mini"),
         max_tool_steps=20,
         stt=deepgram.STT(model="nova-3", language="multi"),
         # spanish voice: 79743797-2087-422f-8dc7-86f9efca85f1
