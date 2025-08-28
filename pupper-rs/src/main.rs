@@ -96,7 +96,7 @@ impl App for ImageApp {
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([900.0, 420.0]),
+        viewport: egui::ViewportBuilder::default().with_fullscreen(true),
         ..Default::default()
     };
     eframe::run_native(
