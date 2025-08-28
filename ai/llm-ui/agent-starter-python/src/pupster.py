@@ -10,7 +10,7 @@ from livekit.agents.llm import function_tool
 
 import logging
 
-from livekit.plugins import cartesia, openai, google, deepgram
+from livekit.plugins import cartesia, openai, google, deepgram, silero
 from livekit.agents import UserInputTranscribedEvent
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
@@ -114,29 +114,34 @@ class PupsterAgent(Agent):
     @function_tool
     async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
         """Use this tool to queue up a move. This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
-        You can queue up multiple moves to acomplish complex movement like a dance.
+        You can queue up multiple moves to accomplish complex movement like a dance.
 
         Args:
             vx (float): The velocity in the x direction [meters/s]. Should be 0 or 0.3 < |vx| < 0.75
-            vy (float): The velocity in the y direction [meters/s]. Should be 0 or 0.3 < |vy| < 0.5
-            wz (float): The angular velocity around the z axis [radians/s]. Should be 0 or 0.8 < |wz| < 2
+            vy (float): The velocity in the y direction [meters/s]. Should be 0 or 0.2 < |vy| < 0.5
+            wz (float): The angular velocity around the z axis [radians/s]. Should be 0 or 0.5 < |wz| < 2
             duration (float): The duration for which to apply the movement, in seconds.
         """
 
         logger.info(f"Moving motors: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
 
-        return "Move queued up. Will be executed soon"
+        return await self.tool_impl.queue_move_for_time(vx, vy, wz, duration)
+
+    @function_tool
+    async def queue_stop(self, context: RunContext):
+        """Use this tool to queue a Stop command (vx=0, vy=0, wz=0) at the end of the command queue."""
+        return await self.tool_impl.queue_stop()
 
     @function_tool
     async def reset_command_queue(self, context: RunContext):
         """Use this tool to remove all pending commands from the command queue."""
         logger.info(f"Resetting command queue")
 
-        return "Command queue reset."
+        return await self.tool_impl.clear_queue()
 
     @function_tool
     async def immediate_stop(self, context: RunContext):
-        """Bypass the command queue to stop moving immediately. Sends a move command with vx=0, vy=0, wz=0."""
-        logger.info(f"Stopping motors immediately")
+        """Clears the command queue. Then interrupts and stops the executing command whatever it may be. Finanlly sends a Stop command (vx=0, vy=0, wz=0)."""
+        logger.info(f"Immediate stop requested")
 
-        return "Stopped moving immediately."
+        return await self.tool_impl.emergency_stop()

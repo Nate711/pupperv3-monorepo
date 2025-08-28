@@ -208,6 +208,8 @@ class RosToolServer:
         # Create twist publisher for movement commands
         self.twist_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
 
+        self.start_queue_processor()
+
         logger.info("ROS Tool Server has been started.")
 
     # TODO: LLM might want to start the queue processor explicitly so it can control when commands start executing.
@@ -293,6 +295,12 @@ class RosToolServer:
         logger.info("Queueing deactivate command")
         await self.add_command(DeactivateCommand())
         return True, "Deactivate command queued"
+
+    async def queue_stop(self):
+        """Queue a stop command"""
+        logger.info("Queueing stop command")
+        await self.add_command(StopCommand())
+        return True, "Stop command queued"
 
     async def _interrupt_and_stop(self) -> Tuple[bool, str]:
         """Interrupt current command and immediately stop the robot"""
