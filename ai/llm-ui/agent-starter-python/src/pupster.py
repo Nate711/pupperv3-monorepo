@@ -33,6 +33,20 @@ def load_system_prompt():
         raise e
 
 
+########### VOICE OPTIONS ###############
+# Sacha baren cohen (unintentional)
+# tts=cartesia.TTS(voice="66db04d7-bca8-43dc-bf55-d432e4469b07", model="sonic-2")
+# Dug
+# tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-2"),
+# Nathan
+# tts=cartesia.TTS(voice="70e274d6-3e98-49bf-b482-f7374b045dc8", model="sonic-2"),
+# Teresa
+# tts=cartesia.TTS(voice="47836b34-00be-4ada-bec2-9b69c73304b5", model="sonic-2"),
+# Spanish
+# tts=cartesia.TTS(voice="79743797-422f-8dc7-86f9efca85f1", model="sonic-2"),
+#########################################
+
+
 def cascaded_session():
     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
     return AgentSession(
@@ -44,11 +58,6 @@ def cascaded_session():
         stt=deepgram.STT(model="nova-3", language="multi"),
         # only english model supports keyterm boosting. in tests, not necessary for pupster. pupper intepreted as pepper
         # stt=deepgram.STT(model="nova-3", language="en", keyterms=["pupster", "pupper"]),
-        # spanish voice: 79743797-2087-422f-8dc7-86f9efca85f1
-        # nathan: 70e274d6-3e98-49bf-b482-f7374b045dc8
-        # tts=cartesia.TTS(voice="70e274d6-3e98-49bf-b482-f7374b045dc8"),
-        # teresa
-        # tts=cartesia.TTS(voice="47836b34-00be-4ada-bec2-9b69c73304b5"),
         # best dog: e7651bee-f073-4b79-9156-eff1f8ae4fd9
         tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
         # spanish
@@ -116,13 +125,13 @@ class PupsterAgent(Agent):
         """Use this tool to queue up a move. This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
         You can queue up multiple moves to accomplish complex movement like a dance.
 
-        Sometimes the user will say things that require calculation such as "turn 180 degrees" or "turn 360 degrees while moving forward".
-        You will need to calculate the appropriate angular velocity (wz) and duration to accomplish this.
+        If the user specifies a certain angle (e.g. 180 degrees), you will need 1) come up with a reasonable duration (eg 3 seconds) and
+        2) divide the target angle by the duration to get the angular velocity (wz = 60 degrees per second).
 
         Args:
-            vx (float): The velocity in the x direction [meters/s]. Should be 0 or 0.4 < |vx| < 0.75. Positive values move forward, negative backward.
-            vy (float): The velocity in the y direction [meters/s]. Should be 0 or 0.4 < |vy| < 0.5. Positive values move to the left, negative to the right.
-            wz (float): The angular velocity around the z axis [degrees/s]. Should be 0 or 30 < |wz| < 120. Positive values turn left, negative turn right.
+            vx (float): The velocity in the x direction [meters per second]. Should be 0 or 0.4 < |vx| < 0.75. Positive values move forward, negative backward.
+            vy (float): The velocity in the y direction [meters per second]. Should be 0 or 0.4 < |vy| < 0.5. Positive values move to the left, negative to the right.
+            wz (float): The angular velocity around the z axis [degrees per second]. Should be 0 or 30 < |wz| < 120. Positive values turn left, negative turn right.
             duration (float): The duration for which to apply the movement, in seconds.
 
         Example:
