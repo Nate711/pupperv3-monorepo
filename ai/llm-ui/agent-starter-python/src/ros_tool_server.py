@@ -34,8 +34,6 @@ class DefaultCfg:
 
 DEFAULT_CFG = DefaultCfg()
 
-########### TODO: put command logic inside the command objects ###########
-
 
 class Command(ABC):
     """Base class for all robot commands"""
@@ -58,7 +56,50 @@ class MoveCommand(Command):
         self.wz = wz
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
-        return await server._execute_move(self.vx, self.vy, self.wz)
+        warnings = []
+
+        # Validate velocity constraints
+        vx = self.vx
+        vy = self.vy
+        wz = self.wz
+
+        if abs(vx) > server.cfg.move_cfg.vx_max:
+            vx = server.cfg.move_cfg.vx_max if vx > 0 else -server.cfg.move_cfg.vx_max
+            warnings.append(f"vx clamped to {vx} (max: ±{server.cfg.move_cfg.vx_max})")
+
+        if abs(vy) > server.cfg.move_cfg.vy_max:
+            vy = server.cfg.move_cfg.vy_max if vy > 0 else -server.cfg.move_cfg.vy_max
+            warnings.append(f"vy clamped to {vy} (max: ±{server.cfg.move_cfg.vy_max})")
+
+        if abs(wz) > server.cfg.move_cfg.wz_max:
+            wz = server.cfg.move_cfg.wz_max if wz > 0 else -server.cfg.move_cfg.wz_max
+            warnings.append(f"wz clamped to {wz} (max: ±{server.cfg.move_cfg.wz_max})")
+
+        # Check if all velocities are below their thresholds
+        if (
+            abs(vx) < server.cfg.move_cfg.vx_threshold
+            and abs(vy) < server.cfg.move_cfg.vy_threshold
+            and abs(wz) < server.cfg.move_cfg.wz_threshold
+        ):
+            warnings.append("All velocities (vx, vy, wz) are below their movement thresholds, robot may not move")
+
+        # Create and publish Twist message
+        twist = Twist()
+        twist.linear.x = float(vx)
+        twist.linear.y = float(vy)
+        twist.angular.z = float(wz)
+
+        server.twist_pub.publish(twist)
+
+        message = f"Robot moving with velocities vx={vx}, vy={vy}, wz={wz}"
+        if warnings:
+            message += f". Warnings: {'; '.join(warnings)}"
+
+        logger.info(f"🤖 Robot MOVING - vx: {vx}, vy: {vy}, wz: {wz}")
+        if warnings:
+            logger.warning(f"🤖 Movement warnings: {'; '.join(warnings)}")
+
+        return True, message
 
 
 class StopCommand(Command):
@@ -66,7 +107,15 @@ class StopCommand(Command):
         super().__init__("stop")
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
-        return await server._execute_stop()
+        twist = Twist()
+        twist.linear.x = 0.0
+        twist.linear.y = 0.0
+        twist.angular.z = 0.0
+
+        server.twist_pub.publish(twist)
+
+        logger.info("🤖 Robot STOPPED")
+        return True, "Robot stopped successfully"
 
 
 class WaitCommand(Command):
@@ -79,12 +128,56 @@ class WaitCommand(Command):
         return True, f"Waited for {self.duration} seconds"
 
 
+class MoveForTimeCommand(Command):
+    def __init__(self, vx: float, vy: float, wz: float, duration: float):
+        super().__init__("move_for_time")
+        self.vx = vx
+        self.vy = vy
+        self.wz = wz
+        self.duration = duration
+
+    # TODO: Make the queue processor accept "CompositeCommand" so this can be simpler
+    async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
+        # Execute move command
+        move_cmd = MoveCommand(self.vx, self.vy, self.wz)
+        success, message = await move_cmd.execute(server)
+        if not success:
+            return False, f"Move failed: {message}"
+
+        # Wait for the specified duration
+        wait_cmd = WaitCommand(self.duration)
+        await wait_cmd.execute(server)
+
+        # Execute stop command
+        stop_cmd = StopCommand()
+        success, message = await stop_cmd.execute(server)
+        if not success:
+            return False, f"Stop failed: {message}"
+
+        return True, f"Completed move_for_time: vx={self.vx}, vy={self.vy}, wz={self.wz} for {self.duration}s"
+
+
 class ActivateCommand(Command):
     def __init__(self):
         super().__init__("activate")
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
-        return await server._execute_activate()
+        req = SwitchController.Request()
+        controller_name = CONTROLLER_NAME_MAP[server.current_gait]
+
+        req.activate_controllers = [controller_name]
+        req.deactivate_controllers = list(AVAILABLE_CONTROLLERS - {controller_name})
+        req.strictness = 1
+
+        future = server.switch_controller_client.call_async(req)
+        rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
+
+        if future.done() and future.result().ok:
+            logger.info("🤖 Robot ACTIVATED")
+            return True, f"Robot activated successfully with {server.current_gait} gait"
+        else:
+            logger.error("❌ Failed to activate robot")
+            return False, "Failed to activate robot - controller switch failed"
 
 
 class DeactivateCommand(Command):
@@ -92,7 +185,20 @@ class DeactivateCommand(Command):
         super().__init__("deactivate")
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
-        return await server._execute_deactivate()
+        req = SwitchController.Request()
+        req.activate_controllers = []
+        req.deactivate_controllers = list(AVAILABLE_CONTROLLERS)
+        req.strictness = 1
+
+        future = server.switch_controller_client.call_async(req)
+        rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
+
+        if future.done() and future.result().ok:
+            logger.info("🤖 Robot DEACTIVATED")
+            return True, "Robot deactivated successfully"
+        else:
+            logger.error("❌ Failed to deactivate robot")
+            return False, "Failed to deactivate robot - controller switch failed"
 
 
 class RosToolServer:
@@ -109,6 +215,7 @@ class RosToolServer:
         self.command_queue = asyncio.Queue()
         self.queue_running = False
         self.queue_task = None
+        self.current_command_task = None
 
         # Create twist publisher for movement commands
         self.twist_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
@@ -137,14 +244,25 @@ class RosToolServer:
                 command = await asyncio.wait_for(self.command_queue.get(), timeout=0.1)
                 logger.info(f"Executing command: {command.name}")
 
+                # Create a cancellable task for the command execution
+                self.current_command_task = asyncio.create_task(command.execute(self))
+                
                 try:
-                    success, message = await command.execute(self)
+                    success, message = await self.current_command_task
                     if success:
                         logger.info(f"Command {command.name} succeeded: {message}")
                     else:
                         logger.error(f"Command {command.name} failed: {message}")
+                except asyncio.CancelledError:
+                    logger.info(f"Command {command.name} was cancelled")
+                    # Ensure robot is stopped after cancellation
+                    stop_cmd = StopCommand()
+                    await stop_cmd.execute(self)
+                    logger.info("Robot stopped after command cancellation")
                 except Exception as e:
                     logger.error(f"Error executing command {command.name}: {e}")
+                finally:
+                    self.current_command_task = None
 
             except asyncio.TimeoutError:
                 # Timeout is expected, continue loop to check queue_running
@@ -155,19 +273,12 @@ class RosToolServer:
     async def add_command(self, command: Command) -> None:
         """Add a command to the queue"""
         await self.command_queue.put(command)
-        logger.info(f"Added command {command.name} to queue")
+        logger.debug(f"Added command {command.name} to queue")
 
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
-        """Queue a move_for_time operation as 3 separate commands"""
-        # Add move command
-        await self.add_command(MoveCommand(vx, vy, wz))
-
-        # Add wait command
-        await self.add_command(WaitCommand(duration))
-
-        # Add stop command
-        await self.add_command(StopCommand())
-
+        """Queue a move_for_time operation as a single command"""
+        logger.info(f"Queueing move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
+        await self.add_command(MoveForTimeCommand(vx, vy, wz, duration))
         return True, f"Queued move_for_time: vx={vx}, vy={vy}, wz={wz} for {duration}s"
 
     async def queue_activate(self):
@@ -181,94 +292,51 @@ class RosToolServer:
         logger.info("Queueing deactivate command")
         await self.add_command(DeactivateCommand())
         return True, "Deactivate command queued"
-
-    async def _execute_deactivate(self) -> Tuple[bool, str]:
-        """Internal method to execute deactivate command"""
-        req = SwitchController.Request()
-        req.activate_controllers = []
-        req.deactivate_controllers = list(AVAILABLE_CONTROLLERS)
-        req.strictness = 1
-
-        future = self.switch_controller_client.call_async(req)
-        rclpy.spin_until_future_complete(self.node, future, timeout_sec=2.0)
-
-        if future.done() and future.result().ok:
-            logger.info("🤖 Robot DEACTIVATED")
-            return True, "Robot deactivated successfully"
+    
+    async def interrupt_and_stop(self) -> Tuple[bool, str]:
+        """Interrupt current command and immediately stop the robot"""
+        logger.info("Interrupting current command and stopping robot")
+        
+        # Cancel the currently executing command if any
+        if self.current_command_task and not self.current_command_task.done():
+            logger.info(f"Cancelling current command task")
+            self.current_command_task.cancel()
+            # The cancellation handler in _process_command_queue will stop the robot
+            
+            # Wait a moment for the cancellation to complete
+            try:
+                await asyncio.wait_for(self.current_command_task, timeout=0.5)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
         else:
-            logger.error("❌ Failed to deactivate robot")
-            return False, "Failed to deactivate robot - controller switch failed"
-
-    async def _execute_activate(self) -> Tuple[bool, str]:
-        """Internal method to execute activate command"""
-        req = SwitchController.Request()
-        controller_name = CONTROLLER_NAME_MAP[self.current_gait]
-
-        req.activate_controllers = [controller_name]
-        req.deactivate_controllers = list(AVAILABLE_CONTROLLERS - {controller_name})
-        req.strictness = 1
-
-        future = self.switch_controller_client.call_async(req)
-        rclpy.spin_until_future_complete(self.node, future, timeout_sec=2.0)
-
-        if future.done() and future.result().ok:
-            logger.info("🤖 Robot ACTIVATED")
-            return True, f"Robot activated successfully with {self.current_gait} gait"
-        else:
-            logger.error("❌ Failed to activate robot")
-            return False, "Failed to activate robot - controller switch failed"
-
-    async def _execute_stop(self) -> Tuple[bool, str]:
-        """Internal method to execute stop command"""
-        twist = Twist()
-        twist.linear.x = 0.0
-        twist.linear.y = 0.0
-        twist.angular.z = 0.0
-
-        self.twist_pub.publish(twist)
-
-        logger.info("🤖 Robot STOPPED")
-        return True, "Robot stopped successfully"
-
-    async def _execute_move(self, vx: float, vy: float, wz: float) -> Tuple[bool, str]:
-        """Internal method to execute move command"""
-        warnings = []
-
-        # Validate velocity constraints
-        if abs(vx) > self.cfg.move_cfg.vx_max:
-            vx = self.cfg.move_cfg.vx_max if vx > 0 else -self.cfg.move_cfg.vx_max
-            warnings.append(f"vx clamped to {vx} (max: ±{self.cfg.move_cfg.vx_max})")
-
-        if abs(vy) > self.cfg.move_cfg.vy_max:
-            vy = self.cfg.move_cfg.vy_max if vy > 0 else -self.cfg.move_cfg.vy_max
-            warnings.append(f"vy clamped to {vy} (max: ±{self.cfg.move_cfg.vy_max})")
-
-        if abs(wz) > self.cfg.move_cfg.wz_max:
-            wz = self.cfg.move_cfg.wz_max if wz > 0 else -self.cfg.move_cfg.wz_max
-            warnings.append(f"wz clamped to {wz} (max: ±{self.cfg.move_cfg.wz_max})")
-
-        # Check if all velocities are below their thresholds
-        if (
-            abs(vx) < self.cfg.move_cfg.vx_threshold
-            and abs(vy) < self.cfg.move_cfg.vy_threshold
-            and abs(wz) < self.cfg.move_cfg.wz_threshold
-        ):
-            warnings.append("All velocities (vx, vy, wz) are below their movement thresholds, robot may not move")
-
-        # Create and publish Twist message
-        twist = Twist()
-        twist.linear.x = float(vx)
-        twist.linear.y = float(vy)
-        twist.angular.z = float(wz)
-
-        self.twist_pub.publish(twist)
-
-        message = f"Robot moving with velocities vx={vx}, vy={vy}, wz={wz}"
-        if warnings:
-            message += f". Warnings: {'; '.join(warnings)}"
-
-        logger.info(f"🤖 Robot MOVING - vx: {vx}, vy: {vy}, wz: {wz}")
-        if warnings:
-            logger.warning(f"🤖 Movement warnings: {'; '.join(warnings)}")
-
-        return True, message
+            # No command running, just stop the robot directly
+            stop_cmd = StopCommand()
+            await stop_cmd.execute(self)
+        
+        return True, "Current command interrupted and robot stopped"
+    
+    async def clear_queue(self) -> Tuple[bool, str]:
+        """Clear all pending commands from the queue"""
+        count = 0
+        while not self.command_queue.empty():
+            try:
+                self.command_queue.get_nowait()
+                count += 1
+            except asyncio.QueueEmpty:
+                break
+        
+        logger.info(f"Cleared {count} commands from queue")
+        return True, f"Cleared {count} pending commands from queue"
+    
+    async def emergency_stop(self) -> Tuple[bool, str]:
+        """Emergency stop: interrupt current command, stop robot, and clear queue"""
+        logger.warning("EMERGENCY STOP initiated")
+        
+        # First interrupt and stop
+        await self.interrupt_and_stop()
+        
+        # Then clear the queue
+        await self.clear_queue()
+        
+        logger.warning("EMERGENCY STOP completed")
+        return True, "Emergency stop executed: robot stopped and queue cleared"

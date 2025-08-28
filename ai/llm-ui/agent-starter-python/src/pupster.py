@@ -91,6 +91,7 @@ def get_pupster_session(agent_design: str):
         raise ValueError(f"Unknown agent design {agent_design}")
 
 
+# TODO: Consider making the ros tool server a subclass of PupsterAgent so that I don't have to re-define functions!
 class PupsterAgent(Agent):
     def __init__(self) -> None:
         system_prompt = load_system_prompt()
