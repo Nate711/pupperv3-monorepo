@@ -100,9 +100,9 @@ impl App for ImageApp {
 
                 let center = rect.center();
                 // Horizontal spacing between eyes
-                let offset_x = 180.0;
+                let offset_x = 190.0;
                 // Slight vertical offset so they sit a bit high in the frame
-                let offset_y = -20.0;
+                let offset_y = -10.0;
 
                 draw_eye(&painter, center + Vec2::new(-offset_x, offset_y));
                 draw_eye(&painter, center + Vec2::new(offset_x, offset_y));
