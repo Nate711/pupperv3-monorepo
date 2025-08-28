@@ -47,6 +47,17 @@ sudo apt install -y hailo-all
 source /opt/ros/jazzy/setup.bash
 
 
+########################### Install rust ########################
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source $HOME/.cargo/env
+
+rustup target add aarch64-unknown-linux-gnu
+
+############################### Install LLM deps ###########################
+sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
+pip install "livekit-agents[cartesia,google,openai]~=1.2"
+pip install "python-dotenv"
+
 ############################ Prepare monorepo ###############################################
 
 # Prepare monorepo
