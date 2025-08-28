@@ -24,6 +24,7 @@ load_dotenv(".env.local")
 logger = logging.getLogger("agent")
 
 AGENT_DESIGN = "openai-cartesia"  # "google-cartesia" # "cascade" # "openai-cartesia"
+# AGENT_DESIGN = "google-cartesia"
 
 
 def prewarm(proc: JobProcess):

@@ -1,3 +1,4 @@
+import random
 from typing import Tuple, Optional, Any, Dict
 import rclpy
 from rclpy.node import Node
@@ -19,12 +20,12 @@ CONTROLLER_NAME_MAP = {
 
 @dataclass
 class MoveCfg:
-    vx_threshold: float = 0.3
-    vy_threshold: float = 0.2
-    wz_threshold: float = 0.5
-    vx_max: float = 0.75
-    vy_max: float = 0.5
-    wz_max: float = 2.0
+    vx_threshold: float = 0.4  # m/s
+    vy_threshold: float = 0.4  # m/s
+    wz_threshold: float = 30.0  # deg/s
+    vx_max: float = 0.75  # m/s
+    vy_max: float = 0.5  # m/s
+    wz_max: float = 120.0  # deg/s
 
 
 @dataclass
@@ -81,12 +82,12 @@ class MoveCommand(Command):
         twist = Twist()
         twist.linear.x = float(vx)
         twist.linear.y = float(vy)
-        twist.angular.z = float(wz)
+        twist.angular.z = float(wz) / 57.2958  # Convert deg/s to rad/s
 
         server.twist_pub.publish(twist)
 
         message = f"Robot moving with velocities vx={vx}, vy={vy}, wz={wz}"
-        logger.info(f"🤖 Robot MOVING - vx: {vx}, vy: {vy}, wz: {wz}")
+        logger.info(f"Executing MoveCommand - vx: {vx}, vy: {vy}, wz: {wz}")
         return True, message
 
 
@@ -102,7 +103,7 @@ class StopCommand(Command):
 
         server.twist_pub.publish(twist)
 
-        logger.info("🤖 Robot STOPPED")
+        logger.info("Executed StopCommand")
         return True, "Robot stopped successfully"
 
 
@@ -216,7 +217,7 @@ class RosToolServer:
     # For now, we can start it automatically when the server is created.
     # For instance, the LLM often takes several seconds to queue up commands and it's possible the behavior will be wrong if
     # the commands start executing before the LLM is done queueing them.
-    async def start_queue_processor(self):
+    def start_queue_processor(self):
         """Start the background task that processes commands from the queue"""
         if not self.queue_running:
             self.queue_running = True
@@ -234,7 +235,6 @@ class RosToolServer:
         """Background task that processes commands from the queue sequentially"""
         while self.queue_running:
             try:
-                logging.info("Waiting for next command in queue...")
                 # Wait for a command with timeout to allow checking queue_running
                 command = await asyncio.wait_for(self.command_queue.get(), timeout=0.1)
                 logger.info(f"Executing command: {command.name}")
@@ -265,7 +265,9 @@ class RosToolServer:
 
             except asyncio.TimeoutError:
                 # Timeout is expected, continue loop to check queue_running
-                logging.info("No command in queue, waiting...")
+                # Log every 10 seconds if the queue is empty
+                if random.random() < 0.01:
+                    logger.info("Command queue processor waiting for commands...")
                 continue
             except Exception as e:
                 logger.error(f"Unexpected error in command queue processor: {e}")
@@ -303,6 +305,12 @@ class RosToolServer:
         logger.info("Queueing stop command")
         await self.add_command(StopCommand())
         return True, "Stop command queued"
+
+    async def queue_wait(self, duration: float):
+        """Queue a wait command"""
+        logger.info(f"Queueing wait command for {duration} seconds")
+        await self.add_command(WaitCommand(duration))
+        return True, f"Wait command for {duration} seconds queued"
 
     async def _interrupt_and_stop(self) -> Tuple[bool, str]:
         """Interrupt current command and immediately stop the robot"""

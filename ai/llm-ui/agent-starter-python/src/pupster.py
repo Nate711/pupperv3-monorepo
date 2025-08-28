@@ -116,11 +116,22 @@ class PupsterAgent(Agent):
         """Use this tool to queue up a move. This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
         You can queue up multiple moves to accomplish complex movement like a dance.
 
+        Sometimes the user will say things that require calculation such as "turn 180 degrees" or "turn 360 degrees while moving forward".
+        You will need to calculate the appropriate angular velocity (wz) and duration to accomplish this.
+
         Args:
-            vx (float): The velocity in the x direction [meters/s]. Should be 0 or 0.3 < |vx| < 0.75
-            vy (float): The velocity in the y direction [meters/s]. Should be 0 or 0.2 < |vy| < 0.5
-            wz (float): The angular velocity around the z axis [radians/s]. Should be 0 or 0.5 < |wz| < 2
+            vx (float): The velocity in the x direction [meters/s]. Should be 0 or 0.4 < |vx| < 0.75. Positive values move forward, negative backward.
+            vy (float): The velocity in the y direction [meters/s]. Should be 0 or 0.4 < |vy| < 0.5. Positive values move to the left, negative to the right.
+            wz (float): The angular velocity around the z axis [degrees/s]. Should be 0 or 30 < |wz| < 120. Positive values turn left, negative turn right.
             duration (float): The duration for which to apply the movement, in seconds.
+
+        Example:
+            To spin 180 degreees to the right, you could can call: queue_move(vx=0.0, vy=0.0, wz=-90.0, duration=2.0)
+            To turn 360 degrees to the left while moving forward, you could call: queue_move(vx=0.5, vy=0.0, wz=90.0, duration=4.0)
+
+        Invalid commands:
+            Small movements such as queue_move(vx=0.1, vy=0.0, wz=0.0, duration=2.0) are invalid and will be ignored because the real robot
+            is not responsive to small velocities. Use 0 or a velocity above the threshold.
         """
 
         logger.info(f"Moving motors: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
@@ -131,6 +142,17 @@ class PupsterAgent(Agent):
     async def queue_stop(self, context: RunContext):
         """Use this tool to queue a Stop command (vx=0, vy=0, wz=0) at the end of the command queue."""
         return await self.tool_impl.queue_stop()
+
+    @function_tool
+    async def queue_wait(self, context: RunContext, duration: float):
+        """Use this tool to wait for a certain duration before executing the next command in the queue.
+
+        Args:
+            duration (float): The duration to wait, in seconds.
+        """
+        logger.info(f"Waiting for {duration} seconds")
+
+        return await self.tool_impl.queue_wait(duration)
 
     @function_tool
     async def reset_command_queue(self, context: RunContext):
