@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 import logging
 from controller_manager_msgs.srv import SwitchController
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from geometry_msgs.msg import Twist
 import asyncio
 from abc import ABC, abstractmethod
@@ -20,8 +20,8 @@ CONTROLLER_NAME_MAP = {
 @dataclass
 class MoveCfg:
     vx_threshold: float = 0.3
-    vy_threshold: float = 0.3
-    wz_threshold: float = 1.0
+    vy_threshold: float = 0.2
+    wz_threshold: float = 0.5
     vx_max: float = 0.75
     vy_max: float = 0.5
     wz_max: float = 2.0
@@ -29,7 +29,7 @@ class MoveCfg:
 
 @dataclass
 class DefaultCfg:
-    move_cfg: MoveCfg = MoveCfg()
+    move_cfg: MoveCfg = field(default_factory=MoveCfg)
 
 
 DEFAULT_CFG = DefaultCfg()
@@ -48,32 +48,20 @@ class Command(ABC):
         pass
 
 
+# TODO: The warnings will only show up on execution but the LLM won't see them and would benefit from seeing the warnings when queueing
 class MoveCommand(Command):
-    def __init__(self, vx: float, vy: float, wz: float):
+    def __init__(self, vx: float, vy: float, wz: float, server: "RosToolServer"):
         super().__init__("move")
         self.vx = vx
         self.vy = vy
         self.wz = wz
 
-    async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
-        warnings = []
-
-        # Validate velocity constraints
-        vx = self.vx
-        vy = self.vy
-        wz = self.wz
-
         if abs(vx) > server.cfg.move_cfg.vx_max:
-            vx = server.cfg.move_cfg.vx_max if vx > 0 else -server.cfg.move_cfg.vx_max
-            warnings.append(f"vx clamped to {vx} (max: ±{server.cfg.move_cfg.vx_max})")
-
+            raise ValueError(f"vx {vx} exceeds max limit of ±{server.cfg.move_cfg.vx_max}")
         if abs(vy) > server.cfg.move_cfg.vy_max:
-            vy = server.cfg.move_cfg.vy_max if vy > 0 else -server.cfg.move_cfg.vy_max
-            warnings.append(f"vy clamped to {vy} (max: ±{server.cfg.move_cfg.vy_max})")
-
+            raise ValueError(f"vy {vy} exceeds max limit of ±{server.cfg.move_cfg.vy_max}")
         if abs(wz) > server.cfg.move_cfg.wz_max:
-            wz = server.cfg.move_cfg.wz_max if wz > 0 else -server.cfg.move_cfg.wz_max
-            warnings.append(f"wz clamped to {wz} (max: ±{server.cfg.move_cfg.wz_max})")
+            raise ValueError(f"wz {wz} exceeds max limit of ±{server.cfg.move_cfg.wz_max}")
 
         # Check if all velocities are below their thresholds
         if (
@@ -81,7 +69,13 @@ class MoveCommand(Command):
             and abs(vy) < server.cfg.move_cfg.vy_threshold
             and abs(wz) < server.cfg.move_cfg.wz_threshold
         ):
-            warnings.append("All velocities (vx, vy, wz) are below their movement thresholds, robot may not move")
+            raise ValueError("All velocities (vx, vy, wz) are below their movement thresholds, robot may not move")
+
+    async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
+        # Validate velocity constraints
+        vx = self.vx
+        vy = self.vy
+        wz = self.wz
 
         # Create and publish Twist message
         twist = Twist()
@@ -92,13 +86,7 @@ class MoveCommand(Command):
         server.twist_pub.publish(twist)
 
         message = f"Robot moving with velocities vx={vx}, vy={vy}, wz={wz}"
-        if warnings:
-            message += f". Warnings: {'; '.join(warnings)}"
-
         logger.info(f"🤖 Robot MOVING - vx: {vx}, vy: {vy}, wz: {wz}")
-        if warnings:
-            logger.warning(f"🤖 Movement warnings: {'; '.join(warnings)}")
-
         return True, message
 
 
@@ -129,32 +117,32 @@ class WaitCommand(Command):
 
 
 class MoveForTimeCommand(Command):
-    def __init__(self, vx: float, vy: float, wz: float, duration: float):
+    def __init__(self, vx: float, vy: float, wz: float, duration: float, server: "RosToolServer"):
         super().__init__("move_for_time")
-        self.vx = vx
-        self.vy = vy
-        self.wz = wz
-        self.duration = duration
+
+        self.move_cmd = MoveCommand(vx, vy, wz, server)
+        self.wait_cmd = WaitCommand(duration)
+        self.stop_cmd = StopCommand()
 
     # TODO: Make the queue processor accept "CompositeCommand" so this can be simpler
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
         # Execute move command
-        move_cmd = MoveCommand(self.vx, self.vy, self.wz)
-        success, message = await move_cmd.execute(server)
+        success, message = await self.move_cmd.execute(server)
         if not success:
             return False, f"Move failed: {message}"
 
         # Wait for the specified duration
-        wait_cmd = WaitCommand(self.duration)
-        await wait_cmd.execute(server)
+        success, message = await self.wait_cmd.execute(server)
 
         # Execute stop command
-        stop_cmd = StopCommand()
-        success, message = await stop_cmd.execute(server)
+        success, message = await self.stop_cmd.execute(server)
         if not success:
             return False, f"Stop failed: {message}"
 
-        return True, f"Completed move_for_time: vx={self.vx}, vy={self.vy}, wz={self.wz} for {self.duration}s"
+        return (
+            True,
+            f"Completed move_for_time: vx={self.move_cmd.vx}, vy={self.move_cmd.vy}, wz={self.move_cmd.wz} for {self.wait_cmd.duration}s",
+        )
 
 
 class ActivateCommand(Command):
@@ -222,6 +210,10 @@ class RosToolServer:
 
         logger.info("ROS Tool Server has been started.")
 
+    # TODO: LLM might want to start the queue processor explicitly so it can control when commands start executing.
+    # For now, we can start it automatically when the server is created.
+    # For instance, the LLM often takes several seconds to queue up commands and it's possible the behavior will be wrong if
+    # the commands start executing before the LLM is done queueing them.
     async def start_queue_processor(self):
         """Start the background task that processes commands from the queue"""
         if not self.queue_running:
@@ -246,19 +238,23 @@ class RosToolServer:
 
                 # Create a cancellable task for the command execution
                 self.current_command_task = asyncio.create_task(command.execute(self))
-                
+
                 try:
                     success, message = await self.current_command_task
                     if success:
                         logger.info(f"Command {command.name} succeeded: {message}")
                     else:
                         logger.error(f"Command {command.name} failed: {message}")
+
+                ################## Handle cancellation ##################
                 except asyncio.CancelledError:
                     logger.info(f"Command {command.name} was cancelled")
                     # Ensure robot is stopped after cancellation
                     stop_cmd = StopCommand()
                     await stop_cmd.execute(self)
                     logger.info("Robot stopped after command cancellation")
+
+                ################### Handle other exceptions ###################
                 except Exception as e:
                     logger.error(f"Error executing command {command.name}: {e}")
                 finally:
@@ -278,7 +274,12 @@ class RosToolServer:
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
         """Queue a move_for_time operation as a single command"""
         logger.info(f"Queueing move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
-        await self.add_command(MoveForTimeCommand(vx, vy, wz, duration))
+        try:
+            move_for_time_cmd = MoveForTimeCommand(vx, vy, wz, duration, self)
+        except ValueError as e:
+            logger.warning(f"Invalid parameters for move_for_time: {e}")
+            return False, str(e)
+        await self.add_command(move_for_time_cmd)
         return True, f"Queued move_for_time: vx={vx}, vy={vy}, wz={wz} for {duration}s"
 
     async def queue_activate(self):
@@ -292,17 +293,17 @@ class RosToolServer:
         logger.info("Queueing deactivate command")
         await self.add_command(DeactivateCommand())
         return True, "Deactivate command queued"
-    
-    async def interrupt_and_stop(self) -> Tuple[bool, str]:
+
+    async def _interrupt_and_stop(self) -> Tuple[bool, str]:
         """Interrupt current command and immediately stop the robot"""
         logger.info("Interrupting current command and stopping robot")
-        
+
         # Cancel the currently executing command if any
         if self.current_command_task and not self.current_command_task.done():
             logger.info(f"Cancelling current command task")
             self.current_command_task.cancel()
             # The cancellation handler in _process_command_queue will stop the robot
-            
+
             # Wait a moment for the cancellation to complete
             try:
                 await asyncio.wait_for(self.current_command_task, timeout=0.5)
@@ -312,9 +313,9 @@ class RosToolServer:
             # No command running, just stop the robot directly
             stop_cmd = StopCommand()
             await stop_cmd.execute(self)
-        
+
         return True, "Current command interrupted and robot stopped"
-    
+
     async def clear_queue(self) -> Tuple[bool, str]:
         """Clear all pending commands from the queue"""
         count = 0
@@ -324,19 +325,19 @@ class RosToolServer:
                 count += 1
             except asyncio.QueueEmpty:
                 break
-        
+
         logger.info(f"Cleared {count} commands from queue")
         return True, f"Cleared {count} pending commands from queue"
-    
+
     async def emergency_stop(self) -> Tuple[bool, str]:
         """Emergency stop: interrupt current command, stop robot, and clear queue"""
         logger.warning("EMERGENCY STOP initiated")
-        
-        # First interrupt and stop
-        await self.interrupt_and_stop()
-        
+
         # Then clear the queue
         await self.clear_queue()
-        
+
+        # First interrupt and stop
+        await self._interrupt_and_stop()
+
         logger.warning("EMERGENCY STOP completed")
         return True, "Emergency stop executed: robot stopped and queue cleared"
