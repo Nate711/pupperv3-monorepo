@@ -25,8 +25,8 @@ fn quadratic_bezier_points(start: Pos2, ctrl: Pos2, end: Pos2, steps: usize) -> 
 fn draw_eye(painter: &egui::Painter, center: Pos2) {
     // Palette (tuned to the reference)
     let ring_outer = Color32::from_rgb(0x2a, 0x2f, 0x36); // dark gray ring
-    let ring_blue = Color32::from_rgb(0x00, (166.0) as u8, (255.0) as u8); // cyan-blue
-    let under_highlight_blue = Color32::from_rgb(0x00, (166.0 * 0.5) as u8, (255.0 * 0.5) as u8); // cyan-blue
+    let ring_blue = Color32::from_rgb(075, 149, 181); // bright blue ring
+    let under_highlight_blue = Color32::from_rgb(50, 102, 136); // cyan-blue
     let gloss = Color32::from_rgba_premultiplied(255, 255, 255, (0.95 * 255.0) as u8);
 
     // Outer dark ring
