@@ -1,5 +1,5 @@
 use eframe::{App, egui};
-use egui::{Color32, Pos2, Shape, Stroke, Vec2};
+use egui::{Color32, Pos2, Shape, Stroke, Vec2, Vec2b};
 
 struct ImageApp;
 
@@ -23,82 +23,103 @@ fn quadratic_bezier_points(start: Pos2, ctrl: Pos2, end: Pos2, steps: usize) -> 
 }
 
 fn draw_eye(painter: &egui::Painter, center: Pos2) {
-    let iris_outer = Color32::from_rgb(0x08, 0x12, 0x20);
-    let iris_mid = Color32::from_rgb(0x0b, 0x17, 0x27);
-    let iris_inner = Color32::from_rgb(0x00, 0x84, 0xff);
-    let iris_ring = Color32::from_rgba_unmultiplied(0x00, 0xa6, 0xff, 180);
+    // Palette (tuned to the reference)
+    let ring_outer = Color32::from_rgb(0x2a, 0x2f, 0x36); // dark gray ring
+    let ring_blue = Color32::from_rgb(0x00, (166.0) as u8, (255.0) as u8); // cyan-blue
+    let under_highlight_blue = Color32::from_rgb(0x00, (166.0 * 0.5) as u8, (255.0 * 0.5) as u8); // cyan-blue
+    let gloss = Color32::from_rgba_premultiplied(255, 255, 255, (0.95 * 255.0) as u8);
 
-    painter.add(Shape::circle_filled(center, 126.0, iris_outer));
-    painter.add(Shape::circle_filled(center, 88.0, iris_mid));
-    painter.add(Shape::circle_filled(center, 40.0, iris_inner));
+    // Outer dark ring
     painter.add(Shape::circle_stroke(
         center,
-        126.0,
-        Stroke::new(6.0, iris_ring),
+        140.0,
+        Stroke::new(8.0, ring_outer),
+    ));
+    // Thick blue bezel
+    painter.add(Shape::circle_stroke(
+        center,
+        116.0,
+        Stroke::new(30.0, ring_blue),
     ));
 
-    painter.add(Shape::circle_filled(center, 96.0, Color32::BLACK));
+    // Pupil / eye interior
+    painter.add(Shape::circle_filled(center, 90.0, Color32::BLACK));
 
-    let iris_blue = Color32::from_rgb(0x00, 0xa6, 0xff);
-    let arc_start = center + Vec2::new(-62.0, 38.0);
-    let arc_ctrl = center + Vec2::new(0.0, -36.0);
-    let arc_end = center + Vec2::new(58.0, 38.0);
-    let arc_points = quadratic_bezier_points(arc_start, arc_ctrl, arc_end, 20);
-    painter.add(Shape::line(arc_points, Stroke::new(17.0, iris_blue)));
+    // under highlight (arc)
+    let radius = 80.0;
+    let start_angle = 45.0_f32.to_radians();
+    let end_angle = 135.0_f32.to_radians();
+    let steps = 28;
+    let arc_pts = (0..=steps)
+        .map(|i| {
+            let t = i as f32 / steps as f32;
+            let angle = start_angle + t * (end_angle - start_angle);
+            center + Vec2::new(radius * angle.cos(), radius * angle.sin())
+        })
+        .collect::<Vec<_>>();
+    painter.add(Shape::line(
+        arc_pts,
+        Stroke::new(14.0, under_highlight_blue),
+    ));
+    // Little blue dot at the right end
     painter.add(Shape::circle_filled(
-        center + Vec2::new(70.0, 42.0),
+        center + Vec2::new(76.0, 34.0),
         8.0,
-        iris_blue,
+        under_highlight_blue,
     ));
 
+    // Gloss highlights (top-left)
     painter.add(Shape::circle_filled(
-        center + Vec2::new(-29.0, -51.0),
-        31.0,
-        Color32::from_rgba_unmultiplied(255, 255, 255, (0.96 * 255.0) as u8),
+        center + Vec2::new(-42.0, -54.0),
+        26.0,
+        gloss,
     ));
     painter.add(Shape::circle_filled(
-        center + Vec2::new(18.0, -17.0),
-        14.0,
-        Color32::from_rgba_unmultiplied(255, 255, 255, (0.90 * 255.0) as u8),
+        center + Vec2::new(-70.0, -8.0),
+        12.0,
+        gloss,
     ));
 
-    let brow_start = center + Vec2::new(-84.0, -180.0);
-    let brow_ctrl = center + Vec2::new(0.0, -204.0);
-    let brow_end = center + Vec2::new(84.0, -180.0);
-    let brow_points = quadratic_bezier_points(brow_start, brow_ctrl, brow_end, 20);
-    let brow_color = Color32::from_rgba_unmultiplied(0xb9, 0xb9, 0xb9, (0.8 * 255.0) as u8);
-    painter.add(Shape::line(brow_points, Stroke::new(10.0, brow_color)));
+    // Eyebrow (slight arch)
+    let brow_col = Color32::from_rgb(0x33, 0x36, 0x3c);
+    let brow_start = center + Vec2::new(-88.0, -150.0);
+    let brow_ctrl = center + Vec2::new(0.0, -195.0);
+    let brow_end = center + Vec2::new(88.0, -150.0);
+    let brow_pts = quadratic_bezier_points(brow_start, brow_ctrl, brow_end, 24);
+    painter.add(Shape::line(brow_pts, Stroke::new(14.0, brow_col)));
 }
 
 impl App for ImageApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let (rect, _) = ui.allocate_exact_size(Vec2::new(900.0, 420.0), egui::Sense::hover());
-            let painter = ui.painter_at(rect);
+        egui::CentralPanel::default()
+            .frame(egui::Frame::none().fill(Color32::BLACK))
+            .show(ctx, |ui| {
+                // Use the whole panel; place eyes relative to the center
+                let rect = ui.max_rect();
+                let painter = ui.painter();
 
-            let halo_color = Color32::from_rgba_unmultiplied(0x00, 0xb4, 0xff, 60);
-            painter.add(Shape::circle_filled(
-                Pos2::new(220.0, 210.0),
-                150.0,
-                halo_color,
-            ));
-            painter.add(Shape::circle_filled(
-                Pos2::new(680.0, 210.0),
-                150.0,
-                halo_color,
-            ));
+                let center = rect.center();
+                // Horizontal spacing between eyes
+                let offset_x = 180.0;
+                // Slight vertical offset so they sit a bit high in the frame
+                let offset_y = -20.0;
 
-            draw_eye(&painter, Pos2::new(220.0, 210.0));
-            draw_eye(&painter, Pos2::new(680.0, 210.0));
-        });
+                draw_eye(&painter, center + Vec2::new(-offset_x, offset_y));
+                draw_eye(&painter, center + Vec2::new(offset_x, offset_y));
+            });
     }
 }
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_fullscreen(true),
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size(Vec2::new(720.0, 720.0))
+            .with_min_inner_size(Vec2::new(720.0, 720.0))
+            .with_maximize_button(true)
+            .with_resizable(true),
         ..Default::default()
     };
+
     eframe::run_native(
         "pupper-rs",
         options,
