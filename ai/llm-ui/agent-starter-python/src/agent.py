@@ -1,5 +1,7 @@
 import logging
 
+logging.getLogger("livekit.agents").setLevel(logging.DEBUG)
+
 from dotenv import load_dotenv
 from livekit.agents import (
     NOT_GIVEN,

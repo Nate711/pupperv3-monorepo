@@ -234,6 +234,7 @@ class RosToolServer:
         """Background task that processes commands from the queue sequentially"""
         while self.queue_running:
             try:
+                logging.info("Waiting for next command in queue...")
                 # Wait for a command with timeout to allow checking queue_running
                 command = await asyncio.wait_for(self.command_queue.get(), timeout=0.1)
                 logger.info(f"Executing command: {command.name}")
@@ -264,6 +265,7 @@ class RosToolServer:
 
             except asyncio.TimeoutError:
                 # Timeout is expected, continue loop to check queue_running
+                logging.info("No command in queue, waiting...")
                 continue
             except Exception as e:
                 logger.error(f"Unexpected error in command queue processor: {e}")
