@@ -1,0 +1,18 @@
+[Unit]
+Description=LLM Voice Agent Service
+After=network.target sound.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python
+ExecStart=/usr/bin/python3 src/agent.py console
+Restart=always
+RestartSec=5
+User=pi
+StandardOutput=journal
+StandardError=journal
+Environment="PATH=/usr/bin:/usr/local/bin"
+Environment="HOME=/home/pi"
+
+[Install]
+WantedBy=multi-user.target
