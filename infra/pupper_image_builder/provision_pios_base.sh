@@ -112,4 +112,16 @@ pip install --upgrade pyaudio deepgram-sdk
 sudo apt install -y software-properties-common vim
 
 # Finally update packages since this step takes a long time
-sudo apt upgrade -y
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+# (Optional) avoid services trying to start in chroot
+printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+
+sudo apt-get update
+
+apt-get -y \
+  -o Dpkg::Options::="--force-confdef" \
+  -o Dpkg::Options::="--force-confold" \
+  upgrade
+
+rm -f /usr/sbin/policy-rc.d
