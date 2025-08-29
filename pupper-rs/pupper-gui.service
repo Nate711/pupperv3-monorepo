@@ -1,0 +1,32 @@
+[Unit]
+Description=Pupper GUI Service
+After=graphical-session.target sound.target network.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/pupperv3-monorepo/pupper-rs
+ExecStart=/home/pi/pupperv3-monorepo/pupper-rs/run_gui.sh
+Restart=always
+RestartSec=5
+User=pi
+Group=pi
+StandardOutput=journal
+StandardError=journal
+Environment="HOME=/home/pi"
+Environment="USER=pi"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/pi/.cargo/bin"
+Environment="DISPLAY=:0"
+Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+Environment="XDG_SESSION_TYPE=wayland"
+
+# Graphics and audio access
+SupplementaryGroups=video audio render
+PrivateDevices=no
+DeviceAllow=/dev/dri/* rw
+DeviceAllow=/dev/snd/* rw
+DeviceAllow=char-drm rw
+
+[Install]
+WantedBy=graphical.target
