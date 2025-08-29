@@ -40,19 +40,26 @@ pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<
         ui.add_space(8.0);
 
         // Load SVG icon using the modern egui::Image API
-        // let svg_data = include_bytes!("../fullscreen_icon.svg");
         let button_size = Vec2::new(16.0, 16.0);
-
-        if ui
-            .add_sized(
-                button_size,
-                egui::ImageButton::new(egui::Image::from(egui::include_image!(
-                    "../fullscreen_icon.svg"
-                )))
-                .frame(false),
-            )
-            .clicked()
-        {
+        
+        // Use allocate_response to get hover state before rendering
+        let (rect, response) = ui.allocate_exact_size(button_size, Sense::click());
+        
+        // Determine tint color based on interaction state
+        let tint_color = if response.is_pointer_button_down_on() {
+            Color32::from_rgb(150, 150, 150) // Darker gray when clicked
+        } else if response.hovered() {
+            Color32::from_rgb(200, 200, 200) // Light gray when hovered
+        } else {
+            Color32::WHITE // White when idle
+        };
+        
+        // Draw the image with appropriate tint
+        egui::Image::from(egui::include_image!("../fullscreen_icon.svg"))
+            .tint(tint_color)
+            .paint_at(ui, rect);
+        
+        if response.clicked() {
             fullscreen_clicked = Some(());
         }
     });
