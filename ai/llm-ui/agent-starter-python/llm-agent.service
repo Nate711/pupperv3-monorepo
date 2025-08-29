@@ -9,10 +9,16 @@ ExecStart=/home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/run.sh
 Restart=always
 RestartSec=5
 User=pi
+Group=audio
 StandardOutput=journal
 StandardError=journal
 Environment="PATH=/usr/bin:/usr/local/bin"
 Environment="HOME=/home/pi"
+Environment="PULSE_RUNTIME_PATH=/run/user/1000/pulse"
+SupplementaryGroups=audio
+PrivateDevices=no
+DeviceAllow=/dev/snd/* rw
+DevicePolicy=auto
 
 [Install]
 WantedBy=multi-user.target
