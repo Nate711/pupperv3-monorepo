@@ -1,7 +1,30 @@
 use eframe::{App, egui};
 use egui::{Color32, Pos2, RichText, Shape, Stroke, Vec2};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 use std::time::{Duration, Instant};
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Config {
+    battery: BatteryConfig,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BatteryConfig {
+    low_threshold: u8,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            battery: BatteryConfig {
+                low_threshold: 15,
+            },
+        }
+    }
+}
 
 enum ServiceStatus {
     Active,
@@ -16,18 +39,39 @@ struct ImageApp {
     last_battery_check: Instant,
     flash_battery: bool,
     flash_timer: Instant,
+    config: Config,
+}
+
+fn load_config() -> Result<Config, String> {
+    // Use CARGO_MANIFEST_DIR to find config.toml relative to the Cargo.toml file
+    // This is set at compile time and always points to the crate root
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let config_path = PathBuf::from(manifest_dir).join("config.toml");
+    
+    let contents = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read config file '{}': {}", config_path.display(), e))?;
+    
+    let config = toml::from_str(&contents)
+        .map_err(|e| format!("Failed to parse config file '{}': {}", config_path.display(), e))?;
+    
+    println!("Loaded config from {}", config_path.display());
+    Ok(config)
 }
 
 impl ImageApp {
-    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        Self {
+    fn new(_cc: &eframe::CreationContext<'_>) -> Result<Self, String> {
+        let config = load_config()?;
+        println!("Battery low threshold: {}%", config.battery.low_threshold);
+        
+        Ok(Self {
             service_status: ServiceStatus::Unknown,
             last_check: Instant::now(),
             battery_percentage: None,
             last_battery_check: Instant::now(),
             flash_battery: false,
             flash_timer: Instant::now(),
-        }
+            config,
+        })
     }
 
     fn poll_service_status(&mut self) {
@@ -46,7 +90,7 @@ impl ImageApp {
         
         // Handle flashing for low battery
         if let Some(percentage) = self.battery_percentage {
-            if percentage < 150 {
+            if percentage < self.config.battery.low_threshold {
                 if self.flash_timer.elapsed() >= Duration::from_millis(500) {
                     self.flash_battery = !self.flash_battery;
                     self.flash_timer = Instant::now();
@@ -250,8 +294,8 @@ impl App for ImageApp {
                 ui.horizontal(|ui| {
                     if let Some(percentage) = self.battery_percentage {
                         // Determine if we should show red (flashing or solid)
-                        let is_low = percentage < 150;
-                        let show_red = is_low && (self.flash_battery || !is_low);
+                        let is_low = percentage < self.config.battery.low_threshold;
+                        let show_red = is_low && self.flash_battery;
                         
                         // Percentage text
                         let text_color = if show_red {
@@ -323,7 +367,7 @@ impl App for ImageApp {
                             painter.rect_filled(fill_rect, 1.0, fill_color);
                         }
                     } else {
-                        ui.label(RichText::new("Battery: --")
+                        ui.label(RichText::new("Battery: Unkown")
                             .color(Color32::GRAY)
                             .size(14.0));
                     }
@@ -345,6 +389,14 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "pupper-rs",
         options,
-        Box::new(|cc| Box::new(ImageApp::new(cc))),
+        Box::new(|cc| {
+            match ImageApp::new(cc) {
+                Ok(app) => Box::new(app) as Box<dyn App>,
+                Err(e) => {
+                    eprintln!("Failed to initialize application: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }),
     )
 }
