@@ -8,8 +8,8 @@ mod ui;
 
 use config::{Config, load_config, print_config_info};
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
-use system::{BatteryMonitor, CpuMonitor, ServiceMonitor};
-use ui::{draw_battery_indicator, draw_cpu_stats, draw_service_status};
+use system::{BatteryMonitor, CpuMonitor, LlmServiceMonitor, ServiceMonitor};
+use ui::{draw_battery_indicator, draw_cpu_stats, draw_llm_service_status, draw_service_status};
 
 struct ImageApp {
     config: Config,
@@ -17,6 +17,7 @@ struct ImageApp {
     battery_monitor: BatteryMonitor,
     cpu_monitor: CpuMonitor,
     service_monitor: ServiceMonitor,
+    llm_service_monitor: LlmServiceMonitor,
     eye_tracker: EyeTracker,
     is_fullscreen: bool,
 }
@@ -33,6 +34,7 @@ impl ImageApp {
             battery_monitor: BatteryMonitor::new(),
             cpu_monitor: CpuMonitor::new(),
             service_monitor: ServiceMonitor::new(),
+            llm_service_monitor: LlmServiceMonitor::new(),
             eye_tracker: EyeTracker::new(),
             is_fullscreen: true,
         })
@@ -84,19 +86,27 @@ impl ImageApp {
     }
 
     fn draw_status_ui(&mut self, ctx: &egui::Context) {
-        // Service status indicator in top-right
+        // Service status indicators in top-right
         egui::Area::new(egui::Id::new("service_status"))
             .anchor(egui::Align2::RIGHT_TOP, [-30.0, 30.0])
             .show(ctx, |ui| {
-                if let Some(_) = draw_service_status(ui, self.service_monitor.get_status()) {
-                    self.is_fullscreen = !self.is_fullscreen;
-                    if self.is_fullscreen {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(true));
-                    } else {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
+                ui.vertical(|ui| {
+                    // Robot service status
+                    if let Some(_) = draw_service_status(ui, self.service_monitor.get_status()) {
+                        self.is_fullscreen = !self.is_fullscreen;
+                        if self.is_fullscreen {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(true));
+                        } else {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
+                        }
                     }
-                }
+                    
+                    ui.add_space(5.0);
+                    
+                    // LLM service status
+                    draw_llm_service_status(ui, self.llm_service_monitor.get_status());
+                });
             });
 
         // Battery and CPU indicators in top-left
@@ -133,6 +143,7 @@ impl App for ImageApp {
         self.battery_monitor.update(&self.config.battery);
         self.cpu_monitor.update(&self.config.cpu);
         self.service_monitor.update(&self.config.service);
+        self.llm_service_monitor.update(&self.config.service);
         self.blink_state.update(&self.config.blink);
 
         // Draw UI

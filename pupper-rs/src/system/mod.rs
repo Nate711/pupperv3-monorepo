@@ -4,4 +4,4 @@ pub mod service;
 
 pub use battery::BatteryMonitor;
 pub use cpu::CpuMonitor;
-pub use service::{ServiceMonitor, ServiceStatus};
+pub use service::{LlmServiceMonitor, LlmServiceStatus, ServiceMonitor, ServiceStatus};

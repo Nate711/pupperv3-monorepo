@@ -1,5 +1,5 @@
 use crate::config::BatteryConfig;
-use crate::system::ServiceStatus;
+use crate::system::{LlmServiceStatus, ServiceStatus};
 use eframe::egui;
 use egui::{Color32, RichText, Sense, Stroke, Vec2};
 
@@ -49,6 +49,25 @@ pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<
         }
     });
     fullscreen_clicked
+}
+
+pub fn draw_llm_service_status(ui: &mut egui::Ui, status: &LlmServiceStatus) {
+    ui.horizontal(|ui| {
+        // Draw LLM service status icon using same SVGs as robot service
+        let (svg_path, text) = match status {
+            LlmServiceStatus::Active => (egui::include_image!("../status_active.svg"), "LLM up"),
+            LlmServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "LLM down"),
+            LlmServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "LLM status unknown"),
+        };
+
+        // Draw SVG status icon
+        let icon_size = Vec2::new(20.0, 20.0);
+        ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
+
+        // Add some spacing and then the text
+        ui.add_space(1.0);
+        ui.label(RichText::new(text).color(Color32::WHITE).size(14.0));
+    });
 }
 
 pub fn draw_battery_indicator(
