@@ -6,31 +6,16 @@ use egui::{Color32, RichText, Sense, Stroke, Vec2};
 pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<()> {
     let mut fullscreen_clicked = None;
     ui.horizontal(|ui| {
-        // Draw status icon
-        let (color, symbol, text) = match status {
-            ServiceStatus::Active => (Color32::from_rgb(34, 197, 94), "✓", "Robot up"),
-            ServiceStatus::Inactive => (Color32::from_rgb(239, 68, 68), "✗", "Robot down"),
-            ServiceStatus::Unknown => (Color32::GRAY, "?", "Robot status unknown"),
+        // Draw status icon using SVG
+        let (svg_path, text) = match status {
+            ServiceStatus::Active => (egui::include_image!("../status_active.svg"), "Robot up"),
+            ServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "Robot down"),
+            ServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "Robot status unknown"),
         };
 
-        // Draw colored circle with symbol
-        let radius = 10.0;
-        let (response, painter) =
-            ui.allocate_painter(Vec2::new(radius * 2.0, radius * 2.0), Sense::hover());
-        let rect = response.rect;
-        let center = rect.center();
-
-        // Draw filled circle
-        painter.circle_filled(center, radius, color);
-
-        // Draw symbol in black
-        painter.text(
-            center,
-            egui::Align2::CENTER_CENTER,
-            symbol,
-            egui::FontId::proportional(14.0),
-            Color32::BLACK,
-        );
+        // Draw SVG status icon
+        let icon_size = Vec2::new(20.0, 20.0);
+        ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
 
         // Add some spacing and then the text
         ui.add_space(1.0);
