@@ -21,11 +21,14 @@ Environment="WAYLAND_DISPLAY=wayland-0"
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 Environment="XDG_SESSION_TYPE=wayland"
 
-# Graphics and audio access
-SupplementaryGroups=video audio render
+# Graphics, audio, and hardware access
+SupplementaryGroups=video audio render i2c gpio spi
 PrivateDevices=no
 DeviceAllow=/dev/dri/* rw
 DeviceAllow=/dev/snd/* rw
+DeviceAllow=/dev/i2c-* rw
+DeviceAllow=/dev/gpiomem rw
+DeviceAllow=/dev/mem rw
 DeviceAllow=char-drm rw
 
 [Install]
