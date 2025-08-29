@@ -29,14 +29,14 @@ impl BlinkState {
             self.last_blink = Instant::now();
             self.blink_progress = 0.0;
         }
-        
+
         // Animate the blink
         if self.is_blinking {
             let elapsed = self.blink_timer.elapsed().as_secs_f64();
             let blink_duration = config.duration_secs;
             let eye_delay = config.eye_delay_secs;
             let total_blink_time = blink_duration + eye_delay; // Total time needed for both eyes to complete
-            
+
             if elapsed < total_blink_time {
                 // Keep the blink active until both eyes are done
                 let t = elapsed / blink_duration;
@@ -70,7 +70,7 @@ impl BlinkState {
         let elapsed = self.blink_timer.elapsed().as_secs_f64();
         let blink_duration = config.duration_secs;
         let eye_delay = config.eye_delay_secs;
-        
+
         // Left eye blink (starts first)
         let left_progress = elapsed / blink_duration;
         let left_blink_progress = if left_progress < 0.5 {
@@ -80,11 +80,17 @@ impl BlinkState {
         } else {
             0.0
         };
-        
+
         if left_blink_progress > 0.0 {
-            self.draw_eye_blink_box(painter, left_eye_center, left_blink_progress, eye_radius, padding);
+            self.draw_eye_blink_box(
+                painter,
+                left_eye_center,
+                left_blink_progress,
+                eye_radius,
+                padding,
+            );
         }
-        
+
         // Right eye blink (delayed by configured amount)
         if elapsed >= eye_delay {
             let right_elapsed = elapsed - eye_delay;
@@ -96,9 +102,15 @@ impl BlinkState {
             } else {
                 0.0
             };
-            
+
             if right_blink_progress > 0.0 {
-                self.draw_eye_blink_box(painter, right_eye_center, right_blink_progress, eye_radius, padding);
+                self.draw_eye_blink_box(
+                    painter,
+                    right_eye_center,
+                    right_blink_progress,
+                    eye_radius,
+                    padding,
+                );
             }
         }
     }

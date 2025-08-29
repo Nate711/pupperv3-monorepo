@@ -79,28 +79,50 @@ pub fn load_config() -> Result<Config, String> {
     // let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let manifest_dir = ".";
     let config_path = PathBuf::from(manifest_dir).join("config.toml");
-    
-    let contents = fs::read_to_string(&config_path)
-        .map_err(|e| format!("Failed to read config file '{}': {}", config_path.display(), e))?;
-    
-    let config = toml::from_str(&contents)
-        .map_err(|e| format!("Failed to parse config file '{}': {}", config_path.display(), e))?;
-    
+
+    let contents = fs::read_to_string(&config_path).map_err(|e| {
+        format!(
+            "Failed to read config file '{}': {}",
+            config_path.display(),
+            e
+        )
+    })?;
+
+    let config = toml::from_str(&contents).map_err(|e| {
+        format!(
+            "Failed to parse config file '{}': {}",
+            config_path.display(),
+            e
+        )
+    })?;
+
     println!("Loaded config from {}", config_path.display());
     Ok(config)
 }
 
 pub fn print_config_info(config: &Config) {
     println!("Battery low threshold: {}%", config.battery.low_threshold);
-    println!("Battery poll interval: {}s", config.battery.poll_interval_secs);
-    println!("Service poll interval: {}s", config.service.poll_interval_secs);
+    println!(
+        "Battery poll interval: {}s",
+        config.battery.poll_interval_secs
+    );
+    println!(
+        "Service poll interval: {}s",
+        config.service.poll_interval_secs
+    );
     println!("Blink interval: {}s", config.blink.interval_secs);
     println!("Blink duration: {}s", config.blink.duration_secs);
     println!("Eye delay: {}s", config.blink.eye_delay_secs);
     println!("Eye tracking enabled: {}", config.eye_tracking.enabled);
     println!("Eye tracking mode: {:?}", config.eye_tracking.mode);
-    println!("Eye tracking sensitivity: {}", config.eye_tracking.sensitivity);
+    println!(
+        "Eye tracking sensitivity: {}",
+        config.eye_tracking.sensitivity
+    );
     if config.eye_tracking.mode == EyeTrackingMode::Combined {
-        println!("Combined pupil ratio: {}", config.eye_tracking.combined_pupil_ratio);
+        println!(
+            "Combined pupil ratio: {}",
+            config.eye_tracking.combined_pupil_ratio
+        );
     }
 }

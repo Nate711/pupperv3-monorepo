@@ -17,7 +17,7 @@ impl EyeTracker {
 
     pub fn update(&mut self, ctx: &egui::Context, window_rect: egui::Rect) {
         self.window_center = Some(window_rect.center());
-        
+
         if let Some(pointer_pos) = ctx.input(|i| i.pointer.hover_pos()) {
             self.mouse_position = Some(pointer_pos);
         }
@@ -31,7 +31,7 @@ impl EyeTracker {
         if let (Some(mouse_pos), Some(window_center)) = (self.mouse_position, self.window_center) {
             // Calculate direction from window center to mouse
             let direction = mouse_pos - window_center;
-            
+
             // Apply sensitivity
             direction * config.sensitivity
         } else {
@@ -41,7 +41,7 @@ impl EyeTracker {
 
     pub fn get_pupil_offset(&self, config: &EyeTrackingConfig) -> Vec2 {
         let base_offset = self.calculate_base_offset(config);
-        
+
         match config.mode {
             EyeTrackingMode::PupilsOnly => {
                 // Only pupils move, clamp to pupil limits
@@ -60,7 +60,7 @@ impl EyeTracker {
                 // Pupils move a fraction of the eye movement
                 let eye_offset = self.get_whole_eye_offset(config);
                 let pupil_movement = eye_offset * config.combined_pupil_ratio;
-                
+
                 // Clamp pupil movement to its limits
                 let length = pupil_movement.length();
                 if length > config.max_pupil_offset {
@@ -74,7 +74,7 @@ impl EyeTracker {
 
     pub fn get_whole_eye_offset(&self, config: &EyeTrackingConfig) -> Vec2 {
         let base_offset = self.calculate_base_offset(config);
-        
+
         match config.mode {
             EyeTrackingMode::PupilsOnly => {
                 // Eyes stay in place when only pupils move

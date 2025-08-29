@@ -26,7 +26,7 @@ impl BatteryMonitor {
             println!("Battery percentage: {:?}", self.percentage);
             self.last_check = Instant::now();
         }
-        
+
         // Handle flashing for low battery
         if let Some(percentage) = self.percentage {
             if percentage < config.low_threshold {
@@ -48,8 +48,11 @@ impl BatteryMonitor {
 fn query_battery_percentage() -> Option<u8> {
     // Try to get the absolute path to the script
     let home = std::env::var("HOME").ok()?;
-    let script_path = format!("{}/pupperv3-monorepo/robot/utils/check_batt_voltage.py", home);
-    
+    let script_path = format!(
+        "{}/pupperv3-monorepo/robot/utils/check_batt_voltage.py",
+        home
+    );
+
     match Command::new("python3")
         .args([&script_path, "--percentage_only"])
         .output()

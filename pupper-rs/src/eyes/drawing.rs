@@ -29,11 +29,7 @@ pub fn draw_eye(painter: &egui::Painter, center: Pos2, pupil_offset: Vec2) {
     ));
 
     // Thick blue bezel
-    painter.add(Shape::circle_filled(
-        center,
-        132.0,
-        ring_blue,
-    ));
+    painter.add(Shape::circle_filled(center, 132.0, ring_blue));
 
     // Pupil / eye interior (with offset for tracking)
     let pupil_center = center + pupil_offset;
