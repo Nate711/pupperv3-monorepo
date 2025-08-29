@@ -1,11 +1,49 @@
 use eframe::{App, egui};
-use egui::{Color32, Pos2, Shape, Stroke, Vec2, Vec2b};
+use egui::{Color32, Pos2, RichText, Shape, Stroke, Vec2};
+use std::process::Command;
+use std::time::{Duration, Instant};
 
-struct ImageApp;
+enum ServiceStatus {
+    Active,
+    Inactive,
+    Unknown,
+}
+
+struct ImageApp {
+    service_status: ServiceStatus,
+    last_check: Instant,
+}
 
 impl ImageApp {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        Self
+        Self {
+            service_status: ServiceStatus::Unknown,
+            last_check: Instant::now(),
+        }
+    }
+
+    fn poll_service_status(&mut self) {
+        if self.last_check.elapsed() >= Duration::from_secs(1) {
+            self.service_status = query_robot_status();
+            self.last_check = Instant::now();
+        }
+    }
+}
+
+fn query_robot_status() -> ServiceStatus {
+    match Command::new("systemctl")
+        .args(["is-active", "robot"])
+        .output()
+    {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            match stdout.trim() {
+                "active" => ServiceStatus::Active,
+                "inactive" | "failed" => ServiceStatus::Inactive,
+                _ => ServiceStatus::Unknown,
+            }
+        }
+        Err(_) => ServiceStatus::Unknown,
     }
 }
 
@@ -91,6 +129,8 @@ fn draw_eye(painter: &egui::Painter, center: Pos2) {
 
 impl App for ImageApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.poll_service_status();
+
         egui::CentralPanel::default()
             .frame(egui::Frame::none().fill(Color32::BLACK))
             .show(ctx, |ui| {
@@ -106,6 +146,17 @@ impl App for ImageApp {
 
                 draw_eye(&painter, center + Vec2::new(-offset_x, offset_y));
                 draw_eye(&painter, center + Vec2::new(offset_x, offset_y));
+            });
+
+        egui::Area::new(egui::Id::new("service_status"))
+            .anchor(egui::Align2::RIGHT_TOP, [-10.0, 10.0])
+            .show(ctx, |ui| {
+                let color = match self.service_status {
+                    ServiceStatus::Active => Color32::GREEN,
+                    ServiceStatus::Inactive => Color32::RED,
+                    ServiceStatus::Unknown => Color32::GRAY,
+                };
+                ui.label(RichText::new("●").color(color));
             });
     }
 }
