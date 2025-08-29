@@ -37,13 +37,17 @@ fn query_robot_status() -> ServiceStatus {
     {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
+            println!("Service status: {}", stdout.trim());
             match stdout.trim() {
                 "active" => ServiceStatus::Active,
                 "inactive" | "failed" => ServiceStatus::Inactive,
                 _ => ServiceStatus::Unknown,
             }
         }
-        Err(_) => ServiceStatus::Unknown,
+        Err(_) => {
+            println!("Failed to execute systemctl command");
+            ServiceStatus::Unknown
+        }
     }
 }
 
@@ -149,14 +153,38 @@ impl App for ImageApp {
             });
 
         egui::Area::new(egui::Id::new("service_status"))
-            .anchor(egui::Align2::RIGHT_TOP, [-10.0, 10.0])
+            .anchor(egui::Align2::RIGHT_TOP, [-30.0, 30.0])
             .show(ctx, |ui| {
-                let color = match self.service_status {
-                    ServiceStatus::Active => Color32::GREEN,
-                    ServiceStatus::Inactive => Color32::RED,
-                    ServiceStatus::Unknown => Color32::GRAY,
-                };
-                ui.label(RichText::new("●").color(color));
+                ui.horizontal(|ui| {
+                    // Draw status icon
+                    let (color, symbol, text) = match self.service_status {
+                        ServiceStatus::Active => (Color32::from_rgb(34, 197, 94), "✓", "Robot up"),
+                        ServiceStatus::Inactive => (Color32::from_rgb(239, 68, 68), "✗", "Robot down"),
+                        ServiceStatus::Unknown => (Color32::GRAY, "?", "Robot status unknown"),
+                    };
+                    
+                    // Draw colored circle with symbol
+                    let radius = 10.0;
+                    let (response, painter) = ui.allocate_painter(Vec2::new(radius * 2.0, radius * 2.0), egui::Sense::hover());
+                    let rect = response.rect;
+                    let center = rect.center();
+                    
+                    // Draw filled circle
+                    painter.circle_filled(center, radius, color);
+                    
+                    // Draw symbol in black
+                    painter.text(
+                        center,
+                        egui::Align2::CENTER_CENTER,
+                        symbol,
+                        egui::FontId::proportional(14.0),
+                        Color32::BLACK,
+                    );
+                    
+                    // Add some spacing and then the text
+                    ui.add_space(1.0);
+                    ui.label(RichText::new(text).color(Color32::WHITE).size(14.0));
+                });
             });
     }
 }
