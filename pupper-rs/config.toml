@@ -36,4 +36,4 @@ max_pupil_offset = 25.0
 # Maximum distance whole eye can move from center
 max_eye_offset = 50.0
 # In combined mode, ratio of pupil movement to eye movement (0.0 to 1.0)
-combined_pupil_ratio = 0.5
+combined_pupil_ratio = 0.4
