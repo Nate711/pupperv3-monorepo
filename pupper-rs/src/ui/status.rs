@@ -8,14 +8,9 @@ pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<
     ui.horizontal(|ui| {
         // Draw status icon using SVG
         let (svg_path, text) = match status {
-            ServiceStatus::Active => (egui::include_image!("../status_active.svg"), "Robot up"),
-            ServiceStatus::Inactive => {
-                (egui::include_image!("../status_inactive.svg"), "Robot down")
-            }
-            ServiceStatus::Unknown => (
-                egui::include_image!("../status_unknown.svg"),
-                "Robot status unknown",
-            ),
+            ServiceStatus::Active => (egui::include_image!("../status_active.svg"), "ROS"),
+            ServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "ROS"),
+            ServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "ROS"),
         };
 
         // Draw SVG status icon
@@ -60,14 +55,9 @@ pub fn draw_llm_service_status(ui: &mut egui::Ui, status: &LlmServiceStatus) {
     ui.horizontal(|ui| {
         // Draw LLM service status icon using same SVGs as robot service
         let (svg_path, text) = match status {
-            LlmServiceStatus::Active => (egui::include_image!("../status_active.svg"), "LLM up"),
-            LlmServiceStatus::Inactive => {
-                (egui::include_image!("../status_inactive.svg"), "LLM down")
-            }
-            LlmServiceStatus::Unknown => (
-                egui::include_image!("../status_unknown.svg"),
-                "LLM status unknown",
-            ),
+            LlmServiceStatus::Active => (egui::include_image!("../status_active.svg"), "LLM"),
+            LlmServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "LLM"),
+            LlmServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "LLM"),
         };
 
         // Draw SVG status icon
