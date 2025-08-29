@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub battery: BatteryConfig,
+    pub cpu: CpuConfig,
     pub service: ServiceConfig,
     pub blink: BlinkConfig,
     pub eye_tracking: EyeTrackingConfig,
@@ -13,6 +14,12 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BatteryConfig {
     pub low_threshold: u8,
+    pub poll_interval_secs: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CpuConfig {
+    pub enabled: bool,
     pub poll_interval_secs: u64,
 }
 
@@ -52,6 +59,10 @@ impl Default for Config {
             battery: BatteryConfig {
                 low_threshold: 15,
                 poll_interval_secs: 5,
+            },
+            cpu: CpuConfig {
+                enabled: true,
+                poll_interval_secs: 2,
             },
             service: ServiceConfig {
                 poll_interval_secs: 1,

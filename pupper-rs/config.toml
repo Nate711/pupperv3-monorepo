@@ -6,6 +6,12 @@ low_threshold = 15
 # Polling interval in seconds for battery status
 poll_interval_secs = 1
 
+[cpu]
+# Enable CPU monitoring (usage and temperature)
+enabled = true
+# Polling interval in seconds for CPU stats
+poll_interval_secs = 2
+
 [service]
 # Polling interval in seconds for robot service status
 poll_interval_secs = 1

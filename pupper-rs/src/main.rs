@@ -8,13 +8,14 @@ mod ui;
 
 use config::{Config, load_config, print_config_info};
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
-use system::{BatteryMonitor, ServiceMonitor};
-use ui::{draw_battery_indicator, draw_service_status};
+use system::{BatteryMonitor, CpuMonitor, ServiceMonitor};
+use ui::{draw_battery_indicator, draw_cpu_stats, draw_service_status};
 
 struct ImageApp {
     config: Config,
     blink_state: BlinkState,
     battery_monitor: BatteryMonitor,
+    cpu_monitor: CpuMonitor,
     service_monitor: ServiceMonitor,
     eye_tracker: EyeTracker,
     is_fullscreen: bool,
@@ -30,6 +31,7 @@ impl ImageApp {
             config,
             blink_state: BlinkState::new(),
             battery_monitor: BatteryMonitor::new(),
+            cpu_monitor: CpuMonitor::new(),
             service_monitor: ServiceMonitor::new(),
             eye_tracker: EyeTracker::new(),
             is_fullscreen: true,
@@ -97,16 +99,28 @@ impl ImageApp {
                 }
             });
 
-        // Battery indicator in top-left
+        // Battery and CPU indicators in top-left
         egui::Area::new(egui::Id::new("battery_status"))
             .anchor(egui::Align2::LEFT_TOP, [30.0, 30.0])
             .show(ctx, |ui| {
-                draw_battery_indicator(
-                    ui,
-                    self.battery_monitor.percentage,
-                    self.battery_monitor.should_flash(),
-                    &self.config.battery,
-                );
+                ui.horizontal(|ui| {
+                    draw_battery_indicator(
+                        ui,
+                        self.battery_monitor.percentage,
+                        self.battery_monitor.should_flash(),
+                        &self.config.battery,
+                    );
+                    
+                    if self.cpu_monitor.is_enabled() {
+                        ui.add_space(10.0);
+                        
+                        draw_cpu_stats(
+                            ui,
+                            self.cpu_monitor.usage,
+                            self.cpu_monitor.temperature,
+                        );
+                    }
+                });
             });
     }
 }
@@ -117,6 +131,7 @@ impl App for ImageApp {
 
         // Update all subsystems
         self.battery_monitor.update(&self.config.battery);
+        self.cpu_monitor.update(&self.config.cpu);
         self.service_monitor.update(&self.config.service);
         self.blink_state.update(&self.config.blink);
 
