@@ -55,7 +55,6 @@ The recorder excludes topics that typically contain raw image data to save stora
 - Topics containing `camera/image_raw` 
 - Topics containing `rgb/image_raw`
 - Topics containing `depth/image_raw`
-- Topics containing `camera_info`
 
 ## Output Format
 
