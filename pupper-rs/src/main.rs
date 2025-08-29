@@ -133,6 +133,8 @@ fn draw_eye(painter: &egui::Painter, center: Pos2) {
 
 impl App for ImageApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        ctx.request_repaint_after(Duration::from_secs(1));
+        println!("Redrawing UI");
         self.poll_service_status();
 
         egui::CentralPanel::default()
