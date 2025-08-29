@@ -9,3 +9,11 @@ poll_interval_secs = 1
 [service]
 # Polling interval in seconds for robot service status
 poll_interval_secs = 1
+
+[blink]
+# Interval between blinks in seconds
+interval_secs = 4.0
+# Duration of each blink in seconds
+duration_secs = 0.25
+# Delay between left and right eye blinks in seconds
+eye_delay_secs = 0.02

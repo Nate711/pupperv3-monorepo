@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 struct Config {
     battery: BatteryConfig,
     service: ServiceConfig,
+    blink: BlinkConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -23,6 +24,13 @@ struct ServiceConfig {
     poll_interval_secs: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct BlinkConfig {
+    interval_secs: f64,
+    duration_secs: f64,
+    eye_delay_secs: f64,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -32,6 +40,11 @@ impl Default for Config {
             },
             service: ServiceConfig {
                 poll_interval_secs: 1,
+            },
+            blink: BlinkConfig {
+                interval_secs: 4.0,
+                duration_secs: 0.3,
+                eye_delay_secs: 0.08,
             },
         }
     }
@@ -51,6 +64,11 @@ struct ImageApp {
     flash_battery: bool,
     flash_timer: Instant,
     config: Config,
+    // Blinking animation state
+    last_blink: Instant,
+    blink_timer: Instant,
+    is_blinking: bool,
+    blink_progress: f32,
 }
 
 fn load_config() -> Result<Config, String> {
@@ -76,6 +94,9 @@ impl ImageApp {
         println!("Battery low threshold: {}%", config.battery.low_threshold);
         println!("Battery poll interval: {}s", config.battery.poll_interval_secs);
         println!("Service poll interval: {}s", config.service.poll_interval_secs);
+        println!("Blink interval: {}s", config.blink.interval_secs);
+        println!("Blink duration: {}s", config.blink.duration_secs);
+        println!("Eye delay: {}s", config.blink.eye_delay_secs);
         
         Ok(Self {
             service_status: ServiceStatus::Unknown,
@@ -85,6 +106,10 @@ impl ImageApp {
             flash_battery: false,
             flash_timer: Instant::now(),
             config,
+            last_blink: Instant::now(),
+            blink_timer: Instant::now(),
+            is_blinking: false,
+            blink_progress: 0.0,
         })
     }
 
@@ -111,6 +136,40 @@ impl ImageApp {
                 }
             } else {
                 self.flash_battery = false;
+            }
+        }
+    }
+    
+    fn update_blink(&mut self) {
+        // Blink based on configured interval
+        let blink_interval = Duration::from_secs_f64(self.config.blink.interval_secs);
+        if !self.is_blinking && self.last_blink.elapsed() >= blink_interval {
+            self.is_blinking = true;
+            self.blink_timer = Instant::now();
+            self.last_blink = Instant::now();
+            self.blink_progress = 0.0;
+        }
+        
+        // Animate the blink
+        if self.is_blinking {
+            let elapsed = self.blink_timer.elapsed().as_secs_f64();
+            let blink_duration = self.config.blink.duration_secs;
+            let eye_delay = self.config.blink.eye_delay_secs;
+            let total_blink_time = blink_duration + eye_delay; // Total time needed for both eyes to complete
+            
+            if elapsed < total_blink_time {
+                // Keep the blink active until both eyes are done
+                let t = elapsed / blink_duration;
+                if t < 0.5 {
+                    self.blink_progress = (t * 2.0) as f32; // 0 to 1
+                } else if t < 1.0 {
+                    self.blink_progress = (2.0 - t * 2.0) as f32; // 1 to 0
+                } else {
+                    self.blink_progress = 0.0; // Left eye done, but right eye may still be blinking
+                }
+            } else {
+                self.is_blinking = false;
+                self.blink_progress = 0.0;
             }
         }
     }
@@ -232,8 +291,10 @@ fn draw_eye(painter: &egui::Painter, center: Pos2) {
         12.0,
         gloss,
     ));
+}
 
-    // Eyebrow (slight arch)
+fn draw_eyebrow(painter: &egui::Painter, center: Pos2) {
+    // Eyebrow (slight arch) - now separate function to draw on top layer
     let brow_col = Color32::from_rgb(0x33, 0x36, 0x3c);
     let brow_start = center + Vec2::new(-88.0, -150.0);
     let brow_ctrl = center + Vec2::new(0.0, -195.0);
@@ -244,10 +305,11 @@ fn draw_eye(painter: &egui::Painter, center: Pos2) {
 
 impl App for ImageApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(Duration::from_secs(1));
-        println!("Redrawing UI");
+        ctx.request_repaint();
+
         self.poll_service_status();
         self.poll_battery_status();
+        self.update_blink();
 
         egui::CentralPanel::default()
             .frame(egui::Frame::none().fill(Color32::BLACK))
@@ -262,8 +324,73 @@ impl App for ImageApp {
                 // Slight vertical offset so they sit a bit high in the frame
                 let offset_y = -10.0;
 
-                draw_eye(&painter, center + Vec2::new(-offset_x, offset_y));
-                draw_eye(&painter, center + Vec2::new(offset_x, offset_y));
+                let left_eye_center = center + Vec2::new(-offset_x, offset_y);
+                let right_eye_center = center + Vec2::new(offset_x, offset_y);
+                
+                draw_eye(&painter, left_eye_center);
+                draw_eye(&painter, right_eye_center);
+                
+                // Draw blinking animation (black boxes coming down)
+                if self.is_blinking {
+                    let eye_radius = 140.0; // Match the outer ring radius
+                    let padding = 10.0; // Extra padding to make blink box larger
+                    let elapsed = self.blink_timer.elapsed().as_secs_f64();
+                    let blink_duration = self.config.blink.duration_secs;
+                    let eye_delay = self.config.blink.eye_delay_secs;
+                    
+                    // Left eye blink (starts first)
+                    let left_progress = elapsed / blink_duration;
+                    let left_blink_progress = if left_progress < 0.5 {
+                        (left_progress * 2.0) as f32 // 0 to 1
+                    } else if left_progress < 1.0 {
+                        (2.0 - left_progress * 2.0) as f32 // 1 to 0
+                    } else {
+                        0.0
+                    };
+                    
+                    if left_blink_progress > 0.0 {
+                        let box_width = (eye_radius + padding) * 2.0;
+                        let box_height = (eye_radius + padding) * 2.0 * left_blink_progress;
+                        let left_rect = egui::Rect::from_min_size(
+                            egui::Pos2::new(
+                                left_eye_center.x - eye_radius - padding,
+                                left_eye_center.y - eye_radius - padding
+                            ),
+                            Vec2::new(box_width, box_height)
+                        );
+                        painter.rect_filled(left_rect, 0.0, Color32::BLACK);
+                    }
+                    
+                    // Right eye blink (delayed by configured amount)
+                    if elapsed >= eye_delay {
+                        let right_elapsed = elapsed - eye_delay;
+                        let right_progress = right_elapsed / blink_duration;
+                        let right_blink_progress = if right_progress < 0.5 {
+                            (right_progress * 2.0) as f32 // 0 to 1
+                        } else if right_progress < 1.0 {
+                            (2.0 - right_progress * 2.0) as f32 // 1 to 0
+                        } else {
+                            0.0
+                        };
+                        
+                        if right_blink_progress > 0.0 {
+                            let box_width = (eye_radius + padding) * 2.0;
+                            let box_height = (eye_radius + padding) * 2.0 * right_blink_progress;
+                            let right_rect = egui::Rect::from_min_size(
+                                egui::Pos2::new(
+                                    right_eye_center.x - eye_radius - padding,
+                                    right_eye_center.y - eye_radius - padding
+                                ),
+                                Vec2::new(box_width, box_height)
+                            );
+                            painter.rect_filled(right_rect, 0.0, Color32::BLACK);
+                        }
+                    }
+                }
+                
+                // Draw eyebrows on top layer so they're never covered by blinks
+                draw_eyebrow(&painter, left_eye_center);
+                draw_eyebrow(&painter, right_eye_center);
             });
 
         egui::Area::new(egui::Id::new("service_status"))
