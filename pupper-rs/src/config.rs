@@ -112,28 +112,5 @@ pub fn load_config() -> Result<Config, String> {
 }
 
 pub fn print_config_info(config: &Config) {
-    println!("Battery low threshold: {}%", config.battery.low_threshold);
-    println!(
-        "Battery poll interval: {}s",
-        config.battery.poll_interval_secs
-    );
-    println!(
-        "Service poll interval: {}s",
-        config.service.poll_interval_secs
-    );
-    println!("Blink interval: {}s", config.blink.interval_secs);
-    println!("Blink duration: {}s", config.blink.duration_secs);
-    println!("Eye delay: {}s", config.blink.eye_delay_secs);
-    println!("Eye tracking enabled: {}", config.eye_tracking.enabled);
-    println!("Eye tracking mode: {:?}", config.eye_tracking.mode);
-    println!(
-        "Eye tracking sensitivity: {}",
-        config.eye_tracking.sensitivity
-    );
-    if config.eye_tracking.mode == EyeTrackingMode::Combined {
-        println!(
-            "Combined pupil ratio: {}",
-            config.eye_tracking.combined_pupil_ratio
-        );
-    }
+    println!("Configuration: {:#?}", config);
 }
