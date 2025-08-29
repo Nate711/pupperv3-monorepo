@@ -5,7 +5,7 @@ After=network.target sound.target
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python
-ExecStart=/usr/bin/python3 src/agent.py console
+ExecStart=/home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/run.sh
 Restart=always
 RestartSec=5
 User=pi
