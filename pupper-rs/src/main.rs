@@ -7,7 +7,7 @@ mod system;
 mod ui;
 
 use config::{load_config, print_config_info, Config};
-use eyes::{draw_eye, draw_eyebrow, BlinkState};
+use eyes::{draw_eye, draw_eyebrow, BlinkState, EyeTracker};
 use system::{BatteryMonitor, ServiceMonitor};
 use ui::{draw_battery_indicator, draw_service_status};
 
@@ -16,6 +16,7 @@ struct ImageApp {
     blink_state: BlinkState,
     battery_monitor: BatteryMonitor,
     service_monitor: ServiceMonitor,
+    eye_tracker: EyeTracker,
 }
 
 impl ImageApp {
@@ -28,6 +29,7 @@ impl ImageApp {
             blink_state: BlinkState::new(),
             battery_monitor: BatteryMonitor::new(),
             service_monitor: ServiceMonitor::new(),
+            eye_tracker: EyeTracker::new(),
         })
     }
 
@@ -39,18 +41,26 @@ impl ImageApp {
                 let rect = ui.max_rect();
                 let painter = ui.painter();
 
+                // Update eye tracker
+                self.eye_tracker.update(ctx, rect);
+                
                 let center = rect.center();
                 // Horizontal spacing between eyes
                 let offset_x = 190.0;
                 // Slight vertical offset so they sit a bit high in the frame
                 let offset_y = -10.0;
 
-                let left_eye_center = center + Vec2::new(-offset_x, offset_y);
-                let right_eye_center = center + Vec2::new(offset_x, offset_y);
+                // Calculate eye positions (with potential whole-eye movement)
+                let eye_offset = self.eye_tracker.get_whole_eye_offset(&self.config.eye_tracking);
+                let left_eye_center = center + Vec2::new(-offset_x, offset_y) + eye_offset;
+                let right_eye_center = center + Vec2::new(offset_x, offset_y) + eye_offset;
                 
-                // Draw eyes (without eyebrows)
-                draw_eye(&painter, left_eye_center);
-                draw_eye(&painter, right_eye_center);
+                // Calculate pupil offset (for pupil-only movement)
+                let pupil_offset = self.eye_tracker.get_pupil_offset(&self.config.eye_tracking);
+                
+                // Draw eyes (with pupil tracking)
+                draw_eye(&painter, left_eye_center, pupil_offset);
+                draw_eye(&painter, right_eye_center, pupil_offset);
                 
                 // Draw blinking animation (black boxes coming down)
                 self.blink_state.draw_blink_boxes(

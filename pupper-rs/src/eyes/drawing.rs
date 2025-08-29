@@ -14,7 +14,7 @@ pub fn quadratic_bezier_points(start: Pos2, ctrl: Pos2, end: Pos2, steps: usize)
         .collect()
 }
 
-pub fn draw_eye(painter: &egui::Painter, center: Pos2) {
+pub fn draw_eye(painter: &egui::Painter, center: Pos2, pupil_offset: Vec2) {
     // Palette (tuned to the reference)
     let ring_outer = Color32::from_rgb(0x2a, 0x2f, 0x36); // dark gray ring
     let ring_blue = Color32::from_rgb(075, 149, 181); // bright blue ring
@@ -27,17 +27,19 @@ pub fn draw_eye(painter: &egui::Painter, center: Pos2) {
         140.0,
         Stroke::new(8.0, ring_outer),
     ));
+
     // Thick blue bezel
-    painter.add(Shape::circle_stroke(
+    painter.add(Shape::circle_filled(
         center,
-        116.0,
-        Stroke::new(30.0, ring_blue),
+        132.0,
+        ring_blue,
     ));
 
-    // Pupil / eye interior
-    painter.add(Shape::circle_filled(center, 90.0, Color32::BLACK));
+    // Pupil / eye interior (with offset for tracking)
+    let pupil_center = center + pupil_offset;
+    painter.add(Shape::circle_filled(pupil_center, 100.0, Color32::BLACK));
 
-    // under highlight (arc)
+    // under highlight (arc) - moves with pupil
     let radius = 80.0;
     let start_angle = 45.0_f32.to_radians();
     let end_angle = 135.0_f32.to_radians();
@@ -46,28 +48,28 @@ pub fn draw_eye(painter: &egui::Painter, center: Pos2) {
         .map(|i| {
             let t = i as f32 / steps as f32;
             let angle = start_angle + t * (end_angle - start_angle);
-            center + Vec2::new(radius * angle.cos(), radius * angle.sin())
+            pupil_center + Vec2::new(radius * angle.cos(), radius * angle.sin())
         })
         .collect::<Vec<_>>();
     painter.add(Shape::line(
         arc_pts,
         Stroke::new(14.0, under_highlight_blue),
     ));
-    // Little blue dot at the right end
+    // Little blue dot at the right end - moves with pupil
     painter.add(Shape::circle_filled(
-        center + Vec2::new(76.0, 34.0),
+        pupil_center + Vec2::new(76.0, 34.0),
         8.0,
         under_highlight_blue,
     ));
 
-    // Gloss highlights (top-left)
+    // Gloss highlights (top-left) - moves with pupil
     painter.add(Shape::circle_filled(
-        center + Vec2::new(-42.0, -54.0),
+        pupil_center + Vec2::new(-42.0, -54.0),
         26.0,
         gloss,
     ));
     painter.add(Shape::circle_filled(
-        center + Vec2::new(-70.0, -8.0),
+        pupil_center + Vec2::new(-70.0, -8.0),
         12.0,
         gloss,
     ));
