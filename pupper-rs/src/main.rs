@@ -88,7 +88,7 @@ impl ImageApp {
     fn draw_status_ui(&mut self, ctx: &egui::Context) {
         // Service status indicators in top-right
         egui::Area::new(egui::Id::new("service_status"))
-            .anchor(egui::Align2::RIGHT_TOP, [-30.0, 30.0])
+            .anchor(egui::Align2::RIGHT_TOP, [-10.0, 10.0])
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
                     // Robot service status
@@ -101,9 +101,9 @@ impl ImageApp {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
                         }
                     }
-                    
+
                     ui.add_space(5.0);
-                    
+
                     // LLM service status
                     draw_llm_service_status(ui, self.llm_service_monitor.get_status());
                 });
@@ -111,7 +111,7 @@ impl ImageApp {
 
         // Battery and CPU indicators in top-left
         egui::Area::new(egui::Id::new("battery_status"))
-            .anchor(egui::Align2::LEFT_TOP, [30.0, 30.0])
+            .anchor(egui::Align2::LEFT_TOP, [10.0, 10.0])
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     draw_battery_indicator(
@@ -120,15 +120,11 @@ impl ImageApp {
                         self.battery_monitor.should_flash(),
                         &self.config.battery,
                     );
-                    
+
                     if self.cpu_monitor.is_enabled() {
                         ui.add_space(10.0);
-                        
-                        draw_cpu_stats(
-                            ui,
-                            self.cpu_monitor.usage,
-                            self.cpu_monitor.temperature,
-                        );
+
+                        draw_cpu_stats(ui, self.cpu_monitor.usage, self.cpu_monitor.temperature);
                     }
                 });
             });

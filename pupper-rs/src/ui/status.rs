@@ -9,8 +9,13 @@ pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<
         // Draw status icon using SVG
         let (svg_path, text) = match status {
             ServiceStatus::Active => (egui::include_image!("../status_active.svg"), "Robot up"),
-            ServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "Robot down"),
-            ServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "Robot status unknown"),
+            ServiceStatus::Inactive => {
+                (egui::include_image!("../status_inactive.svg"), "Robot down")
+            }
+            ServiceStatus::Unknown => (
+                egui::include_image!("../status_unknown.svg"),
+                "Robot status unknown",
+            ),
         };
 
         // Draw SVG status icon
@@ -26,10 +31,10 @@ pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<
 
         // Load SVG icon using the modern egui::Image API
         let button_size = Vec2::new(16.0, 16.0);
-        
+
         // Use allocate_response to get hover state before rendering
         let (rect, response) = ui.allocate_exact_size(button_size, Sense::click());
-        
+
         // Determine tint color based on interaction state
         let tint_color = if response.is_pointer_button_down_on() {
             Color32::from_rgb(150, 150, 150) // Darker gray when clicked
@@ -38,12 +43,12 @@ pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<
         } else {
             Color32::WHITE // White when idle
         };
-        
+
         // Draw the image with appropriate tint
         egui::Image::from(egui::include_image!("../fullscreen_icon.svg"))
             .tint(tint_color)
             .paint_at(ui, rect);
-        
+
         if response.clicked() {
             fullscreen_clicked = Some(());
         }
@@ -56,8 +61,13 @@ pub fn draw_llm_service_status(ui: &mut egui::Ui, status: &LlmServiceStatus) {
         // Draw LLM service status icon using same SVGs as robot service
         let (svg_path, text) = match status {
             LlmServiceStatus::Active => (egui::include_image!("../status_active.svg"), "LLM up"),
-            LlmServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "LLM down"),
-            LlmServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "LLM status unknown"),
+            LlmServiceStatus::Inactive => {
+                (egui::include_image!("../status_inactive.svg"), "LLM down")
+            }
+            LlmServiceStatus::Unknown => (
+                egui::include_image!("../status_unknown.svg"),
+                "LLM status unknown",
+            ),
         };
 
         // Draw SVG status icon
