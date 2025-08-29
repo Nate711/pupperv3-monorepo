@@ -9,11 +9,18 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Deserialize, Serialize)]
 struct Config {
     battery: BatteryConfig,
+    service: ServiceConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct BatteryConfig {
     low_threshold: u8,
+    poll_interval_secs: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ServiceConfig {
+    poll_interval_secs: u64,
 }
 
 impl Default for Config {
@@ -21,6 +28,10 @@ impl Default for Config {
         Config {
             battery: BatteryConfig {
                 low_threshold: 15,
+                poll_interval_secs: 5,
+            },
+            service: ServiceConfig {
+                poll_interval_secs: 1,
             },
         }
     }
@@ -45,7 +56,8 @@ struct ImageApp {
 fn load_config() -> Result<Config, String> {
     // Use CARGO_MANIFEST_DIR to find config.toml relative to the Cargo.toml file
     // This is set at compile time and always points to the crate root
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    // let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let manifest_dir = ".";
     let config_path = PathBuf::from(manifest_dir).join("config.toml");
     
     let contents = fs::read_to_string(&config_path)
@@ -62,6 +74,8 @@ impl ImageApp {
     fn new(_cc: &eframe::CreationContext<'_>) -> Result<Self, String> {
         let config = load_config()?;
         println!("Battery low threshold: {}%", config.battery.low_threshold);
+        println!("Battery poll interval: {}s", config.battery.poll_interval_secs);
+        println!("Service poll interval: {}s", config.service.poll_interval_secs);
         
         Ok(Self {
             service_status: ServiceStatus::Unknown,
@@ -75,14 +89,14 @@ impl ImageApp {
     }
 
     fn poll_service_status(&mut self) {
-        if self.last_check.elapsed() >= Duration::from_secs(1) {
+        if self.last_check.elapsed() >= Duration::from_secs(self.config.service.poll_interval_secs) {
             self.service_status = query_robot_status();
             self.last_check = Instant::now();
         }
     }
 
     fn poll_battery_status(&mut self) {
-        if self.last_battery_check.elapsed() >= Duration::from_secs(5) {
+        if self.last_battery_check.elapsed() >= Duration::from_secs(self.config.battery.poll_interval_secs) {
             self.battery_percentage = query_battery_percentage();
             println!("Battery percentage: {:?}", self.battery_percentage);
             self.last_battery_check = Instant::now();

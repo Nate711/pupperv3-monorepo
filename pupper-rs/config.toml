@@ -3,3 +3,9 @@
 [battery]
 # Percentage threshold below which battery indicator flashes red
 low_threshold = 15
+# Polling interval in seconds for battery status
+poll_interval_secs = 1
+
+[service]
+# Polling interval in seconds for robot service status
+poll_interval_secs = 1
