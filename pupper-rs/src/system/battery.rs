@@ -68,6 +68,8 @@ fn query_battery_percentage() -> Option<u8> {
         }
         Err(e) => {
             println!("Failed to execute battery check: {}", e);
+            println!("Script path: {}", script_path);
+            println!("HOME env: {:?}", std::env::var("HOME"));
             None
         }
     }
