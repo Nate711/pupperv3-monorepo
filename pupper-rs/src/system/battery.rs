@@ -63,6 +63,7 @@ fn query_battery_percentage() -> Option<u8> {
                 stdout.trim().parse::<u8>().ok()
             } else {
                 println!("Battery script failed");
+                println!("Output: {:?}", output);
                 None
             }
         }
