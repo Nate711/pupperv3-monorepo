@@ -3,6 +3,7 @@
 import busio
 import board
 import os
+import sys
 import time
 import argparse
 
@@ -52,7 +53,13 @@ def main():
     )
     parser.add_argument("--percentage_only", action="store_true")
     args = parser.parse_args()
-    i2c = busio.I2C(board.SCL, board.SDA)
+    
+    try:
+        i2c = busio.I2C(board.SCL, board.SDA)
+    except (PermissionError, OSError) as e:
+        print(f"Error accessing I2C bus: {e}", file=sys.stderr)
+        print("Run: sudo usermod -a -G i2c pi && sudo reboot", file=sys.stderr)
+        sys.exit(1)
     NUM_CELLS = 5
 
     # Data specific to Dewalt battery
