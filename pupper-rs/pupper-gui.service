@@ -9,8 +9,6 @@ WorkingDirectory=/home/pi/pupperv3-monorepo/pupper-rs
 ExecStart=/home/pi/pupperv3-monorepo/pupper-rs/run_gui.sh
 Restart=always
 RestartSec=5
-User=pi
-Group=i2c
 StandardOutput=journal
 StandardError=journal
 Environment="HOME=/home/pi"
@@ -21,16 +19,11 @@ Environment="WAYLAND_DISPLAY=wayland-0"
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 Environment="XDG_SESSION_TYPE=wayland"
 
-# Graphics, audio, and hardware access - explicitly list all groups
-SupplementaryGroups=pi video audio render i2c gpio spi
+User=pi
+Group=pi
+SupplementaryGroups=i2c video audio render gpio spi
+
 PrivateDevices=no
-DevicePolicy=auto
-DeviceAllow=/dev/dri/* rw
-DeviceAllow=/dev/snd/* rw
-DeviceAllow=/dev/i2c-* rw
-DeviceAllow=/dev/gpiomem rw
-DeviceAllow=/dev/mem rw
-DeviceAllow=char-drm rw
 # Disable some systemd hardening for hardware access
 NoNewPrivileges=no
 ProtectKernelModules=no
