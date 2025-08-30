@@ -68,9 +68,15 @@ def cascaded_session():
     )
 
 
+def openairealtime_session():
+    return AgentSession(
+        llm=openai.realtime.RealtimeModel(modalities=["audio"], model="gpt-realtime"),
+    )
+
+
 def openairealtime_cartesia_session():
     return AgentSession(
-        llm=openai.realtime.RealtimeModel(modalities=["text"]),
+        llm=openai.realtime.RealtimeModel(modalities=["text"], model="gpt-realtime"),
         tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-2"),
     )
 
@@ -95,6 +101,8 @@ def get_pupster_session(agent_design: str):
         return gemini_cartesia_session()
     elif agent_design == "openai-cartesia":
         return openairealtime_cartesia_session()
+    elif agent_design == "openai-realtime":
+        return openairealtime_session()
     else:
         logger.error(f"Unknown agent design {agent_design}")
         raise ValueError(f"Unknown agent design {agent_design}")
