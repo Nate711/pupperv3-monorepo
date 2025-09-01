@@ -8,12 +8,12 @@ packer {
 }
 
 source "arm" "raspbian" {
-  file_urls             = ["./pupOS_pios_base.img"]
+  file_urls             = ["./pupOS_full_base.img"]
   file_checksum_type    = "none"
   file_target_extension = "img"
   image_build_method    = "resize"
-  image_path            = "pupOS_pios_full.img"
-  image_size            = "13G"
+  image_path            = "pupOS_pios_ai.img"
+  image_size            = "14G"
   image_type            = "dos"
   image_partitions {
     name         = "boot"
@@ -36,6 +36,45 @@ source "arm" "raspbian" {
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
+variable "OPENAI_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "CARTESIA_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "GOOGLE_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "LIVEKIT_URL" {
+  type = string
+  default = ""
+}
+
+variable "LIVEKIT_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "LIVEKIT_API_SECRET" {
+  type = string
+  default = ""
+}
+
+variable "DEEPGRAM_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "ELEVEN_API_KEY" {
+  type = string
+  default = ""
+}
 
 build {
   sources = ["source.arm.raspbian"]
@@ -49,58 +88,22 @@ build {
     ]
   }
 
-  # Set hostname to 'pupper'
   provisioner "shell" {
-    script = "setup_scripts/set_hostname.sh"
-  }
-
-  provisioner "shell" {
-    script = "provision_pios_full.sh"
-  }
-
-  provisioner "file" {
-    source      = "asound.conf"
-    destination = "/etc/asound.conf"
-  }
-
-  provisioner "file" {
-    sources      = ["resources/blue_eyes.jpg", "resources/pupperface2.jpg", "resources/pupperface3.jpg", "resources/bmo9.jpg"]
-    destination = "/usr/share/rpd-wallpaper/"
+    script = "provision_pios_ai.sh"
   }
 
   provisioner "shell" {
     inline = [
-      "cp /usr/share/rpd-wallpaper/blue_eyes.jpg /usr/share/rpd-wallpaper/fisherman.jpg",
+      "echo 'export OPENAI_API_KEY=${var.OPENAI_API_KEY}' >> ~/.bashrc",
+      "echo 'export CARTESIA_API_KEY=${var.CARTESIA_API_KEY}' >> ~/.bashrc",
+      "echo 'export GOOGLE_API_KEY=${var.GOOGLE_API_KEY}' >> ~/.bashrc",
+      "echo 'export LIVEKIT_URL=${var.LIVEKIT_URL}' >> ~/.bashrc",
+      "echo 'export LIVEKIT_API_KEY=${var.LIVEKIT_API_KEY}' >> ~/.bashrc",
+      "echo 'export LIVEKIT_API_SECRET=${var.LIVEKIT_API_SECRET}' >> ~/.bashrc",
+      "echo 'export DEEPGRAM_API_KEY=${var.DEEPGRAM_API_KEY}' >> ~/.bashrc",
+      "echo 'export ELEVEN_API_KEY=${var.ELEVEN_API_KEY}' >> ~/.bashrc",
     ]
   }
-
-
-# THIS DOESN'T WORK
-# Providing a kanshi config file prevents the screen configuration menu on pios from opening
-#   provisioner "shell" {
-#     inline = [
-#       "mkdir -p /home/pi/.config/kanshi",
-#     ]
-#   }
-
-#   provisioner "file" {
-#     source      = "resources/config"
-#     destination = "/home/pi/.config/kanshi/config"
-#   }
-
-#   provisioner "shell" {
-#     inline = [
-#       "sudo chown pi /home/pi/.config/kanshi/config",
-#     ]
-#   }
-
-# Doesn't work: arm.raspbian: Cannot open display: 
-#   provisioner "shell" {
-#     inline = [
-#       "pcmanfm --set-wallpaper /usr/share/rpd-wallpaper/pupperface3.png",
-#     ]
-#   }
-
 
   provisioner "shell" {
     inline = [
