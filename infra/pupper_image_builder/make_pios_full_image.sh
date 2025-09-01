@@ -62,4 +62,4 @@ fi
 
 docker pull mkaczanowski/packer-builder-arm:latest
 docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest init pios_full_arm64.pkr.hcl
-docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest build pios_full_arm64.pkr.hcl $PACKER_VARS
+docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest build $PACKER_VARS pios_full_arm64.pkr.hcl
