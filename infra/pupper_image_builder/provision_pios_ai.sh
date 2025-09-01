@@ -71,3 +71,7 @@ bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
 # Build Rust GUI
 cd /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs
 cargo build --release --target aarch64-unknown-linux-gnu
+
+# Install systemctl services
+bash /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs/install_service.sh
+bash /home/$DEFAULT_USER/pupperv3-monorepo/ai/llm-ui/agent-starter-python/install_service.sh
