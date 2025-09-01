@@ -2,7 +2,7 @@
 
 set -x
 
-# Parse command line arguments
+#### Parse command line arguments
 INCLUDE_KEYS=false
 for arg in "$@"; do
   case $arg in
@@ -21,48 +21,21 @@ else
   echo "Image found. Skipping full image creation."
 fi
 
-# Build Packer variable arguments
-PACKER_VARS=""
+#### Select which build to run
+PACKER_ONLY="ai.arm.raspbian"
 if [ "$INCLUDE_KEYS" = true ]; then
-  if [ -f ".env.local" ]; then
-    # Source the .env.local file to load variables
-    set -a
-    source .env.local
-    set +a
-    
-    if [ -n "$OPENAI_API_KEY" ]; then
-      PACKER_VARS="$PACKER_VARS -var OPENAI_API_KEY=$OPENAI_API_KEY"
-    fi
-    if [ -n "$CARTESIA_API_KEY" ]; then
-      PACKER_VARS="$PACKER_VARS -var CARTESIA_API_KEY=$CARTESIA_API_KEY"
-    fi
-    if [ -n "$GOOGLE_API_KEY" ]; then
-      PACKER_VARS="$PACKER_VARS -var GOOGLE_API_KEY=$GOOGLE_API_KEY"
-    fi
-    if [ -n "$LIVEKIT_URL" ]; then
-      PACKER_VARS="$PACKER_VARS -var LIVEKIT_URL=$LIVEKIT_URL"
-    fi
-    if [ -n "$LIVEKIT_API_KEY" ]; then
-      PACKER_VARS="$PACKER_VARS -var LIVEKIT_API_KEY=$LIVEKIT_API_KEY"
-    fi
-    if [ -n "$LIVEKIT_API_SECRET" ]; then
-      PACKER_VARS="$PACKER_VARS -var LIVEKIT_API_SECRET=$LIVEKIT_API_SECRET"
-    fi
-    if [ -n "$DEEPGRAM_API_KEY" ]; then
-      PACKER_VARS="$PACKER_VARS -var DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY"
-    fi
-    if [ -n "$ELEVEN_API_KEY" ]; then
-      PACKER_VARS="$PACKER_VARS -var ELEVEN_API_KEY=$ELEVEN_API_KEY"
-    fi
-    echo "Including API keys from .env.local file"
+  PACKER_ONLY="ai.arm.with-keys"
+  if [ ! -f ".env.local" ]; then
+    echo "Warning: --include-keys passed but .env.local not found; proceeding without keys."
+    PACKER_ONLY="ai.arm.raspbian"
   else
-    echo "Warning: .env.local file not found. No API keys will be included."
+    echo "Including .env.local in image (ai_with_keys)."
   fi
 fi
 
 docker pull mkaczanowski/packer-builder-arm:latest
 docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest init pios_ai_arm64.pkr.hcl
-docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest build $PACKER_VARS pios_ai_arm64.pkr.hcl
+docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest build -only=$PACKER_ONLY pios_ai_arm64.pkr.hcl
 
 # If including keys, rename the resulting image with _WITH_SECRETS suffix
 if [ "$INCLUDE_KEYS" = true ] && [ -f "pupOS_pios_ai.img" ]; then

@@ -36,75 +36,58 @@ source "arm" "raspbian" {
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
-variable "OPENAI_API_KEY" {
-  type = string
-  default = ""
-}
-
-variable "CARTESIA_API_KEY" {
-  type = string
-  default = ""
-}
-
-variable "GOOGLE_API_KEY" {
-  type = string
-  default = ""
-}
-
-variable "LIVEKIT_URL" {
-  type = string
-  default = ""
-}
-
-variable "LIVEKIT_API_KEY" {
-  type = string
-  default = ""
-}
-
-variable "LIVEKIT_API_SECRET" {
-  type = string
-  default = ""
-}
-
-variable "DEEPGRAM_API_KEY" {
-  type = string
-  default = ""
-}
-
-variable "ELEVEN_API_KEY" {
-  type = string
-  default = ""
-}
-
+# Single build with two sources; use only on provisioners to inject keys
 build {
-  sources = ["source.arm.raspbian"]
+  name    = "ai"
+  sources = [
+    "source.arm.raspbian",
+  ]
 
-  # Required to get internet access
+  # Add a second build using the same source but with a local name
+  # This produces two builds: ai.arm.raspbian and ai.arm.raspbian.with-keys
+  source "source.arm.raspbian" {
+    name = "with-keys"
+  }
+
+  # Required to get internet access (common)
   provisioner "shell" {
     inline = [
-        "sudo mv /etc/resolv.conf /etc/resolv.conf.bk",
-        "echo 'nameserver 8.8.8.8' | sudo tee /etc/resolv.conf",
-        "echo 'nameserver 1.1.1.1' | sudo tee -a /etc/resolv.conf",
+      "sudo mv /etc/resolv.conf /etc/resolv.conf.bk",
+      "echo 'nameserver 8.8.8.8' | sudo tee /etc/resolv.conf",
+      "echo 'nameserver 1.1.1.1' | sudo tee -a /etc/resolv.conf",
     ]
   }
 
+  # Common provisioning script
   provisioner "shell" {
     script = "provision_pios_ai.sh"
   }
 
+  # Ensure destination directory exists (with-keys only)
   provisioner "shell" {
+    only   = ["arm.with-keys"]
     inline = [
-      "echo 'export OPENAI_API_KEY=${var.OPENAI_API_KEY}' >> ~/.bashrc",
-      "echo 'export CARTESIA_API_KEY=${var.CARTESIA_API_KEY}' >> ~/.bashrc",
-      "echo 'export GOOGLE_API_KEY=${var.GOOGLE_API_KEY}' >> ~/.bashrc",
-      "echo 'export LIVEKIT_URL=${var.LIVEKIT_URL}' >> ~/.bashrc",
-      "echo 'export LIVEKIT_API_KEY=${var.LIVEKIT_API_KEY}' >> ~/.bashrc",
-      "echo 'export LIVEKIT_API_SECRET=${var.LIVEKIT_API_SECRET}' >> ~/.bashrc",
-      "echo 'export DEEPGRAM_API_KEY=${var.DEEPGRAM_API_KEY}' >> ~/.bashrc",
-      "echo 'export ELEVEN_API_KEY=${var.ELEVEN_API_KEY}' >> ~/.bashrc",
+      "mkdir -p /home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python",
     ]
   }
 
+  # Copy the .env.local file (with-keys only)
+  provisioner "file" {
+    only        = ["arm.with-keys"]
+    source      = ".env.local"
+    destination = "/home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/.env.local"
+  }
+
+  # Set secure permissions and ownership (with-keys only)
+  provisioner "shell" {
+    only   = ["arm.with-keys"]
+    inline = [
+      "sudo chown pi:pi /home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/.env.local",
+      "sudo chmod 600 /home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/.env.local",
+    ]
+  }
+
+  # Restore resolv.conf (common)
   provisioner "shell" {
     inline = [
       "sudo mv /etc/resolv.conf.bk /etc/resolv.conf",
