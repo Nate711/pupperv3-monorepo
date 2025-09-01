@@ -63,3 +63,9 @@ fi
 docker pull mkaczanowski/packer-builder-arm:latest
 docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest init pios_ai_arm64.pkr.hcl
 docker run --rm --privileged -v /dev:/dev -v ${PWD}:/build mkaczanowski/packer-builder-arm:latest build $PACKER_VARS pios_ai_arm64.pkr.hcl
+
+# If including keys, rename the resulting image with _WITH_SECRETS suffix
+if [ "$INCLUDE_KEYS" = true ] && [ -f "pupOS_pios_ai.img" ]; then
+  mv -f pupOS_pios_ai.img pupOS_pios_ai_WITH_SECRETS.img
+  echo "Renamed image to pupOS_pios_ai_WITH_SECRETS.img because --include-keys was used"
+fi
