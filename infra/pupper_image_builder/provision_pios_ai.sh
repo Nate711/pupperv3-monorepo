@@ -53,7 +53,7 @@ rustup target add aarch64-unknown-linux-gnu
 
 ############################### Install LLM deps ###########################
 sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install "livekit-agents[cartesia,google,openai]~=1.2"
+pip install "livekit-agents[cartesia,google,openai,deepgram,silero,turn-detector]~=1.2"
 pip install "python-dotenv"
 
 ############################ Prepare monorepo ###############################################
