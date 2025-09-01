@@ -3,3 +3,5 @@
 *.img
 random
 .DS_Store
+
+.env.local

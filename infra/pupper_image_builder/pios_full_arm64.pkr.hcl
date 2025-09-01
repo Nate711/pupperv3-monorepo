@@ -38,7 +38,42 @@ source "arm" "raspbian" {
 
 variable "OPENAI_API_KEY" {
   type = string
-  default = env("PUPPER_OPENAI_API_KEY")
+  default = ""
+}
+
+variable "CARTESIA_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "GOOGLE_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "LIVEKIT_URL" {
+  type = string
+  default = ""
+}
+
+variable "LIVEKIT_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "LIVEKIT_API_SECRET" {
+  type = string
+  default = ""
+}
+
+variable "DEEPGRAM_API_KEY" {
+  type = string
+  default = ""
+}
+
+variable "ELEVEN_API_KEY" {
+  type = string
+  default = ""
 }
 
 build {
@@ -80,7 +115,14 @@ build {
 
   provisioner "shell" {
     inline = [
-      "echo 'export OPENAI_API_KEY=${var.OPENAI_API_KEY}' >> ~/.bashrc"
+      "echo 'export OPENAI_API_KEY=${var.OPENAI_API_KEY}' >> ~/.bashrc",
+      "echo 'export CARTESIA_API_KEY=${var.CARTESIA_API_KEY}' >> ~/.bashrc",
+      "echo 'export GOOGLE_API_KEY=${var.GOOGLE_API_KEY}' >> ~/.bashrc",
+      "echo 'export LIVEKIT_URL=${var.LIVEKIT_URL}' >> ~/.bashrc",
+      "echo 'export LIVEKIT_API_KEY=${var.LIVEKIT_API_KEY}' >> ~/.bashrc",
+      "echo 'export LIVEKIT_API_SECRET=${var.LIVEKIT_API_SECRET}' >> ~/.bashrc",
+      "echo 'export DEEPGRAM_API_KEY=${var.DEEPGRAM_API_KEY}' >> ~/.bashrc",
+      "echo 'export ELEVEN_API_KEY=${var.ELEVEN_API_KEY}' >> ~/.bashrc",
     ]
   }
 
