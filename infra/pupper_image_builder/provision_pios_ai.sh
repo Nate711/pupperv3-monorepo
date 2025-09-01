@@ -60,6 +60,7 @@ pip install "python-dotenv"
 
 # Prepare monorepo
 cd /home/$DEFAULT_USER/pupperv3-monorepo/
+git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
 git pull
 
 ############################### Build everything #############################################

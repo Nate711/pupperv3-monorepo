@@ -8,7 +8,7 @@ packer {
 }
 
 source "arm" "raspbian" {
-  file_urls             = ["./pupOS_full_base.img"]
+  file_urls             = ["./pupOS_pios_full.img"]
   file_checksum_type    = "none"
   file_target_extension = "img"
   image_build_method    = "resize"

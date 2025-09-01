@@ -13,8 +13,9 @@ An automated OS image builder for the Pupper robot. Pulls the latest Ubuntu imag
 ```
 ./make_pios_base_image.sh
 ./make_pios_full_image.sh
+./make_pios_ai_image.sh
 ```
-In order to use LLM capabilities, you must create a `.env.local` based on `.env.example` and then run with the flag `--include-keys`
+In order to use LLM capabilities, you must create a `.env.local` in the `pupper_image_builder` directory based on `.env.example` and then run with the flag `--include-keys`
 ```
 ./make_pios_full_image.sh --include-keys
 ```
