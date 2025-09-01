@@ -24,13 +24,12 @@ fi
 #### Select which build to run
 PACKER_ONLY="ai.arm.raspbian"
 if [ "$INCLUDE_KEYS" = true ]; then
-  PACKER_ONLY="ai.arm.with-keys"
   if [ ! -f ".env.local" ]; then
-    echo "Warning: --include-keys passed but .env.local not found; proceeding without keys."
-    PACKER_ONLY="ai.arm.raspbian"
-  else
-    echo "Including .env.local in image (ai_with_keys)."
+    echo "Error: --include-keys was passed but .env.local is missing in infra/pupper_image_builder/" >&2
+    exit 1
   fi
+  PACKER_ONLY="ai.arm.with-keys"
+  echo "Including .env.local in image (ai_with_keys)."
 fi
 
 docker pull mkaczanowski/packer-builder-arm:latest

@@ -44,7 +44,7 @@ build {
   ]
 
   # Add a second build using the same source but with a local name
-  # This produces two builds: ai.arm.raspbian and ai.arm.raspbian.with-keys
+  # This produces two builds: ai.arm.raspbian and ai.with-keys
   source "source.arm.raspbian" {
     name = "with-keys"
   }
