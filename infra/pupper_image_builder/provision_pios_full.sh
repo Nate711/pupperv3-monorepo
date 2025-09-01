@@ -123,4 +123,6 @@ bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_battery_monitor.s
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_robot_auto_start_service.sh
 
 
-
+# Build Rust GUI
+cd /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs
+cargo build --release --target aarch64-unknown-linux-gnu

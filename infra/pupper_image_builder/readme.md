@@ -14,34 +14,10 @@ An automated OS image builder for the Pupper robot. Pulls the latest Ubuntu imag
 ./make_pios_base_image.sh
 ./make_pios_full_image.sh
 ```
-If you want to copy your `OPENAI_API_KEY` to the image change the last command to
+In order to use LLM capabilities, you must create a `.env.local` based on `.env.example` and then run with the flag `--include-keys`
 ```
-PUPPER_OPENAI_API_KEY="$OPENAI_API_KEY" ./make_pios_full_image.sh
+./make_pios_full_image.sh --include-keys
 ```
-
-### Older images
-
-#### Build Ubuntu server image:
-```
-./make_server_image.sh
-```
-Image saved as `pupOS_ubuntu_server.img`.
-
-#### Build full Ubuntu desktop image 
-```
-./make_desktop_image.sh
-```
-Image saved as `pupOS_ubuntu_desktop_full.img`. The script will also build the desktop base image (details see below) and save it as `pupOS_ubuntu_desktop_ros_base.img` during the build process if it doesn't already exist in this directory.
-
-#### Build desktop base image
-
-To just build the base for the desktop image which includes Ubuntu desktop, ros-jazzy-desktop, and low-latency kernel:
-```
-./make_base_image.sh
-```
-Image saved as `pupOS_ubuntu_desktop_ros_base.img`
-
-The build process takes about 5-30 minutes on an M1 MacBook Pro depending on which image you build.
 
 
 ### Default credentials
@@ -76,11 +52,6 @@ AutomaticLogin=pi
 * You need to blacklist the DualSense controller audio device
 * sudo nano /etc/modprobe.d/blacklist.conf
 * Add: "blacklist snd_usb_audio"
-
-
-###  Checksum error with the ubuntu desktop image
-* Most likely the image was updated but packer has cached the checksum and has not realized it should get the new checksum. 
-* Delete .packer_plugins to make packer download the checksum again.
 
 ### Out of memory / build taking a long time
 * Increase RAM memory limit in the Docker Desktop application (go to settings (gear icon) -> resources). Primarily needed to building ROS on PiOS.
