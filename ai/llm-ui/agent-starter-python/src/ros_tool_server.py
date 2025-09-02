@@ -237,15 +237,18 @@ class RosToolServer(ToolServer):
 
         logger.info("ROS Tool Server has been started.")
 
-    async def add_image(self, context: Any) -> Dict[str, Any]:
+    async def get_camera_image(self, context: Any) -> Dict[str, Any]:
         from livekit.agents.llm import ImageContent
 
         latest_ros_compressed_img_msg = self.latest_image_queue.get_nowait()
         b64 = base64.b64encode(latest_ros_compressed_img_msg.data).decode("utf-8")
-        context.add_message(
+        ctx = context.session.current_agent.chat_ctx.copy()
+        ctx.add_message(
             role="user",
-            content=ImageContent(image=f"data:image/jpeg;base64,{b64}"),
+            content=[ImageContent(image=f"data:image/jpeg;base64,{b64}")],
         )
+        logger.info(f"Adding image to conversation, size: {len(b64)} bytes.....")
+        await context.session.current_agent.update_chat_ctx(ctx)
         # log image number of bytes
         logger.info(f"Added image to conversation, size: {len(b64)} bytes")
         return True, "Image added to conversation"
