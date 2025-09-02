@@ -87,6 +87,26 @@ build {
     ]
   }
 
+  # Providing a kanshi config file prevents the screen configuration menu on pios from opening
+  provisioner "shell" {
+    inline = [
+      "mkdir -p /home/pi/.config/kanshi",
+      "sudo chown -R pi:pi /home/pi/.config/kanshi",
+    ]
+  }
+
+  provisioner "file" {
+    source      = "resources/config"
+    destination = "/home/pi/.config/kanshi/config"
+  }
+
+  provisioner "shell" {
+    inline = [
+      "sudo chown pi:pi /home/pi/.config/kanshi/config",
+      "sudo chmod 666 /home/pi/.config/kanshi/config",
+    ]
+  }
+
   # Restore resolv.conf (common)
   provisioner "shell" {
     inline = [
