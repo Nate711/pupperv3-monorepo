@@ -76,6 +76,7 @@ apt install git-lfs -y
 cd /home/$DEFAULT_USER
 retry_command "git clone https://github.com/Nate711/pupperv3-monorepo.git --recurse-submodules"
 cd /home/$DEFAULT_USER/pupperv3-monorepo/
+chown -R pi:pi .
 git lfs install
 git lfs pull
 
