@@ -1,12 +1,16 @@
 import random
 from typing import Tuple, Optional, Any, Dict
+import threading
+import queue
 from tool_server_abc import ToolServer
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import SingleThreadedExecutor
 import logging
 from controller_manager_msgs.srv import SwitchController
 from dataclasses import dataclass, field
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import CompressedImage
 import asyncio
 from abc import ABC, abstractmethod
 import time
@@ -210,6 +214,24 @@ class RosToolServer(ToolServer):
         # Create twist publisher for movement commands
         self.twist_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
 
+        # Image subscription node: keep only the most recent compressed image
+        self.image_node = Node("ros_tool_server_images")
+        self.latest_image_queue: "queue.Queue[CompressedImage]" = queue.Queue(maxsize=1)
+        self.image_sub = self.image_node.create_subscription(
+            CompressedImage,
+            "/camera/image_raw/compressed",
+            self._on_image,
+            1,
+        )
+
+        # Start ROS executor in a background thread
+        self.executor = SingleThreadedExecutor()
+        # Only add the image node to this executor so control node remains
+        # free to use spin_until_future_complete in service calls.
+        self.executor.add_node(self.image_node)
+        self._ros_thread = threading.Thread(target=self._spin_executor, name="ros-executor", daemon=True)
+        self._ros_thread.start()
+
         self.start_queue_processor()
 
         logger.info("ROS Tool Server has been started.")
@@ -231,6 +253,28 @@ class RosToolServer(ToolServer):
         if self.queue_task:
             await self.queue_task
             logger.info("Command queue processor stopped")
+
+    def _spin_executor(self):
+        """Spin the ROS executor in a dedicated thread."""
+        try:
+            self.executor.spin()
+        except Exception as e:
+            logger.error(f"ROS executor stopped with error: {e}")
+            raise e
+
+    def _on_image(self, msg: CompressedImage):
+        """Keep only the latest image in a thread-safe single-slot queue."""
+        try:
+            # Drop previous image if present to keep only the latest
+            if self.latest_image_queue.full():
+                try:
+                    self.latest_image_queue.get_nowait()
+                except queue.Empty:
+                    pass
+            self.latest_image_queue.put_nowait(msg)
+            logging.info("Enqueued latest image")
+        except Exception as e:
+            logger.warning(f"Failed to enqueue latest image: {e}")
 
     async def _process_command_queue(self):
         """Background task that processes commands from the queue sequentially"""
