@@ -1,4 +1,7 @@
 import logging
+import os
+import sys
+import argparse
 
 logging.getLogger("livekit.agents").setLevel(logging.WARNING)
 logging.getLogger("livekit").setLevel(logging.WARNING)
@@ -94,17 +97,25 @@ async def entrypoint(ctx: JobContext):
     ctx.add_shutdown_callback(log_usage)
 
     # Start the session, which initializes the voice pipeline and warms up the models
-    try:
-        from ros_tool_server import RosToolServer
+    preferred = os.getenv("PUPSTER_TOOL_SERVER")  # 'ros' | 'nop' | None
+    tool_impl = None
 
-        logger.info("Using RosToolServer for robot control")
-        tool_impl = RosToolServer()
-    except ImportError:
+    if preferred == "nop":
         from nop_tool_server import NopToolServer
 
-        logger.info("ros_tool_server import failed, using NopToolServer")
-
+        logger.info("Using NopToolServer as requested via env")
         tool_impl = NopToolServer()
+    elif preferred == "ros":
+        try:
+            from ros_tool_server import RosToolServer
+        except ImportError as e:
+            logger.error("Failed to import RosToolServer. Ensure ROS environment is set up correctly.")
+            raise e
+
+        logger.info("Using RosToolServer as requested via env")
+        tool_impl = RosToolServer()
+    else:
+        raise ValueError("Must set PUPSTER_TOOL_SERVER env to 'ros' or 'nop'")
 
     await session.start(
         agent=PupsterAgent(tool_impl=tool_impl),
@@ -117,4 +128,21 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
+    # Consume our own CLI flag and pass the rest to LiveKit CLI
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--tool-server",
+        choices=["ros", "nop"],
+        dest="tool_server",
+        default="ros",
+        help="Select tool server implementation: ros or nop",
+    )
+    args, passthrough = parser.parse_known_args(sys.argv[1:])
+
+    if args.tool_server:
+        os.environ["PUPSTER_TOOL_SERVER"] = args.tool_server
+
+    # Rebuild argv so LiveKit CLI sees its expected args (e.g., 'console')
+    sys.argv = [sys.argv[0]] + passthrough
+
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
