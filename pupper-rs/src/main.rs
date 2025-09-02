@@ -11,7 +11,7 @@ use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
 use system::{BatteryMonitor, CpuMonitor, InternetMonitor, LlmServiceMonitor, ServiceMonitor};
 use ui::{
     draw_battery_indicator, draw_cpu_stats, draw_internet_status, draw_llm_service_status,
-    draw_service_status,
+    draw_service_status, draw_fullscreen_button, SimpleStatus, draw_status_badge,
 };
 
 struct ImageApp {
@@ -95,9 +95,31 @@ impl ImageApp {
         egui::Area::new(egui::Id::new("service_status"))
             .anchor(egui::Align2::RIGHT_TOP, [-10.0, 10.0])
             .show(ctx, |ui| {
-                ui.vertical(|ui| {
-                    // Robot service status
-                    if let Some(_) = draw_service_status(ui, self.service_monitor.get_status()) {
+                ui.horizontal(|ui| {
+                    // Ensure consistent row height for icon alignment
+                    ui.set_height(30.0);
+                    // ROS, LLM, and Internet — rendered using shared badge code
+                    draw_status_badge(
+                        ui,
+                        "ROS",
+                        SimpleStatus::from(self.service_monitor.get_status()),
+                    );
+                    ui.add_space(5.0);
+                    draw_status_badge(
+                        ui,
+                        "LLM",
+                        SimpleStatus::from(self.llm_service_monitor.get_status()),
+                    );
+                    ui.add_space(5.0);
+                    draw_status_badge(
+                        ui,
+                        "NET",
+                        SimpleStatus::from(self.internet_monitor.get_status()),
+                    );
+
+                    // Fullscreen button at the far right
+                    ui.add_space(8.0);
+                    if draw_fullscreen_button(ui) {
                         self.is_fullscreen = !self.is_fullscreen;
                         if self.is_fullscreen {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(true));
@@ -106,15 +128,6 @@ impl ImageApp {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
                         }
                     }
-
-                    ui.add_space(5.0);
-
-                    // LLM service status
-                    draw_llm_service_status(ui, self.llm_service_monitor.get_status());
-
-                    ui.add_space(5.0);
-
-                    draw_internet_status(ui, self.internet_monitor.get_status());
                 });
             });
 

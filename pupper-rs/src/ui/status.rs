@@ -3,87 +3,89 @@ use crate::system::{InternetStatus, LlmServiceStatus, ServiceStatus};
 use eframe::egui;
 use egui::{Color32, RichText, Sense, Stroke, Vec2};
 
-pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) -> Option<()> {
-    let mut fullscreen_clicked = None;
-    ui.horizontal(|ui| {
-        // Draw status icon using SVG
-        let (svg_path, text) = match status {
-            ServiceStatus::Active => (egui::include_image!("../status_active.svg"), "ROS"),
-            ServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "ROS"),
-            ServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "ROS"),
-        };
+// A simplified shared status enum so all systems render identically
+pub enum SimpleStatus {
+    Active,
+    Inactive,
+    Unknown,
+}
 
-        // Draw SVG status icon
-        let icon_size = Vec2::new(20.0, 20.0);
-        ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
-
-        // Add some spacing and then the text
-        ui.add_space(1.0);
-        ui.label(RichText::new(text).color(Color32::WHITE).size(14.0));
-
-        // Add fullscreen toggle button with SVG icon
-        ui.add_space(8.0);
-
-        // Load SVG icon using the modern egui::Image API
-        let button_size = Vec2::new(16.0, 16.0);
-
-        // Use allocate_response to get hover state before rendering
-        let (rect, response) = ui.allocate_exact_size(button_size, Sense::click());
-
-        // Determine tint color based on interaction state
-        let tint_color = if response.is_pointer_button_down_on() {
-            Color32::from_rgb(150, 150, 150) // Darker gray when clicked
-        } else if response.hovered() {
-            Color32::from_rgb(200, 200, 200) // Light gray when hovered
-        } else {
-            Color32::WHITE // White when idle
-        };
-
-        // Draw the image with appropriate tint
-        egui::Image::from(egui::include_image!("../fullscreen_icon.svg"))
-            .tint(tint_color)
-            .paint_at(ui, rect);
-
-        if response.clicked() {
-            fullscreen_clicked = Some(());
+impl From<&ServiceStatus> for SimpleStatus {
+    fn from(s: &ServiceStatus) -> Self {
+        match s {
+            ServiceStatus::Active => SimpleStatus::Active,
+            ServiceStatus::Inactive => SimpleStatus::Inactive,
+            ServiceStatus::Unknown => SimpleStatus::Unknown,
         }
-    });
-    fullscreen_clicked
+    }
+}
+
+impl From<&LlmServiceStatus> for SimpleStatus {
+    fn from(s: &LlmServiceStatus) -> Self {
+        match s {
+            LlmServiceStatus::Active => SimpleStatus::Active,
+            LlmServiceStatus::Inactive => SimpleStatus::Inactive,
+            LlmServiceStatus::Unknown => SimpleStatus::Unknown,
+        }
+    }
+}
+
+impl From<&InternetStatus> for SimpleStatus {
+    fn from(s: &InternetStatus) -> Self {
+        match s {
+            InternetStatus::Online => SimpleStatus::Active,
+            InternetStatus::Offline => SimpleStatus::Inactive,
+            InternetStatus::Unknown => SimpleStatus::Unknown,
+        }
+    }
+}
+
+// Draw a single status badge (icon + label)
+pub fn draw_status_badge(ui: &mut egui::Ui, label: &str, status: SimpleStatus) {
+    // Draw inline to avoid nested layout vertical offsets
+    let svg_path = match status {
+        SimpleStatus::Active => egui::include_image!("../status_active.svg"),
+        SimpleStatus::Inactive => egui::include_image!("../status_inactive.svg"),
+        SimpleStatus::Unknown => egui::include_image!("../status_unknown.svg"),
+    };
+
+    let icon_size = Vec2::new(30.0, 30.0);
+    ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
+    ui.add_space(1.0);
+    ui.label(RichText::new(label).color(Color32::WHITE).size(21.0));
+}
+
+// Draw a fullscreen button and return true if clicked
+pub fn draw_fullscreen_button(ui: &mut egui::Ui) -> bool {
+    let button_size = Vec2::new(24.0, 24.0);
+    let (rect, response) = ui.allocate_exact_size(button_size, Sense::click());
+
+    let tint_color = if response.is_pointer_button_down_on() {
+        Color32::from_rgb(150, 150, 150)
+    } else if response.hovered() {
+        Color32::from_rgb(200, 200, 200)
+    } else {
+        Color32::WHITE
+    };
+
+    egui::Image::from(egui::include_image!("../fullscreen_icon.svg"))
+        .tint(tint_color)
+        .paint_at(ui, rect);
+
+    response.clicked()
+}
+
+// Legacy wrappers kept for compatibility; they call the shared badge renderer
+pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) {
+    draw_status_badge(ui, "ROS", SimpleStatus::from(status));
 }
 
 pub fn draw_llm_service_status(ui: &mut egui::Ui, status: &LlmServiceStatus) {
-    ui.horizontal(|ui| {
-        // Draw LLM service status icon using same SVGs as robot service
-        let (svg_path, text) = match status {
-            LlmServiceStatus::Active => (egui::include_image!("../status_active.svg"), "LLM"),
-            LlmServiceStatus::Inactive => (egui::include_image!("../status_inactive.svg"), "LLM"),
-            LlmServiceStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "LLM"),
-        };
-
-        // Draw SVG status icon
-        let icon_size = Vec2::new(20.0, 20.0);
-        ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
-
-        // Add some spacing and then the text
-        ui.add_space(1.0);
-        ui.label(RichText::new(text).color(Color32::WHITE).size(14.0));
-    });
+    draw_status_badge(ui, "LLM", SimpleStatus::from(status));
 }
 
 pub fn draw_internet_status(ui: &mut egui::Ui, status: &InternetStatus) {
-    ui.horizontal(|ui| {
-        let (svg_path, text) = match status {
-            InternetStatus::Online => (egui::include_image!("../status_active.svg"), "NET"),
-            InternetStatus::Offline => (egui::include_image!("../status_inactive.svg"), "NET"),
-            InternetStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "NET"),
-        };
-
-        let icon_size = Vec2::new(20.0, 20.0);
-        ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
-
-        ui.add_space(1.0);
-        ui.label(RichText::new(text).color(Color32::WHITE).size(14.0));
-    });
+    draw_status_badge(ui, "NET", SimpleStatus::from(status));
 }
 
 pub fn draw_battery_indicator(
@@ -107,16 +109,16 @@ pub fn draw_battery_indicator(
             ui.label(
                 RichText::new(format!("{}%", percentage))
                     .color(text_color)
-                    .size(14.0),
+                    .size(21.0),
             );
 
-            ui.add_space(4.0);
+            ui.add_space(6.0);
 
             // Battery icon
-            let battery_width = 30.0;
-            let battery_height = 16.0;
-            let terminal_width = 3.0;
-            let terminal_height = 8.0;
+            let battery_width = 45.0;
+            let battery_height = 24.0;
+            let terminal_width = 4.5;
+            let terminal_height = 12.0;
 
             let (response, painter) = ui.allocate_painter(
                 Vec2::new(battery_width + terminal_width, battery_height),
@@ -134,7 +136,7 @@ pub fn draw_battery_indicator(
             // Draw battery body outline
             let battery_rect =
                 egui::Rect::from_min_size(rect.min, Vec2::new(battery_width, battery_height));
-            painter.rect_stroke(battery_rect, 2.0, Stroke::new(2.0, outline_color));
+            painter.rect_stroke(battery_rect, 2.0, Stroke::new(3.0, outline_color));
 
             // Draw battery terminal
             let terminal_rect = egui::Rect::from_min_size(
@@ -144,7 +146,7 @@ pub fn draw_battery_indicator(
             painter.rect_filled(terminal_rect, 0.0, outline_color);
 
             // Draw battery fill
-            let padding = 2.0;
+            let padding = 3.0;
             let fill_width = (battery_width - 2.0 * padding) * (percentage as f32 / 100.0);
             let fill_color = if show_red {
                 Color32::from_rgb(239, 68, 68)
@@ -167,7 +169,7 @@ pub fn draw_battery_indicator(
             ui.label(
                 RichText::new("Battery: Unkown")
                     .color(Color32::GRAY)
-                    .size(14.0),
+                    .size(21.0),
             );
         }
     });
