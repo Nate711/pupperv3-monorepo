@@ -19,13 +19,13 @@ pub fn draw_cpu_stats(
         ui.label(
             RichText::new(format!("CPU: {:.0}%", usage))
                 .color(color)
-                .size(14.0)
+                .size(21.0)
         );
     } else {
         ui.label(
             RichText::new("CPU: --")
                 .color(Color32::GRAY)
-                .size(14.0)
+                .size(21.0)
         );
     }
     
@@ -44,13 +44,13 @@ pub fn draw_cpu_stats(
         ui.label(
             RichText::new(format!("{:.0}°C", temp))
                 .color(color)
-                .size(14.0)
+                .size(21.0)
         );
     } else {
         ui.label(
             RichText::new("--°C")
                 .color(Color32::GRAY)
-                .size(14.0)
+                .size(21.0)
         );
     }
 }
