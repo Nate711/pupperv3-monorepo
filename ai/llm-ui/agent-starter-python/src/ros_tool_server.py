@@ -1,5 +1,6 @@
 import random
 from typing import Tuple, Optional, Any, Dict
+from tool_server_abc import ToolServer
 import rclpy
 from rclpy.node import Node
 import logging
@@ -190,7 +191,7 @@ class DeactivateCommand(Command):
             return False, "Failed to deactivate robot - controller switch failed"
 
 
-class RosToolServer:
+class RosToolServer(ToolServer):
     def __init__(self, cfg=DEFAULT_CFG):
         self.cfg = cfg
         rclpy.init()

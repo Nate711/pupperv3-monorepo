@@ -14,14 +14,13 @@ from livekit.plugins import cartesia, openai, google, deepgram, silero
 from livekit.agents import UserInputTranscribedEvent
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from ros_tool_server import RosToolServer
 
 logger = logging.getLogger("agent")
 
 
 def load_system_prompt():
     """Load system prompt from file with robust error handling."""
-    path = Path(__file__).parent / "system_prompt.txt"
+    path = Path(__file__).parent / "system_prompt.md"
 
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -110,11 +109,11 @@ def get_pupster_session(agent_design: str):
 
 # TODO: Consider making the ros tool server a subclass of PupsterAgent so that I don't have to re-define functions!
 class PupsterAgent(Agent):
-    def __init__(self) -> None:
+    def __init__(self, tool_impl) -> None:
         system_prompt = load_system_prompt()
         super().__init__(instructions=system_prompt)
 
-        self.tool_impl = RosToolServer()
+        self.tool_impl = tool_impl
 
     # all functions annotated with @function_tool will be passed to the LLM when this
     # agent is active

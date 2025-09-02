@@ -94,8 +94,20 @@ async def entrypoint(ctx: JobContext):
     ctx.add_shutdown_callback(log_usage)
 
     # Start the session, which initializes the voice pipeline and warms up the models
+    try:
+        from ros_tool_server import RosToolServer
+
+        logger.info("Using RosToolServer for robot control")
+        tool_impl = RosToolServer()
+    except ImportError:
+        from nop_tool_server import NopToolServer
+
+        logger.info("ros_tool_server import failed, using NopToolServer")
+
+        tool_impl = NopToolServer()
+
     await session.start(
-        agent=PupsterAgent(),
+        agent=PupsterAgent(tool_impl=tool_impl),
         room=ctx.room,
         room_input_options=RoomInputOptions(),
     )
