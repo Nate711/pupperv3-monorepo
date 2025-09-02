@@ -1,5 +1,5 @@
 use crate::config::BatteryConfig;
-use crate::system::{LlmServiceStatus, ServiceStatus};
+use crate::system::{InternetStatus, LlmServiceStatus, ServiceStatus};
 use eframe::egui;
 use egui::{Color32, RichText, Sense, Stroke, Vec2};
 
@@ -65,6 +65,22 @@ pub fn draw_llm_service_status(ui: &mut egui::Ui, status: &LlmServiceStatus) {
         ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
 
         // Add some spacing and then the text
+        ui.add_space(1.0);
+        ui.label(RichText::new(text).color(Color32::WHITE).size(14.0));
+    });
+}
+
+pub fn draw_internet_status(ui: &mut egui::Ui, status: &InternetStatus) {
+    ui.horizontal(|ui| {
+        let (svg_path, text) = match status {
+            InternetStatus::Online => (egui::include_image!("../status_active.svg"), "NET"),
+            InternetStatus::Offline => (egui::include_image!("../status_inactive.svg"), "NET"),
+            InternetStatus::Unknown => (egui::include_image!("../status_unknown.svg"), "NET"),
+        };
+
+        let icon_size = Vec2::new(20.0, 20.0);
+        ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
+
         ui.add_space(1.0);
         ui.label(RichText::new(text).color(Color32::WHITE).size(14.0));
     });
