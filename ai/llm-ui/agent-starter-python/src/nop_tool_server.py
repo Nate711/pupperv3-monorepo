@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import Any, Tuple
 from tool_server_abc import ToolServer
 
 logger = logging.getLogger("NopToolServer")
@@ -13,6 +13,10 @@ class NopToolServer(ToolServer):
 
     def __init__(self):
         logger.info("Initialized NopToolServer (no-op mode)")
+
+    async def get_camera_image(self, context: Any) -> Tuple[bool, str]:
+        logger.info("NOOP get_camera_image called")
+        return True, "NOOP image captured"
 
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
         logger.info(f"NOOP queue_move_for_time called: vx={vx}, vy={vy}, wz={wz}, duration={duration}")

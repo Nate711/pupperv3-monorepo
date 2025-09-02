@@ -64,6 +64,10 @@ chown -R pi:pi .
 git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
 git pull
 
+############################## Download turn detector model #############################################
+cd /home/$DEFAULT_USER/pupperv3-monorepo/ai/llm-ui/agent-starter-python/
+python3 src/agent.py download-files
+
 ############################### Build everything #############################################
 
 # Build monorepo ros2 code

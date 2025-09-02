@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Any, Tuple
 
 
 class ToolServer(ABC):
@@ -8,6 +8,11 @@ class ToolServer(ABC):
     Implementations should provide queueing behavior for movement and control
     operations. All methods return a (success: bool, message: str) tuple.
     """
+
+    @abstractmethod
+    async def get_camera_image(self, context: Any) -> Tuple[bool, str]:
+        """Capture an image from the robot's camera and add it to the conversation."""
+        raise NotImplementedError
 
     @abstractmethod
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:

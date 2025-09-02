@@ -1,3 +1,4 @@
+import base64
 import random
 from typing import Tuple, Optional, Any, Dict
 import threading
@@ -235,6 +236,19 @@ class RosToolServer(ToolServer):
         self.start_queue_processor()
 
         logger.info("ROS Tool Server has been started.")
+
+    async def add_image(self, context: Any) -> Dict[str, Any]:
+        from livekit.agents.llm import ImageContent
+
+        latest_ros_compressed_img_msg = self.latest_image_queue.get_nowait()
+        b64 = base64.b64encode(latest_ros_compressed_img_msg.data).decode("utf-8")
+        context.add_message(
+            role="user",
+            content=ImageContent(image=f"data:image/jpeg;base64,{b64}"),
+        )
+        # log image number of bytes
+        logger.info(f"Added image to conversation, size: {len(b64)} bytes")
+        return True, "Image added to conversation"
 
     # TODO: LLM might want to start the queue processor explicitly so it can control when commands start executing.
     # For now, we can start it automatically when the server is created.

@@ -13,7 +13,7 @@ source "arm" "raspbian" {
   file_target_extension = "img"
   image_build_method    = "resize"
   image_path            = "pupOS_pios_ai.img"
-  image_size            = "15G"
+  image_size            = "16G"
   image_type            = "dos"
   image_partitions {
     name         = "boot"

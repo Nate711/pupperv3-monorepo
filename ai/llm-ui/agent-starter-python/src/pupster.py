@@ -116,6 +116,11 @@ class PupsterAgent(Agent):
 
         self.tool_impl = tool_impl
 
+    @function_tool
+    async def get_camera_image(self, context: RunContext):
+        """Use this tool to take a picture with Pupster's camera and add it to the conversation."""
+        return await self.tool_impl.get_camera_image(context)
+
     # all functions annotated with @function_tool will be passed to the LLM when this
     # agent is active
     @function_tool
