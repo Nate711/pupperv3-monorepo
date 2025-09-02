@@ -108,6 +108,7 @@ def get_pupster_session(agent_design: str):
 
 
 # TODO: Consider making the ros tool server a subclass of PupsterAgent so that I don't have to re-define functions!
+# TODO: Figure out how to share docstrings across all implementations
 class PupsterAgent(Agent):
     def __init__(self, tool_impl) -> None:
         system_prompt = load_system_prompt()
