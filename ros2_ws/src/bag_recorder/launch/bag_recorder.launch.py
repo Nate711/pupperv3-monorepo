@@ -18,6 +18,7 @@ def generate_launch_description():
                 description="Button index to stop recording (default: R1 button)",
             ),
             DeclareLaunchArgument("bag_output_dir", default_value="~/bags", description="Directory to save bag files"),
+            DeclareLaunchArgument("start_button_hold_duration", default_value="5.0", description="How long to hold start button (seconds)"),
             Node(
                 package="bag_recorder",
                 executable="bag_recorder_node",
@@ -28,6 +29,7 @@ def generate_launch_description():
                         "record_start_button": LaunchConfiguration("record_start_button"),
                         "record_stop_button": LaunchConfiguration("record_stop_button"),
                         "bag_output_dir": LaunchConfiguration("bag_output_dir"),
+                        "start_button_hold_duration": LaunchConfiguration("start_button_hold_duration"),
                     }
                 ],
             ),

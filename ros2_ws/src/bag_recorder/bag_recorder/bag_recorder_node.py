@@ -6,6 +6,7 @@ from sensor_msgs.msg import Joy
 import subprocess
 import threading
 import os
+import time
 from datetime import datetime
 
 
@@ -17,11 +18,13 @@ class BagRecorderNode(Node):
         self.declare_parameter("record_start_button", 4)  # L1 button
         self.declare_parameter("record_stop_button", 5)  # R1 button
         self.declare_parameter("bag_output_dir", "~/bags")
+        self.declare_parameter("start_button_hold_duration", 5.0)  # seconds
 
         # Get parameters
         self.record_start_button = self.get_parameter("record_start_button").get_parameter_value().integer_value
         self.record_stop_button = self.get_parameter("record_stop_button").get_parameter_value().integer_value
         self.bag_output_dir = self.get_parameter("bag_output_dir").get_parameter_value().string_value
+        self.required_press_duration = self.get_parameter("start_button_hold_duration").get_parameter_value().double_value
 
         # Expand home directory
         self.bag_output_dir = os.path.expanduser(self.bag_output_dir)
@@ -35,6 +38,9 @@ class BagRecorderNode(Node):
         self.prev_start_button_state = False
         self.prev_stop_button_state = False
         self.lock = threading.Lock()
+        
+        # Long press tracking for start button
+        self.start_button_press_time = None
 
         # Subscribe to joy topic
         self.joy_subscription = self.create_subscription(Joy, "/joy", self.joy_callback, 10)
@@ -42,6 +48,7 @@ class BagRecorderNode(Node):
         self.get_logger().info("Bag recorder node initialized")
         self.get_logger().info(f"Start recording button: {self.record_start_button}")
         self.get_logger().info(f"Stop recording button: {self.record_stop_button}")
+        self.get_logger().info(f"Start button hold duration: {self.required_press_duration} seconds")
         self.get_logger().info(f"Output directory: {self.bag_output_dir}")
 
     def get_filtered_topics(self):
@@ -143,12 +150,30 @@ class BagRecorderNode(Node):
         # Get current button states
         start_button_pressed = msg.buttons[self.record_start_button] == 1
         stop_button_pressed = msg.buttons[self.record_stop_button] == 1
+        current_time = time.time()
 
-        # Detect button press (transition from 0 to 1)
-        if start_button_pressed and not self.prev_start_button_state:
-            self.get_logger().info(f"Start recording button {self.record_start_button} pressed")
-            self.start_recording()
+        # Handle start button with long press requirement
+        if start_button_pressed:
+            if not self.prev_start_button_state:
+                # Button just pressed - start timing
+                self.start_button_press_time = current_time
+                self.get_logger().info(f"Start recording button {self.record_start_button} pressed - hold for {self.required_press_duration} seconds to start recording")
+            elif self.start_button_press_time is not None:
+                # Button is being held - check duration
+                press_duration = current_time - self.start_button_press_time
+                if press_duration >= self.required_press_duration and not self.recording:
+                    self.get_logger().info(f"Start recording button held for {self.required_press_duration} seconds - starting recording")
+                    self.start_recording()
+                    self.start_button_press_time = None  # Reset to prevent multiple starts
+        else:
+            # Button released - reset timing
+            if self.start_button_press_time is not None:
+                press_duration = current_time - self.start_button_press_time
+                if press_duration < self.required_press_duration:
+                    self.get_logger().info(f"Start recording button released after {press_duration:.1f} seconds - recording not started (need {self.required_press_duration} seconds)")
+                self.start_button_press_time = None
 
+        # Handle stop button (immediate response)
         if stop_button_pressed and not self.prev_stop_button_state:
             self.get_logger().info(f"Stop recording button {self.record_stop_button} pressed")
             self.stop_recording()

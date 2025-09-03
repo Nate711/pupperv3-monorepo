@@ -206,6 +206,7 @@ def generate_launch_description():
                 "record_start_button": 4,  # L1 button
                 "record_stop_button": 5,  # R1 button
                 "bag_output_dir": "~/bags",
+                "start_button_hold_duration": 5.0,  # 5 seconds
             }
         ],
         condition=IfCondition(LaunchConfiguration("bag_recorder")),
