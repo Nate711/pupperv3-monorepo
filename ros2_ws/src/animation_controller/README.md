@@ -33,31 +33,28 @@ animation_controller/
 
 ## CSV File Format
 
-Each row represents a keyframe, each column represents a joint position in radians.
+The CSV file must have a header row specifying column names. The controller will automatically map joint names from the header to the correct joint positions. Timestamp columns are optional and will be ignored.
 
-**Joint order (12 joints total):**
-1. `front_right_hip_joint`
-2. `front_right_upper_leg_joint`
-3. `front_right_lower_leg_joint`
-4. `front_left_hip_joint`
-5. `front_left_upper_leg_joint`
-6. `front_left_lower_leg_joint`
-7. `rear_right_hip_joint`
-8. `rear_right_upper_leg_joint`
-9. `rear_right_lower_leg_joint`
-10. `rear_left_hip_joint`
-11. `rear_left_upper_leg_joint`
-12. `rear_left_lower_leg_joint`
+**Required header format:**
+- Must include all 12 joint names as specified in the configuration
+- Can include optional timestamp columns (`timestamp_ns`, `timestamp_sec`)
+- Joint names must match exactly those in `animation_config.yaml`
+
+**Joint names (12 joints total):**
+- `leg_front_r_1`, `leg_front_r_2`, `leg_front_r_3`
+- `leg_front_l_1`, `leg_front_l_2`, `leg_front_l_3`
+- `leg_back_r_1`, `leg_back_r_2`, `leg_back_r_3`
+- `leg_back_l_1`, `leg_back_l_2`, `leg_back_l_3`
 
 ### Example CSV:
 ```csv
-# Standing neutral position
-0.0, 0.5, -1.0, 0.0, 0.5, -1.0, 0.0, 0.5, -1.0, 0.0, 0.5, -1.0
-# Sit preparation
-0.0, 0.8, -1.6, 0.0, 0.8, -1.6, 0.0, 0.8, -1.6, 0.0, 0.8, -1.6
-# Sitting position
-0.0, 1.2, -2.4, 0.0, 1.2, -2.4, 0.0, 1.2, -2.4, 0.0, 1.2, -2.4
+timestamp_ns,timestamp_sec,leg_front_r_1,leg_front_r_2,leg_front_r_3,leg_front_l_1,leg_front_l_2,leg_front_l_3,leg_back_r_1,leg_back_r_2,leg_back_r_3,leg_back_l_1,leg_back_l_2,leg_back_l_3
+0,0.0,0.26,0.0,-0.52,-0.26,0.0,0.52,0.26,0.0,-0.52,-0.26,0.0,0.52
+1,0.033,0.26,0.0,-0.52,-0.26,0.0,0.52,0.26,0.5,-1.2,-0.26,0.5,1.2
+2,0.066,0.26,-0.3,-0.2,-0.26,-0.3,0.2,0.26,1.0,-2.0,-0.26,1.0,2.0
 ```
+
+The controller will automatically handle different column orderings as long as all required joint names are present.
 
 ## Usage
 

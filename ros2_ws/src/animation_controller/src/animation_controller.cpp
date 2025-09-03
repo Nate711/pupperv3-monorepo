@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -53,6 +54,8 @@ bool AnimationController::load_animation_csv() {
 
   std::string line;
   size_t line_number = 0;
+  std::map<std::string, int> column_mapping;  // Maps joint names to column indices
+  bool header_parsed = false;
   
   while (std::getline(file, line)) {
     line_number++;
@@ -62,26 +65,77 @@ bool AnimationController::load_animation_csv() {
     
     std::stringstream ss(line);
     std::string cell;
-    std::array<double, kActionSize> keyframe;
-    size_t col_index = 0;
+    std::vector<std::string> cells;
     
-    while (std::getline(ss, cell, ',') && col_index < kActionSize) {
-      try {
-        keyframe[col_index] = std::stod(cell);
-        col_index++;
-      } catch (const std::exception& e) {
-        RCLCPP_ERROR(get_node()->get_logger(), 
-                     "Failed to parse CSV value '%s' at line %zu, column %zu: %s", 
-                     cell.c_str(), line_number, col_index + 1, e.what());
-        return false;
-      }
+    // Parse all cells in the line
+    while (std::getline(ss, cell, ',')) {
+      // Trim whitespace
+      cell.erase(0, cell.find_first_not_of(" \t"));
+      cell.erase(cell.find_last_not_of(" \t") + 1);
+      cells.push_back(cell);
     }
     
-    if (col_index != kActionSize) {
-      RCLCPP_ERROR(get_node()->get_logger(), 
-                   "Expected %d values per row, got %zu at line %zu", 
-                   kActionSize, col_index, line_number);
-      return false;
+    // Parse header if not yet parsed
+    if (!header_parsed) {
+      // Build column mapping from header
+      for (size_t i = 0; i < cells.size(); i++) {
+        const std::string& column_name = cells[i];
+        
+        // Skip timestamp columns
+        if (column_name == "timestamp_ns" || column_name == "timestamp_sec") {
+          continue;
+        }
+        
+        // Check if this column corresponds to a joint we care about
+        for (size_t j = 0; j < params_.joint_names.size(); j++) {
+          if (column_name == params_.joint_names[j]) {
+            column_mapping[params_.joint_names[j]] = static_cast<int>(i);
+            RCLCPP_DEBUG(get_node()->get_logger(), 
+                        "Mapped joint '%s' to column %zu", 
+                        params_.joint_names[j].c_str(), i);
+            break;
+          }
+        }
+      }
+      
+      // Verify all joints are found
+      for (const auto& joint_name : params_.joint_names) {
+        if (column_mapping.find(joint_name) == column_mapping.end()) {
+          RCLCPP_ERROR(get_node()->get_logger(), 
+                       "Joint '%s' not found in CSV header", joint_name.c_str());
+          return false;
+        }
+      }
+      
+      RCLCPP_INFO(get_node()->get_logger(), 
+                  "Successfully mapped %zu joints from CSV header", 
+                  column_mapping.size());
+      header_parsed = true;
+      continue;
+    }
+    
+    // Parse data row
+    std::array<double, kActionSize> keyframe;
+    
+    for (size_t i = 0; i < params_.joint_names.size(); i++) {
+      const std::string& joint_name = params_.joint_names[i];
+      int col_idx = column_mapping[joint_name];
+      
+      if (col_idx >= static_cast<int>(cells.size())) {
+        RCLCPP_ERROR(get_node()->get_logger(), 
+                     "Column index %d for joint '%s' out of range at line %zu", 
+                     col_idx, joint_name.c_str(), line_number);
+        return false;
+      }
+      
+      try {
+        keyframe[i] = std::stod(cells[col_idx]);
+      } catch (const std::exception& e) {
+        RCLCPP_ERROR(get_node()->get_logger(), 
+                     "Failed to parse value '%s' for joint '%s' at line %zu: %s", 
+                     cells[col_idx].c_str(), joint_name.c_str(), line_number, e.what());
+        return false;
+      }
     }
     
     animation_keyframes_.push_back(keyframe);
