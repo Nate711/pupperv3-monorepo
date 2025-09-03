@@ -37,6 +37,15 @@ def generate_launch_description():
         ),
     )
 
+    declare_bag_recorder_arg = DeclareLaunchArgument(
+        name="bag_recorder",
+        default_value="True",
+        description=(
+            "Run `ros2 launch neural_controller launch.py bag_recorder:=True` to enable bag recording, "
+            "otherwise the default value of False will not run bag recorder."
+        ),
+    )
+
     #
     # 2. Construct the path to the URDF file using IfElseSubstitution
 
@@ -55,9 +64,7 @@ def generate_launch_description():
     #
     # 3. Create the robot_description using xacro
     #
-    robot_description_content = Command(
-        [PathJoinSubstitution([FindExecutable(name="xacro")]), " ", xacro_file]
-    )
+    robot_description_content = Command([PathJoinSubstitution([FindExecutable(name="xacro")]), " ", xacro_file])
     robot_description = {"robot_description": robot_description_content}
 
     #
@@ -74,9 +81,7 @@ def generate_launch_description():
     # 5. Common controller parameters
     #
     node_parameters = ParameterFile(
-        PathJoinSubstitution(
-            [FindPackageShare("neural_controller"), "launch", "config.yaml"]
-        ),
+        PathJoinSubstitution([FindPackageShare("neural_controller"), "launch", "config.yaml"]),
         allow_substs=True,
     )
 
@@ -191,6 +196,21 @@ def generate_launch_description():
         output="both",
     )
 
+    bag_recorder_node = Node(
+        package="bag_recorder",
+        executable="bag_recorder_node",
+        name="bag_recorder",
+        output="both",
+        parameters=[
+            {
+                "record_start_button": 4,  # L1 button
+                "record_stop_button": 5,  # R1 button
+                "bag_output_dir": "~/bags",
+            }
+        ],
+        condition=IfCondition(LaunchConfiguration("bag_recorder")),
+    )
+
     #
     # 7. Put them all together
     #
@@ -209,9 +229,10 @@ def generate_launch_description():
         teleop_twist_joy_node,
         camera_node,
         cmd_vel_mux_node,
+        bag_recorder_node,
     ]
 
     #
     # 8. Return the LaunchDescription with the declared arg + all nodes
     #
-    return LaunchDescription([declare_sim_arg, declare_teleop_arg, *nodes])
+    return LaunchDescription([declare_sim_arg, declare_teleop_arg, declare_bag_recorder_arg, *nodes])
