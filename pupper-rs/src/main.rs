@@ -33,6 +33,12 @@ impl ImageApp {
         let config = load_config()?;
         print_config_info(&config);
 
+        // Don't start fullscreen on macOS
+        #[cfg(target_os = "macos")]
+        let is_fullscreen = false;
+        #[cfg(not(target_os = "macos"))]
+        let is_fullscreen = true;
+
         Ok(Self {
             config,
             blink_state: BlinkState::new(),
@@ -42,7 +48,7 @@ impl ImageApp {
             llm_service_monitor: LlmServiceMonitor::new(),
             internet_monitor: InternetMonitor::new(),
             eye_tracker: EyeTracker::new(),
-            is_fullscreen: true,
+            is_fullscreen,
             show_topbar: true,
         })
     }
@@ -208,13 +214,19 @@ impl App for ImageApp {
 }
 
 fn main() -> eframe::Result<()> {
+    // Don't start fullscreen on macOS
+    #[cfg(target_os = "macos")]
+    let fullscreen = false;
+    #[cfg(not(target_os = "macos"))]
+    let fullscreen = true;
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size(Vec2::new(720.0, 720.0))
             .with_min_inner_size(Vec2::new(720.0, 720.0))
             .with_maximize_button(true)
             .with_resizable(true)
-            .with_fullscreen(true),
+            .with_fullscreen(fullscreen),
         ..Default::default()
     };
 
