@@ -46,6 +46,12 @@ rm -f /usr/sbin/policy-rc.d
 
 
 ########################### Install rust ########################
+export CARGO_HOME=/home/$DEFAULT_USER/.cargo
+export RUSTUP_HOME=/home/$DEFAULT_USER/.rustup
+# put these in bashrc as well
+echo 'export CARGO_HOME=/home/pi/.cargo' >> /home/$DEFAULT_USER/.bashrc
+echo 'export RUSTUP_HOME=/home/pi/.rustup' >> /home/$DEFAULT_USER/.bashrc
+
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
 
