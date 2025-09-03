@@ -55,7 +55,6 @@ def read_joint_states(mcap_file: str, topic_name: str = "/joint_states") -> List
             msg = deserialize_message(data, msg_type)
             joint_states.append((timestamp, msg))
     
-    reader.close()
     return joint_states
 
 
