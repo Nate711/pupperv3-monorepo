@@ -5,6 +5,8 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub battery: BatteryConfig,
+    #[serde(default)]
+    pub bag_recorder: BagRecorderConfig,
     pub cpu: CpuConfig,
     pub service: ServiceConfig,
     pub blink: BlinkConfig,
@@ -16,18 +18,23 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BatteryConfig {
     pub low_threshold: u8,
-    pub poll_interval_secs: u64,
+    pub poll_interval_secs: f32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BagRecorderConfig {
+    pub poll_interval_secs: f32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CpuConfig {
     pub enabled: bool,
-    pub poll_interval_secs: u64,
+    pub poll_interval_secs: f32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ServiceConfig {
-    pub poll_interval_secs: u64,
+    pub poll_interval_secs: f32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -66,14 +73,15 @@ impl Default for Config {
         Config {
             battery: BatteryConfig {
                 low_threshold: 15,
-                poll_interval_secs: 5,
+                poll_interval_secs: 5.0,
             },
+            bag_recorder: BagRecorderConfig::default(),
             cpu: CpuConfig {
                 enabled: true,
-                poll_interval_secs: 2,
+                poll_interval_secs: 2.0,
             },
             service: ServiceConfig {
-                poll_interval_secs: 1,
+                poll_interval_secs: 1.0,
             },
             blink: BlinkConfig {
                 interval_secs: 4.0,
@@ -89,6 +97,14 @@ impl Default for Config {
                 combined_pupil_ratio: 0.5,
             },
             ui: UiConfig::default(),
+        }
+    }
+}
+
+impl Default for BagRecorderConfig {
+    fn default() -> Self {
+        BagRecorderConfig {
+            poll_interval_secs: 2.0,
         }
     }
 }

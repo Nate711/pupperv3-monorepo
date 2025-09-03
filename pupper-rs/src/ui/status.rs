@@ -1,5 +1,5 @@
 use crate::config::BatteryConfig;
-use crate::system::{InternetStatus, LlmServiceStatus, ServiceStatus};
+use crate::system::{BagRecorderStatus, InternetStatus, LlmServiceStatus, ServiceStatus};
 use eframe::egui;
 use egui::{Color32, RichText, Sense, Stroke, Vec2};
 
@@ -36,6 +36,16 @@ impl From<&InternetStatus> for SimpleStatus {
             InternetStatus::Online => SimpleStatus::Active,
             InternetStatus::Offline => SimpleStatus::Inactive,
             InternetStatus::Unknown => SimpleStatus::Unknown,
+        }
+    }
+}
+
+impl From<&BagRecorderStatus> for SimpleStatus {
+    fn from(s: &BagRecorderStatus) -> Self {
+        match s {
+            BagRecorderStatus::Recording => SimpleStatus::Active,
+            BagRecorderStatus::Stopped => SimpleStatus::Inactive,
+            BagRecorderStatus::Unknown => SimpleStatus::Unknown,
         }
     }
 }
@@ -86,6 +96,10 @@ pub fn draw_llm_service_status(ui: &mut egui::Ui, status: &LlmServiceStatus) {
 
 pub fn draw_internet_status(ui: &mut egui::Ui, status: &InternetStatus) {
     draw_status_badge(ui, "NET", SimpleStatus::from(status));
+}
+
+pub fn draw_bag_recorder_status(ui: &mut egui::Ui, status: &BagRecorderStatus) {
+    draw_status_badge(ui, "BAG", SimpleStatus::from(status));
 }
 
 pub fn draw_battery_indicator(

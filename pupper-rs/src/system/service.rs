@@ -35,7 +35,7 @@ impl ServiceMonitor {
     }
 
     pub fn update(&mut self, config: &ServiceConfig) {
-        if self.last_check.elapsed() >= Duration::from_secs(config.poll_interval_secs) {
+        if self.last_check.elapsed() >= Duration::from_secs_f32(config.poll_interval_secs) {
             self.status = query_robot_status();
             self.last_check = Instant::now();
         }
@@ -55,7 +55,7 @@ impl LlmServiceMonitor {
     }
 
     pub fn update(&mut self, config: &ServiceConfig) {
-        if self.last_check.elapsed() >= Duration::from_secs(config.poll_interval_secs) {
+        if self.last_check.elapsed() >= Duration::from_secs_f32(config.poll_interval_secs) {
             self.status = query_llm_status();
             self.last_check = Instant::now();
         }

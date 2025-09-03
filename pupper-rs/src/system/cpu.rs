@@ -25,14 +25,14 @@ impl CpuMonitor {
 
     pub fn update(&mut self, config: &CpuConfig) {
         self.enabled = config.enabled;
-        
+
         if !config.enabled {
             self.usage = None;
             self.temperature = None;
             return;
         }
-        
-        if self.last_update.elapsed().as_secs() < config.poll_interval_secs {
+
+        if self.last_update.elapsed().as_secs_f32() < config.poll_interval_secs {
             return;
         }
         self.last_update = Instant::now();
@@ -49,21 +49,21 @@ impl CpuMonitor {
                     let iowait: u64 = values.get(5).and_then(|v| v.parse().ok()).unwrap_or(0);
                     let irq: u64 = values.get(6).and_then(|v| v.parse().ok()).unwrap_or(0);
                     let softirq: u64 = values.get(7).and_then(|v| v.parse().ok()).unwrap_or(0);
-                    
+
                     let idle_time = idle + iowait;
                     let non_idle = user + nice + system + irq + softirq;
                     let total = idle_time + non_idle;
-                    
+
                     if self.prev_total > 0 {
                         let total_delta = total - self.prev_total;
                         let idle_delta = idle_time - self.prev_idle;
-                        
+
                         if total_delta > 0 {
                             let usage = 100.0 * (1.0 - (idle_delta as f32 / total_delta as f32));
                             self.usage = Some(usage.clamp(0.0, 100.0));
                         }
                     }
-                    
+
                     self.prev_idle = idle_time;
                     self.prev_total = total;
                 }
@@ -87,7 +87,7 @@ impl CpuMonitor {
             }
         }
     }
-    
+
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }

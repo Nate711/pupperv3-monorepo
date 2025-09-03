@@ -21,7 +21,7 @@ impl BatteryMonitor {
 
     pub fn update(&mut self, config: &BatteryConfig) {
         // Poll battery status based on configured interval
-        if self.last_check.elapsed() >= Duration::from_secs(config.poll_interval_secs) {
+        if self.last_check.elapsed() >= Duration::from_secs_f32(config.poll_interval_secs) {
             self.percentage = query_battery_percentage();
             println!("Battery percentage: {:?}", self.percentage);
             self.last_check = Instant::now();

@@ -4,17 +4,21 @@
 # Percentage threshold below which battery indicator flashes red
 low_threshold = 15
 # Polling interval in seconds for battery status
-poll_interval_secs = 1
+poll_interval_secs = 1.0
+
+[bag_recorder]
+# Polling interval in seconds for bag recording status
+poll_interval_secs = 0.5
 
 [cpu]
 # Enable CPU monitoring (usage and temperature)
 enabled = true
 # Polling interval in seconds for CPU stats
-poll_interval_secs = 2
+poll_interval_secs = 2.0
 
 [service]
 # Polling interval in seconds for robot service status
-poll_interval_secs = 1
+poll_interval_secs = 1.0
 
 [blink]
 # Interval between blinks in seconds

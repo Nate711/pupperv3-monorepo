@@ -8,15 +8,15 @@ mod ui;
 
 use config::{Config, load_config, print_config_info};
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
-use system::{BatteryMonitor, CpuMonitor, InternetMonitor, LlmServiceMonitor, ServiceMonitor};
+use system::{BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor, LlmServiceMonitor, ServiceMonitor};
 use ui::{
-    draw_battery_indicator, draw_cpu_stats, draw_internet_status, draw_llm_service_status,
-    draw_service_status, draw_fullscreen_button, SimpleStatus, draw_status_badge,
+    draw_battery_indicator, draw_cpu_stats, draw_fullscreen_button, SimpleStatus, draw_status_badge,
 };
 
 struct ImageApp {
     config: Config,
     blink_state: BlinkState,
+    bag_recorder_monitor: BagRecorderMonitor,
     battery_monitor: BatteryMonitor,
     cpu_monitor: CpuMonitor,
     service_monitor: ServiceMonitor,
@@ -42,6 +42,7 @@ impl ImageApp {
         Ok(Self {
             config,
             blink_state: BlinkState::new(),
+            bag_recorder_monitor: BagRecorderMonitor::new(),
             battery_monitor: BatteryMonitor::new(),
             cpu_monitor: CpuMonitor::new(),
             service_monitor: ServiceMonitor::new(),
@@ -140,7 +141,7 @@ impl ImageApp {
                 ui.horizontal(|ui| {
                     // Ensure consistent row height for icon alignment
                     ui.set_height(30.0);
-                    // ROS, LLM, and Internet — rendered using shared badge code
+                    // ROS, LLM, Internet, and Bag Recording — rendered using shared badge code
                     draw_status_badge(
                         ui,
                         "ROS",
@@ -157,6 +158,12 @@ impl ImageApp {
                         ui,
                         "NET",
                         SimpleStatus::from(self.internet_monitor.get_status()),
+                    );
+                    ui.add_space(5.0);
+                    draw_status_badge(
+                        ui,
+                        "BAG",
+                        SimpleStatus::from(self.bag_recorder_monitor.get_status()),
                     );
 
                     // Fullscreen button at the far right
@@ -200,6 +207,7 @@ impl App for ImageApp {
         ctx.request_repaint();
 
         // Update all subsystems
+        self.bag_recorder_monitor.update(&self.config.bag_recorder);
         self.battery_monitor.update(&self.config.battery);
         self.cpu_monitor.update(&self.config.cpu);
         self.service_monitor.update(&self.config.service);

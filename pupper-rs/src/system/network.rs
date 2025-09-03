@@ -23,7 +23,7 @@ impl InternetMonitor {
     }
 
     pub fn update(&mut self, config: &ServiceConfig) {
-        if self.last_check.elapsed() >= Duration::from_secs(config.poll_interval_secs) {
+        if self.last_check.elapsed() >= Duration::from_secs_f32(config.poll_interval_secs) {
             self.status = query_internet_status();
             self.last_check = Instant::now();
         }
