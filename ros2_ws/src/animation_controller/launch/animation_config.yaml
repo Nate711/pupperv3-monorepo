@@ -1,0 +1,42 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 200  # Hz
+
+animation_controller:
+  ros__parameters:
+    # Path to CSV file containing animation keyframes
+    # Each row = keyframe, each column = joint position
+    csv_file_path: ""  # Set this to your CSV file path
+    
+    # Joint names in the order they appear in CSV columns (matching neural_controller)
+    joint_names:
+      - "leg_front_r_1"
+      - "leg_front_r_2"
+      - "leg_front_r_3"
+      - "leg_front_l_1"
+      - "leg_front_l_2"
+      - "leg_front_l_3"
+      - "leg_back_r_1"
+      - "leg_back_r_2"
+      - "leg_back_r_3"
+      - "leg_back_l_1"
+      - "leg_back_l_2"
+      - "leg_back_l_3"
+    
+    # Animation playback settings
+    frame_rate: 30.0                    # Hz
+    interpolation_enabled: true         # Smooth interpolation between keyframes
+    loop_animation: false               # Loop animation continuously
+    auto_start: false                   # Start animation automatically when activated
+    
+    # Control gains for all joints (kp=5, kd=0.25)
+    kps: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+    kds: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+    
+    # Initialization gains (for smooth startup to first frame, matching neural_controller)
+    init_kps: [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5]
+    init_kds: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+    
+    # Timing parameters (matching neural_controller)
+    init_duration: 2.0                  # Time to move to first frame on startup (seconds)
+    estop_kd: 0.1                       # Emergency stop damping

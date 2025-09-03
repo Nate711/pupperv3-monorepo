@@ -1,0 +1,84 @@
+animation_controller:
+  csv_file_path:
+    {
+      type: string,
+      default_value: "",
+      description: "Path to the CSV file containing animation keyframes. Each row is a keyframe, each column is a joint position.",
+    }
+
+  joint_names:
+    {
+      type: string_array,
+      default_value: [],
+      description: "Names of the joints to control, in the order they appear in the CSV columns",
+    }
+
+  frame_rate:
+    {
+      type: double,
+      default_value: 30.0,
+      description: "Playback frame rate in Hz",
+    }
+
+  interpolation_enabled:
+    {
+      type: bool,
+      default_value: true,
+      description: "Whether to interpolate between keyframes for smooth animation",
+    }
+
+  loop_animation:
+    {
+      type: bool,
+      default_value: false,
+      description: "Whether to loop the animation continuously",
+    }
+
+  auto_start:
+    {
+      type: bool,
+      default_value: false,
+      description: "Whether to start the animation automatically when the controller is activated",
+    }
+
+  kps:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Position gains for the joints",
+    }
+
+  kds:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Velocity gains for the joints",
+    }
+
+  init_kps:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Position gains for the joints during initialization (return to starting position)",
+    }
+
+  init_kds:
+    {
+      type: double_array,
+      default_value: [],
+      description: "Velocity gains for the joints during initialization (return to starting position)",
+    }
+
+  init_duration:
+    {
+      type: double,
+      default_value: 2.0,
+      description: "Time to move to the first animation frame on startup",
+    }
+
+  estop_kd:
+    {
+      type: double,
+      default_value: 0.1,
+      description: "Velocity gain for the joints during emergency stop",
+    }
