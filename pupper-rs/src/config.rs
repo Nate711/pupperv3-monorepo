@@ -9,6 +9,8 @@ pub struct Config {
     pub service: ServiceConfig,
     pub blink: BlinkConfig,
     pub eye_tracking: EyeTrackingConfig,
+    #[serde(default)]
+    pub ui: UiConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -43,6 +45,12 @@ pub struct EyeTrackingConfig {
     pub max_pupil_offset: f32,
     pub max_eye_offset: f32,
     pub combined_pupil_ratio: f32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UiConfig {
+    // When true, show a visible button to toggle the top bar; when false, use an invisible hotzone
+    pub toggle_button_visible: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -80,6 +88,15 @@ impl Default for Config {
                 max_eye_offset: 50.0,
                 combined_pupil_ratio: 0.5,
             },
+            ui: UiConfig::default(),
+        }
+    }
+}
+
+impl Default for UiConfig {
+    fn default() -> Self {
+        UiConfig {
+            toggle_button_visible: false,
         }
     }
 }

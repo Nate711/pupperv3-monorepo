@@ -24,6 +24,7 @@ struct ImageApp {
     internet_monitor: InternetMonitor,
     eye_tracker: EyeTracker,
     is_fullscreen: bool,
+    show_topbar: bool,
 }
 
 impl ImageApp {
@@ -42,6 +43,7 @@ impl ImageApp {
             internet_monitor: InternetMonitor::new(),
             eye_tracker: EyeTracker::new(),
             is_fullscreen: true,
+            show_topbar: true,
         })
     }
 
@@ -91,6 +93,40 @@ impl ImageApp {
     }
 
     fn draw_status_ui(&mut self, ctx: &egui::Context) {
+        // Top-bar visibility toggle control
+        if self.config.ui.toggle_button_visible {
+            // Visible button centered on the top bar
+            egui::Area::new(egui::Id::new("topbar_toggle_button"))
+                .anchor(egui::Align2::CENTER_TOP, [0.0, 6.0])
+                .order(egui::Order::Foreground)
+                .show(ctx, |ui| {
+                    let label = if self.show_topbar { "Hide UI" } else { "Show UI" };
+                    let resp = ui.add(
+                        egui::Button::new(label)
+                            .min_size(egui::vec2(110.0, 28.0))
+                    );
+                    if resp.clicked() {
+                        self.show_topbar = !self.show_topbar;
+                    }
+                });
+        } else {
+            // Invisible hotzone for a clean look
+            egui::Area::new(egui::Id::new("topbar_toggle_hotzone"))
+                .anchor(egui::Align2::CENTER_TOP, [0.0, 5.0])
+                .order(egui::Order::Foreground)
+                .show(ctx, |ui| {
+                    let desired_size = egui::vec2(200.0, 40.0);
+                    let (_rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+                    if response.clicked() {
+                        self.show_topbar = !self.show_topbar;
+                    }
+                });
+        }
+
+        if !self.show_topbar {
+            return;
+        }
+
         // Service status indicators in top-right
         egui::Area::new(egui::Id::new("service_status"))
             .anchor(egui::Align2::RIGHT_TOP, [-10.0, 10.0])

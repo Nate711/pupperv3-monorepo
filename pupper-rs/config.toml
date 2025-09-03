@@ -37,3 +37,9 @@ max_pupil_offset = 25.0
 max_eye_offset = 50.0
 # In combined mode, ratio of pupil movement to eye movement (0.0 to 1.0)
 combined_pupil_ratio = 0.4
+
+# UI configuration
+[ui]
+# When true, show a visible button in the center top to toggle the top bar.
+# When false, use an invisible hotzone for a cleaner look.
+toggle_button_visible = false
