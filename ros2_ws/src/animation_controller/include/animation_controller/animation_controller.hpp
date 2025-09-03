@@ -44,14 +44,14 @@ class AnimationController : public controller_interface::ControllerInterface {
   controller_interface::return_type update(const rclcpp::Time &time,
                                            const rclcpp::Duration &period) override;
 
+  /* ----------------- Constants ----------------- */
+  static constexpr int kActionSize = 12;
+  /* -------------------------------------------- */                                         
+
  protected:
   bool load_animation_csv();
   bool check_param_vector_size();
   void interpolate_keyframes(double alpha, size_t frame_a, size_t frame_b, std::array<double, kActionSize>& result);
-
-  /* ----------------- Constants ----------------- */
-  static constexpr int kActionSize = 12;
-  /* -------------------------------------------- */
 
   std::shared_ptr<ParamListener> param_listener_;
   Params params_;
