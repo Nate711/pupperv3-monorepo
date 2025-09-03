@@ -8,11 +8,11 @@ class ImuToTf : public rclcpp::Node
 public:
   ImuToTf() : Node("imu_to_tf")
   {
-    world_frame_ = this->declare_parameter<std::string>("world_frame", "world");
+    world_frame_ = this->declare_parameter<std::string>("world_frame", "map");
     body_frame_ = this->declare_parameter<std::string>("body_frame", "base_link");
     br_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-        "/imu/data", 10, std::bind(&ImuToTf::cb, this, std::placeholders::_1));
+        "/imu_sensor_broadcaster/imu", 10, std::bind(&ImuToTf::cb, this, std::placeholders::_1));
   }
 
 private:
@@ -27,6 +27,7 @@ private:
     t.transform.translation.z = 0.0;
     t.transform.rotation = msg->orientation;
     br_->sendTransform(t);
+    RCLCPP_DEBUG(this->get_logger(), "Sent transform");
   }
   std::string world_frame_, body_frame_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> br_;

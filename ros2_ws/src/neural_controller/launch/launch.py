@@ -212,6 +212,12 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("bag_recorder")),
     )
 
+    imu_to_tf_node = Node(
+        package="imu_to_tf",
+        executable="imu_to_tf_node",
+        output="both",
+    )
+
     #
     # 7. Put them all together
     #
@@ -231,6 +237,7 @@ def generate_launch_description():
         camera_node,
         cmd_vel_mux_node,
         bag_recorder_node,
+        imu_to_tf_node
     ]
 
     #
