@@ -59,12 +59,12 @@ def filter_by_time_range(
     messages: List[tuple], start_time_sec: Optional[float] = None, end_time_sec: Optional[float] = None
 ) -> List[tuple]:
     """
-    Filter messages by time range relative to first message timestamp.
+    Filter messages by absolute time range.
 
     Args:
         messages: List of (timestamp_ns, msg) tuples
-        start_time_sec: Start time in seconds from first message (None = no start filter)
-        end_time_sec: End time in seconds from first message (None = no end filter)
+        start_time_sec: Start time as absolute timestamp in seconds (None = no start filter)
+        end_time_sec: End time as absolute timestamp in seconds (None = no end filter)
 
     Returns:
         Filtered list of messages
@@ -75,19 +75,16 @@ def filter_by_time_range(
     if start_time_sec is None and end_time_sec is None:
         return messages
 
-    # Get first timestamp as reference
-    first_timestamp_ns = messages[0][0]
-
     filtered = []
     for timestamp_ns, msg in messages:
-        elapsed_sec = (timestamp_ns - first_timestamp_ns) / 1e9
+        timestamp_sec = timestamp_ns / 1e9
 
         # Check start time filter
-        if start_time_sec is not None and elapsed_sec < start_time_sec:
+        if start_time_sec is not None and timestamp_sec < start_time_sec:
             continue
 
         # Check end time filter
-        if end_time_sec is not None and elapsed_sec > end_time_sec:
+        if end_time_sec is not None and timestamp_sec > end_time_sec:
             continue
 
         filtered.append((timestamp_ns, msg))
@@ -170,8 +167,8 @@ def main():
         "-t", "--topic", default="/joint_states", help="Joint states topic name (default: /joint_states)"
     )
     parser.add_argument("-f", "--frequency", type=float, default=30.0, help="Target frequency in Hz (default: 30.0)")
-    parser.add_argument("-s", "--start-time", type=float, help="Start time in seconds from beginning of bag (optional)")
-    parser.add_argument("-e", "--end-time", type=float, help="End time in seconds from beginning of bag (optional)")
+    parser.add_argument("-s", "--start-time", type=float, help="Start time as absolute timestamp in seconds (optional)")
+    parser.add_argument("-e", "--end-time", type=float, help="End time as absolute timestamp in seconds (optional)")
 
     args = parser.parse_args()
 
@@ -186,9 +183,9 @@ def main():
     print(f"Topic: {args.topic}")
     print(f"Target frequency: {args.frequency} Hz")
     if args.start_time is not None:
-        print(f"Start time: {args.start_time} seconds")
+        print(f"Start time: {args.start_time} seconds (absolute)")
     if args.end_time is not None:
-        print(f"End time: {args.end_time} seconds")
+        print(f"End time: {args.end_time} seconds (absolute)")
     print(f"Output file: {output_file}")
 
     # Read joint states from MCAP
