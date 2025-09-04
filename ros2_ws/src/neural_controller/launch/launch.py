@@ -179,6 +179,7 @@ def generate_launch_description():
         executable="estop_controller",
         parameters=[node_parameters],
         output="both",
+        name="joy_util_node",
     )
 
     camera_node = Node(
