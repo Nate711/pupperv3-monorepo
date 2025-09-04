@@ -32,10 +32,11 @@ rosdep update
 rosdep install --from-paths src -y --ignore-src --skip-keys=libcamera
 
 # Install additional ROS2 packages
-sudo apt install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-teleop-twist-joy ros-jazzy-foxglove-bridge ros-jazzy-xacro ros-jazzy-hardware-interface
-sudo apt install -y ros-jazzy-vision-msgs ros-jazzy-camera-calibration ros-jazzy-image-transport-plugins ros-jazzy-theora-image-transport ros-jazzy-compressed-depth-image-transport ros-jazzy-compressed-image-transport
-sudo apt install -y ros-jazzy-foxglove-bridge
-sudo apt install -y ros-jazzy-joy-linux
+sudo apt-get install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-teleop-twist-joy ros-jazzy-foxglove-bridge ros-jazzy-xacro ros-jazzy-hardware-interface
+sudo apt-get install -y ros-jazzy-vision-msgs ros-jazzy-camera-calibration ros-jazzy-image-transport-plugins ros-jazzy-theora-image-transport ros-jazzy-compressed-depth-image-transport ros-jazzy-compressed-image-transport
+sudo apt-get install -y ros-jazzy-foxglove-bridge
+sudo apt-get install -y ros-jazzy-joy-linux
+sudo apt-get install ros-jazzy-camera-ros
 
 # Upgrade packages near the end since it takes a long time
 sudo apt upgrade -y
