@@ -81,23 +81,11 @@ def generate_launch_description():
         [FindPackageShare("animation_controller"), "launch", "animation_config.yaml"]
     )
 
-    # Override specific parameters with launch arguments
-    animation_controller_params = [
-        robot_description,
-        animation_config_file,
-        {
-            "csv_file_path": LaunchConfiguration("csv_file"),
-            "frame_rate": LaunchConfiguration("frame_rate"),
-            "loop_animation": LaunchConfiguration("loop"),
-            "auto_start": LaunchConfiguration("auto_start"),
-        }
-    ]
-
     # Controller manager
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=animation_controller_params,
+        parameters=[animation_config_file],
         output="both",
     )
 
@@ -147,15 +135,6 @@ def generate_launch_description():
         output="both",
     )
 
-    # Camera node (only for real robot)
-    camera_node = Node(
-        package="camera_ros",
-        executable="camera_node",
-        output="both",
-        parameters=[{"format": "RGB888", "width": 1400, "height": 1050, "FrameDurationLimits": [1000000, 1000000]}],
-        condition=UnlessCondition(LaunchConfiguration("sim")),
-    )
-
     # Put them all together
     nodes = [
         robot_state_publisher,
@@ -164,7 +143,6 @@ def generate_launch_description():
         joint_state_broadcaster_spawner,
         imu_sensor_broadcaster_spawner,
         foxglove_bridge,
-        camera_node,
     ]
 
     return LaunchDescription([
