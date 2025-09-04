@@ -17,7 +17,8 @@ animation_controller:
 
     # CSV filename containing animation keyframes (must be in the launch folder)
     # Each row = keyframe, each column = joint position
-    csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
+    # csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
+    csv_file_path: "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0.csv"
 
     # Joint names in the order they appear in CSV columns (matching neural_controller)
     joint_names:
