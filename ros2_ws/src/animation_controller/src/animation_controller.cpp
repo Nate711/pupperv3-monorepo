@@ -1,6 +1,7 @@
 #include "animation_controller/animation_controller.hpp"
 
 #include <algorithm>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -46,10 +47,21 @@ bool AnimationController::load_animation_csv() {
     return false;
   }
 
-  std::ifstream file(params_.csv_file_path);
+  // Always resolve the CSV file path to the animation_controller launch folder
+  std::string resolved_path;
+  try {
+    std::string package_path = ament_index_cpp::get_package_share_directory("animation_controller");
+    resolved_path = package_path + "/launch/" + params_.csv_file_path;
+    RCLCPP_INFO(get_node()->get_logger(), "Loading animation from: %s", resolved_path.c_str());
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Failed to find animation_controller package: %s", e.what());
+    return false;
+  }
+
+  std::ifstream file(resolved_path);
   if (!file.is_open()) {
     RCLCPP_ERROR(get_node()->get_logger(), "Failed to open CSV file: %s",
-                 params_.csv_file_path.c_str());
+                 resolved_path.c_str());
     return false;
   }
 
@@ -162,7 +174,7 @@ bool AnimationController::load_animation_csv() {
   }
 
   RCLCPP_INFO(get_node()->get_logger(), "Loaded %zu keyframes from %s",
-              animation_keyframes_.size(), params_.csv_file_path.c_str());
+              animation_keyframes_.size(), resolved_path.c_str());
   return true;
 }
 

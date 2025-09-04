@@ -11,6 +11,7 @@ add_library(animation_controller SHARED
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(controller_interface REQUIRED)
 find_package(generate_parameter_library REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -35,6 +36,7 @@ target_include_directories(animation_controller PRIVATE include)
 
 ament_target_dependencies(
   animation_controller
+  ament_index_cpp
   controller_interface
   geometry_msgs
   hardware_interface

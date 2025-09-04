@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 200 # Hz
+    update_rate: 260 # Hz
 
     animation_controller:
       type: animation_controller/AnimationController
@@ -13,9 +13,11 @@ controller_manager:
 
 animation_controller:
   ros__parameters:
-    # Path to CSV file containing animation keyframes
+    update_rate: 260 # Hz
+
+    # CSV filename containing animation keyframes (must be in the launch folder)
     # Each row = keyframe, each column = joint position
-    csv_file_path: "/home/nathankau/pupperv3-monorepo/ros2_ws/src/animation_controller/launch/recording_2025-09-03_12-44-08_0.csv" # Set this to your CSV file path
+    csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
 
     # Joint names in the order they appear in CSV columns (matching neural_controller)
     joint_names:
