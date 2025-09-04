@@ -10,7 +10,6 @@ from launch.substitutions import (
     IfElseSubstitution,
 )
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
 from launch.conditions import IfCondition, UnlessCondition
 
@@ -78,16 +77,14 @@ def generate_launch_description():
     )
 
     # Animation controller parameters
-    animation_node_parameters = ParameterFile(
-        PathJoinSubstitution(
-            [FindPackageShare("animation_controller"), "launch", "animation_config.yaml"]
-        ),
-        allow_substs=True,
+    animation_config_file = PathJoinSubstitution(
+        [FindPackageShare("animation_controller"), "launch", "animation_config.yaml"]
     )
 
     # Override specific parameters with launch arguments
     animation_controller_params = [
-        animation_node_parameters,
+        robot_description,
+        animation_config_file,
         {
             "csv_file_path": LaunchConfiguration("csv_file"),
             "frame_rate": LaunchConfiguration("frame_rate"),
@@ -100,7 +97,7 @@ def generate_launch_description():
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[animation_controller_params],
+        parameters=animation_controller_params,
         output="both",
     )
 
