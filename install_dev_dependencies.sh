@@ -9,8 +9,9 @@ sudo apt update
 sudo apt install -y software-properties-common
 sudo add-apt-repository -y universe
 sudo apt update && sudo apt install curl -y
-sudo wget -q https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O /usr/share/keyrings/ros-archive-keyring.gpg
-sudo bash -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null'
+export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
+curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo $VERSION_CODENAME)_all.deb" # If using Ubuntu derivates use $UBUNTU_CODENAME
+sudo dpkg -i /tmp/ros2-apt-source.deb
 sudo apt update && sudo apt install -y ros-dev-tools
 sudo apt install -y ros-jazzy-desktop
 echo 'source /opt/ros/jazzy/setup.bash' >> $HOME/.bashrc
@@ -34,6 +35,7 @@ rosdep install --from-paths src -y --ignore-src --skip-keys=libcamera
 sudo apt install -y ros-jazzy-ros2-control ros-jazzy-ros2-controllers ros-jazzy-teleop-twist-joy ros-jazzy-foxglove-bridge ros-jazzy-xacro ros-jazzy-hardware-interface
 sudo apt install -y ros-jazzy-vision-msgs ros-jazzy-camera-calibration ros-jazzy-image-transport-plugins ros-jazzy-theora-image-transport ros-jazzy-compressed-depth-image-transport ros-jazzy-compressed-image-transport
 sudo apt install -y ros-jazzy-foxglove-bridge
+sudo apt install -y ros-jazzy-joy-linux
 
 # Upgrade packages near the end since it takes a long time
 sudo apt upgrade -y
