@@ -3,6 +3,7 @@
 #include <array>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -60,7 +61,7 @@ class AnimationController : public controller_interface::ControllerInterface {
   std::vector<std::array<double, kActionSize>> animation_keyframes_;
   
   // Playback state
-  rclcpp::Time animation_start_time_;
+  std::optional<rclcpp::Time> animation_start_time_;
   double current_animation_time_ = 0.0;
   size_t current_frame_index_ = 0;
   bool animation_active_ = false;

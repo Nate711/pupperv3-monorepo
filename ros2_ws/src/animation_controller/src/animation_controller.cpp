@@ -30,8 +30,8 @@ bool AnimationController::check_param_vector_size() {
 
   for (const auto &[name, size] : param_sizes) {
     if (size != kActionSize) {
-      RCLCPP_ERROR(get_node()->get_logger(), "%s size is %ld, expected %d", name.c_str(), size,
-                   kActionSize);
+      RCLCPP_ERROR(get_node()->get_logger(), "%s size is %ld, expected %d",
+                   name.c_str(), size, kActionSize);
       return false;
     }
   }
@@ -48,96 +48,111 @@ bool AnimationController::load_animation_csv() {
 
   std::ifstream file(params_.csv_file_path);
   if (!file.is_open()) {
-    RCLCPP_ERROR(get_node()->get_logger(), "Failed to open CSV file: %s", params_.csv_file_path.c_str());
+    RCLCPP_ERROR(get_node()->get_logger(), "Failed to open CSV file: %s",
+                 params_.csv_file_path.c_str());
     return false;
   }
 
   std::string line;
   size_t line_number = 0;
-  std::map<std::string, int> column_mapping;  // Maps joint names to column indices
+  std::map<std::string, int>
+      column_mapping; // Maps joint names to column indices
   bool header_parsed = false;
-  
+
   while (std::getline(file, line)) {
     line_number++;
-    
+
     // Skip empty lines and comments
-    if (line.empty() || line[0] == '#') continue;
-    
+    if (line.empty() || line[0] == '#')
+      continue;
+
     std::stringstream ss(line);
     std::string cell;
     std::vector<std::string> cells;
-    
+
     // Parse all cells in the line
     while (std::getline(ss, cell, ',')) {
-      // Trim whitespace
-      cell.erase(0, cell.find_first_not_of(" \t"));
-      cell.erase(cell.find_last_not_of(" \t") + 1);
+      // Trim whitespace including newlines
+      cell.erase(0, cell.find_first_not_of(" \t\r\n"));
+      cell.erase(cell.find_last_not_of(" \t\r\n") + 1);
       cells.push_back(cell);
     }
-    
+    // Get the last cell after the final comma (handles no trailing comma)
+    if (!ss.eof()) {
+      std::getline(ss, cell);
+      // Trim whitespace including newlines from last cell
+      cell.erase(0, cell.find_first_not_of(" \t\r\n"));
+      cell.erase(cell.find_last_not_of(" \t\r\n") + 1);
+      cells.push_back(cell);
+    }
+
     // Parse header if not yet parsed
     if (!header_parsed) {
       // Build column mapping from header
       for (size_t i = 0; i < cells.size(); i++) {
-        const std::string& column_name = cells[i];
-        
+        const std::string &column_name = cells[i];
+        RCLCPP_INFO(get_node()->get_logger(), "Found column '%s' at index %zu",
+                    column_name.c_str(), i);
+
         // Skip timestamp columns
         if (column_name == "timestamp_ns" || column_name == "timestamp_sec") {
           continue;
         }
-        
+
         // Check if this column corresponds to a joint we care about
         for (size_t j = 0; j < params_.joint_names.size(); j++) {
           if (column_name == params_.joint_names[j]) {
             column_mapping[params_.joint_names[j]] = static_cast<int>(i);
-            RCLCPP_DEBUG(get_node()->get_logger(), 
-                        "Mapped joint '%s' to column %zu", 
+            RCLCPP_INFO(get_node()->get_logger(),
+                        "Mapped joint '%s' to column %zu",
                         params_.joint_names[j].c_str(), i);
             break;
           }
         }
       }
-      
+
       // Verify all joints are found
-      for (const auto& joint_name : params_.joint_names) {
+      for (const auto &joint_name : params_.joint_names) {
         if (column_mapping.find(joint_name) == column_mapping.end()) {
-          RCLCPP_ERROR(get_node()->get_logger(), 
-                       "Joint '%s' not found in CSV header", joint_name.c_str());
+          RCLCPP_ERROR(get_node()->get_logger(),
+                       "Joint '%s' not found in CSV header",
+                       joint_name.c_str());
           return false;
         }
       }
-      
-      RCLCPP_INFO(get_node()->get_logger(), 
-                  "Successfully mapped %zu joints from CSV header", 
+
+      RCLCPP_INFO(get_node()->get_logger(),
+                  "Successfully mapped %zu joints from CSV header",
                   column_mapping.size());
       header_parsed = true;
       continue;
     }
-    
+
     // Parse data row
     std::array<double, kActionSize> keyframe;
-    
+
     for (size_t i = 0; i < params_.joint_names.size(); i++) {
-      const std::string& joint_name = params_.joint_names[i];
+      const std::string &joint_name = params_.joint_names[i];
       int col_idx = column_mapping[joint_name];
-      
+
       if (col_idx >= static_cast<int>(cells.size())) {
-        RCLCPP_ERROR(get_node()->get_logger(), 
-                     "Column index %d for joint '%s' out of range at line %zu", 
+        RCLCPP_ERROR(get_node()->get_logger(),
+                     "Column index %d for joint '%s' out of range at line %zu",
                      col_idx, joint_name.c_str(), line_number);
         return false;
       }
-      
+
       try {
         keyframe[i] = std::stod(cells[col_idx]);
-      } catch (const std::exception& e) {
-        RCLCPP_ERROR(get_node()->get_logger(), 
-                     "Failed to parse value '%s' for joint '%s' at line %zu: %s", 
-                     cells[col_idx].c_str(), joint_name.c_str(), line_number, e.what());
+      } catch (const std::exception &e) {
+        RCLCPP_ERROR(
+            get_node()->get_logger(),
+            "Failed to parse value '%s' for joint '%s' at line %zu: %s",
+            cells[col_idx].c_str(), joint_name.c_str(), line_number, e.what());
         return false;
       }
     }
-    
+
     animation_keyframes_.push_back(keyframe);
   }
 
@@ -146,22 +161,23 @@ bool AnimationController::load_animation_csv() {
     return false;
   }
 
-  RCLCPP_INFO(get_node()->get_logger(), "Loaded %zu keyframes from %s", 
+  RCLCPP_INFO(get_node()->get_logger(), "Loaded %zu keyframes from %s",
               animation_keyframes_.size(), params_.csv_file_path.c_str());
   return true;
 }
 
-void AnimationController::interpolate_keyframes(double alpha, size_t frame_a, size_t frame_b, 
-                                               std::array<double, kActionSize>& result) {
+void AnimationController::interpolate_keyframes(
+    double alpha, size_t frame_a, size_t frame_b,
+    std::array<double, kActionSize> &result) {
   // Clamp alpha to [0, 1]
   alpha = std::clamp(alpha, 0.0, 1.0);
-  
+
   // Clamp frame indices
   frame_a = std::min(frame_a, animation_keyframes_.size() - 1);
   frame_b = std::min(frame_b, animation_keyframes_.size() - 1);
-  
+
   for (size_t i = 0; i < kActionSize; i++) {
-    result[i] = animation_keyframes_[frame_a][i] * (1.0 - alpha) + 
+    result[i] = animation_keyframes_[frame_a][i] * (1.0 - alpha) +
                 animation_keyframes_[frame_b][i] * alpha;
   }
 }
@@ -172,16 +188,17 @@ controller_interface::CallbackReturn AnimationController::on_init() {
     params_ = param_listener_->get_params();
 
     if (params_.frame_rate <= 0.0) {
-      RCLCPP_ERROR(get_node()->get_logger(), "Frame rate must be > 0.0. Got %f", params_.frame_rate);
+      RCLCPP_ERROR(get_node()->get_logger(), "Frame rate must be > 0.0. Got %f",
+                   params_.frame_rate);
       return controller_interface::CallbackReturn::ERROR;
     }
 
     if (!load_animation_csv()) {
       return controller_interface::CallbackReturn::ERROR;
     }
-
   } catch (const std::exception &e) {
-    RCLCPP_ERROR(get_node()->get_logger(), "Exception thrown during init stage: %s", e.what());
+    RCLCPP_ERROR(get_node()->get_logger(),
+                 "Exception thrown during init stage: %s", e.what());
     return controller_interface::CallbackReturn::ERROR;
   }
 
@@ -194,38 +211,44 @@ controller_interface::CallbackReturn AnimationController::on_init() {
 
 controller_interface::CallbackReturn AnimationController::on_configure(
     const rclcpp_lifecycle::State & /*previous_state*/) {
-  RCLCPP_INFO(get_node()->get_logger(), "Animation controller configure successful");
+  RCLCPP_INFO(get_node()->get_logger(),
+              "Animation controller configure successful");
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::InterfaceConfiguration AnimationController::command_interface_configuration() const {
+controller_interface::InterfaceConfiguration
+AnimationController::command_interface_configuration() const {
   return controller_interface::InterfaceConfiguration{
       controller_interface::interface_configuration_type::ALL};
 }
 
-controller_interface::InterfaceConfiguration AnimationController::state_interface_configuration() const {
+controller_interface::InterfaceConfiguration
+AnimationController::state_interface_configuration() const {
   return controller_interface::InterfaceConfiguration{
       controller_interface::interface_configuration_type::ALL};
 }
 
 controller_interface::CallbackReturn AnimationController::on_activate(
     const rclcpp_lifecycle::State & /*previous_state*/) {
-  
+
   // Populate the command interfaces map
   RCLCPP_INFO(get_node()->get_logger(), "Populating command interfaces map");
   command_interfaces_map_.clear();
   for (auto &command_interface : command_interfaces_) {
-    RCLCPP_INFO(get_node()->get_logger(), "Prefix %s. Adding command interface %s",
+    RCLCPP_INFO(get_node()->get_logger(),
+                "Prefix %s. Adding command interface %s",
                 command_interface.get_prefix_name().c_str(),
                 command_interface.get_interface_name().c_str());
-    command_interfaces_map_[command_interface.get_prefix_name()].insert_or_assign(
-        command_interface.get_interface_name(), std::ref(command_interface));
+    command_interfaces_map_[command_interface.get_prefix_name()]
+        .insert_or_assign(command_interface.get_interface_name(),
+                          std::ref(command_interface));
   }
 
   // Populate the state interfaces map
   state_interfaces_map_.clear();
   for (auto &state_interface : state_interfaces_) {
-    RCLCPP_INFO(get_node()->get_logger(), "Prefix %s. Adding state interface %s",
+    RCLCPP_INFO(get_node()->get_logger(),
+                "Prefix %s. Adding state interface %s",
                 state_interface.get_prefix_name().c_str(),
                 state_interface.get_interface_name().c_str());
     state_interfaces_map_[state_interface.get_prefix_name()].insert_or_assign(
@@ -234,8 +257,10 @@ controller_interface::CallbackReturn AnimationController::on_activate(
 
   // Store the initial joint positions
   for (int i = 0; i < kActionSize; i++) {
-    init_joint_pos_[i] =
-        state_interfaces_map_.at(params_.joint_names[i]).at("position").get().get_value();
+    init_joint_pos_[i] = state_interfaces_map_.at(params_.joint_names[i])
+                             .at("position")
+                             .get()
+                             .get_value();
   }
 
   // Initialize target positions to first frame if available
@@ -245,7 +270,7 @@ controller_interface::CallbackReturn AnimationController::on_activate(
 
   // Reset animation state
   init_time_ = get_node()->now();
-  animation_start_time_ = get_node()->now();
+  animation_start_time_.reset(); // Will be set after interpolation completes
   current_animation_time_ = 0.0;
   current_frame_index_ = 0;
   estop_active_ = false;
@@ -255,9 +280,10 @@ controller_interface::CallbackReturn AnimationController::on_activate(
   play_animation_service_ = get_node()->create_service<std_srvs::srv::Empty>(
       "~/play_animation",
       [this](const std::shared_ptr<std_srvs::srv::Empty::Request> /*request*/,
-              std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
+             std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
         animation_active_ = true;
-        animation_start_time_ = get_node()->now();
+        init_time_ = get_node()->now();
+        animation_start_time_.reset(); // Will be set after interpolation
         current_animation_time_ = 0.0;
         current_frame_index_ = 0;
         RCLCPP_INFO(get_node()->get_logger(), "Animation playback started");
@@ -266,7 +292,7 @@ controller_interface::CallbackReturn AnimationController::on_activate(
   stop_animation_service_ = get_node()->create_service<std_srvs::srv::Empty>(
       "~/stop_animation",
       [this](const std::shared_ptr<std_srvs::srv::Empty::Request> /*request*/,
-              std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
+             std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
         animation_active_ = false;
         RCLCPP_INFO(get_node()->get_logger(), "Animation playback stopped");
       });
@@ -274,7 +300,7 @@ controller_interface::CallbackReturn AnimationController::on_activate(
   reset_animation_service_ = get_node()->create_service<std_srvs::srv::Empty>(
       "~/reset_animation",
       [this](const std::shared_ptr<std_srvs::srv::Empty::Request> /*request*/,
-              std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
+             std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
         animation_active_ = false;
         current_animation_time_ = 0.0;
         current_frame_index_ = 0;
@@ -285,12 +311,14 @@ controller_interface::CallbackReturn AnimationController::on_activate(
       });
 
   // Initialize the publisher
-  animation_state_publisher_ =
-      get_node()->create_publisher<AnimationStateMsg>("~/animation_state", rclcpp::SystemDefaultsQoS());
+  animation_state_publisher_ = get_node()->create_publisher<AnimationStateMsg>(
+      "~/animation_state", rclcpp::SystemDefaultsQoS());
   rt_animation_state_publisher_ =
-      std::make_shared<realtime_tools::RealtimePublisher<AnimationStateMsg>>(animation_state_publisher_);
+      std::make_shared<realtime_tools::RealtimePublisher<AnimationStateMsg>>(
+          animation_state_publisher_);
 
-  RCLCPP_INFO(get_node()->get_logger(), "Animation controller activate successful");
+  RCLCPP_INFO(get_node()->get_logger(),
+              "Animation controller activate successful");
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -323,15 +351,17 @@ controller_interface::CallbackReturn AnimationController::on_deactivate(
   // Release command and state interfaces from superclass
   release_interfaces();
 
-  RCLCPP_INFO(get_node()->get_logger(), "Animation controller deactivate successful");
+  RCLCPP_INFO(get_node()->get_logger(),
+              "Animation controller deactivate successful");
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::return_type AnimationController::update(const rclcpp::Time &time,
-                                                             const rclcpp::Duration &period) {
+controller_interface::return_type
+AnimationController::update(const rclcpp::Time &time,
+                            const rclcpp::Duration &period) {
   if (animation_keyframes_.empty()) {
-    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(), 5000, 
-                         "No animation keyframes loaded");
+    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(),
+                         5000, "No animation keyframes loaded");
     return controller_interface::return_type::OK;
   }
 
@@ -339,11 +369,13 @@ controller_interface::return_type AnimationController::update(const rclcpp::Time
   double time_since_init = (time - init_time_).seconds();
   if (time_since_init < params_.init_duration) {
     for (int i = 0; i < kActionSize; i++) {
-      // Interpolate between the initial joint positions and the first animation frame
+      // Interpolate between the initial joint positions and the first animation
+      // frame
       double interpolated_joint_pos =
           init_joint_pos_[i] * (1 - time_since_init / params_.init_duration) +
-          animation_keyframes_[0][i] * (time_since_init / params_.init_duration);
-      
+          animation_keyframes_[0][i] *
+              (time_since_init / params_.init_duration);
+
       command_interfaces_map_.at(params_.joint_names[i])
           .at("position")
           .get()
@@ -358,6 +390,12 @@ controller_interface::return_type AnimationController::update(const rclcpp::Time
           .set_value(params_.init_kds[i]);
     }
     return controller_interface::return_type::OK;
+  }
+
+  // Set animation start time after interpolation completes
+  if (time_since_init >= params_.init_duration &&
+      !animation_start_time_.has_value()) {
+    animation_start_time_ = time;
   }
 
   // If an emergency stop is active, set all commands to 0 and high damping
@@ -375,13 +413,13 @@ controller_interface::return_type AnimationController::update(const rclcpp::Time
   }
 
   // Update animation time if playing
-  if (animation_active_) {
-    current_animation_time_ = (time - animation_start_time_).seconds();
-    
+  if (animation_active_ && animation_start_time_.has_value()) {
+    current_animation_time_ = (time - animation_start_time_.value()).seconds();
+
     // Calculate current frame based on frame rate
     double frame_time = 1.0 / params_.frame_rate;
     double exact_frame = current_animation_time_ / frame_time;
-    
+
     // Check if animation has finished
     if (exact_frame >= animation_keyframes_.size()) {
       if (params_.loop_animation) {
@@ -395,15 +433,17 @@ controller_interface::return_type AnimationController::update(const rclcpp::Time
         exact_frame = animation_keyframes_.size() - 1;
       }
     }
-    
+
     current_frame_index_ = static_cast<size_t>(exact_frame);
-    
+
     // Calculate target positions
     if (params_.interpolation_enabled && animation_keyframes_.size() > 1) {
       // Interpolate between current and next frame
-      size_t next_frame = std::min(current_frame_index_ + 1, animation_keyframes_.size() - 1);
+      size_t next_frame =
+          std::min(current_frame_index_ + 1, animation_keyframes_.size() - 1);
       double alpha = exact_frame - current_frame_index_;
-      interpolate_keyframes(alpha, current_frame_index_, next_frame, target_positions_);
+      interpolate_keyframes(alpha, current_frame_index_, next_frame,
+                            target_positions_);
     } else {
       // Use exact frame positions (no interpolation)
       target_positions_ = animation_keyframes_[current_frame_index_];
@@ -428,21 +468,25 @@ controller_interface::return_type AnimationController::update(const rclcpp::Time
 
   // Publish animation state
   if (rt_animation_state_publisher_->trylock()) {
-    rt_animation_state_publisher_->msg_.data.resize(kActionSize + 3);  // positions + metadata
+    rt_animation_state_publisher_->msg_.data.resize(kActionSize +
+                                                    3); // positions + metadata
     for (int i = 0; i < kActionSize; i++) {
       rt_animation_state_publisher_->msg_.data[i] = target_positions_[i];
     }
     // Add metadata: current_frame, total_frames, animation_active
-    rt_animation_state_publisher_->msg_.data[kActionSize] = static_cast<float>(current_frame_index_);
-    rt_animation_state_publisher_->msg_.data[kActionSize + 1] = static_cast<float>(animation_keyframes_.size());
-    rt_animation_state_publisher_->msg_.data[kActionSize + 2] = animation_active_ ? 1.0f : 0.0f;
+    rt_animation_state_publisher_->msg_.data[kActionSize] =
+        static_cast<float>(current_frame_index_);
+    rt_animation_state_publisher_->msg_.data[kActionSize + 1] =
+        static_cast<float>(animation_keyframes_.size());
+    rt_animation_state_publisher_->msg_.data[kActionSize + 2] =
+        animation_active_ ? 1.0f : 0.0f;
     rt_animation_state_publisher_->unlockAndPublish();
   }
 
   return controller_interface::return_type::OK;
 }
 
-}  // namespace animation_controller
+} // namespace animation_controller
 
 #include "pluginlib/class_list_macros.hpp"
 PLUGINLIB_EXPORT_CLASS(animation_controller::AnimationController,
