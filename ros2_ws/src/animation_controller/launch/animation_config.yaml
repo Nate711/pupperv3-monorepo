@@ -19,7 +19,8 @@ animation_controller:
     # Each row = keyframe, each column = joint position
     # csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
     # csv_file_path: "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0.csv"
-    csv_file_path: "stand_sit_stand_recording_2025-09-03_12-46-36_0.csv"
+    # csv_file_path: "stand_sit_stand_recording_2025-09-03_12-46-36_0.csv"
+    csv_file_path: "twerk_recording_2025-09-04_16-14-51_0.csv"
 
     # Joint names in the order they appear in CSV columns (matching neural_controller)
     joint_names:
