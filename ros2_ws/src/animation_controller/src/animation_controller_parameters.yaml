@@ -9,7 +9,20 @@ animation_controller:
   joint_names:
     {
       type: string_array,
-      default_value: [],
+      default_value: [
+        "leg_front_r_1",
+        "leg_front_r_2",
+        "leg_front_r_3",
+        "leg_front_l_1",
+        "leg_front_l_2",
+        "leg_front_l_3",
+        "leg_back_r_1",
+        "leg_back_r_2",
+        "leg_back_r_3",
+        "leg_back_l_1",
+        "leg_back_l_2",
+        "leg_back_l_3"
+      ],
       description: "Names of the joints to control, in the order they appear in the CSV columns",
     }
 
@@ -30,42 +43,42 @@ animation_controller:
   loop_animation:
     {
       type: bool,
-      default_value: false,
+      default_value: true,
       description: "Whether to loop the animation continuously",
     }
 
   auto_start:
     {
       type: bool,
-      default_value: false,
+      default_value: true,
       description: "Whether to start the animation automatically when the controller is activated",
     }
 
   kps:
     {
       type: double_array,
-      default_value: [],
+      default_value: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
       description: "Position gains for the joints",
     }
 
   kds:
     {
       type: double_array,
-      default_value: [],
+      default_value: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
       description: "Velocity gains for the joints",
     }
 
   init_kps:
     {
       type: double_array,
-      default_value: [],
+      default_value: [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5],
       description: "Position gains for the joints during initialization (return to starting position)",
     }
 
   init_kds:
     {
       type: double_array,
-      default_value: [],
+      default_value: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
       description: "Velocity gains for the joints during initialization (return to starting position)",
     }
 

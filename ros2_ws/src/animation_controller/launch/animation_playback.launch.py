@@ -45,7 +45,7 @@ def generate_launch_description():
 
     declare_auto_start_arg = DeclareLaunchArgument(
         name="auto_start",
-        default_value="False", 
+        default_value="False",
         description="Whether to start the animation automatically when the controller is activated",
     )
 
@@ -63,9 +63,7 @@ def generate_launch_description():
     )
 
     # Create the robot_description using xacro
-    robot_description_content = Command(
-        [PathJoinSubstitution([FindExecutable(name="xacro")]), " ", xacro_file]
-    )
+    robot_description_content = Command([PathJoinSubstitution([FindExecutable(name="xacro")]), " ", xacro_file])
     robot_description = {"robot_description": robot_description_content}
 
     # Robot State Publisher
@@ -89,16 +87,56 @@ def generate_launch_description():
         output="both",
     )
 
-    # Animation controller spawner
-    animation_controller_spawner = Node(
+    # Spawn multiple animation controllers
+    twerk_animation_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=[
-            "animation_controller",
+            "twerk_animation_controller",
             "--controller-manager",
             "/controller_manager",
             "--controller-manager-timeout",
             "30",
+            "--inactive",  # Start inactive, activate when needed
+        ],
+    )
+
+    lie_sit_animation_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "lie_sit_animation_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",  # Start inactive, activate when needed
+        ],
+    )
+
+    stand_sit_shake_animation_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "stand_sit_shake_animation_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",  # Start inactive, activate when needed
+        ],
+    )
+
+    stand_sit_stand_animation_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "stand_sit_stand_animation_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",  # Start inactive, activate when needed
         ],
     )
 
@@ -139,17 +177,22 @@ def generate_launch_description():
     nodes = [
         robot_state_publisher,
         control_node,
-        animation_controller_spawner,
+        twerk_animation_controller_spawner,
+        lie_sit_animation_controller_spawner,
+        stand_sit_shake_animation_controller_spawner,
+        stand_sit_stand_animation_controller_spawner,
         joint_state_broadcaster_spawner,
         imu_sensor_broadcaster_spawner,
         foxglove_bridge,
     ]
 
-    return LaunchDescription([
-        declare_sim_arg,
-        declare_csv_file_arg,
-        declare_frame_rate_arg,
-        declare_loop_arg,
-        declare_auto_start_arg,
-        *nodes
-    ])
+    return LaunchDescription(
+        [
+            declare_sim_arg,
+            declare_csv_file_arg,
+            declare_frame_rate_arg,
+            declare_loop_arg,
+            declare_auto_start_arg,
+            *nodes,
+        ]
+    )

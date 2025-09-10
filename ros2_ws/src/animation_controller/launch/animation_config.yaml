@@ -2,7 +2,17 @@ controller_manager:
   ros__parameters:
     update_rate: 260 # Hz
 
-    animation_controller:
+    # Define multiple animation controllers
+    twerk_animation_controller:
+      type: animation_controller/AnimationController
+
+    lie_sit_animation_controller:
+      type: animation_controller/AnimationController
+
+    stand_sit_shake_animation_controller:
+      type: animation_controller/AnimationController
+
+    stand_sit_stand_animation_controller:
       type: animation_controller/AnimationController
 
     joint_state_broadcaster:
@@ -11,51 +21,29 @@ controller_manager:
     imu_sensor_broadcaster:
       type: imu_sensor_broadcaster/IMUSensorBroadcaster
 
-animation_controller:
+# Twerk animation controller
+twerk_animation_controller:
   ros__parameters:
     update_rate: 260 # Hz
-
-    # CSV filename containing animation keyframes (must be in the launch folder)
-    # Each row = keyframe, each column = joint position
-    # csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
-    # csv_file_path: "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0.csv"
-    # csv_file_path: "stand_sit_stand_recording_2025-09-03_12-46-36_0.csv"
     csv_file_path: "twerk_recording_2025-09-04_16-14-51_0.csv"
 
-    # Joint names in the order they appear in CSV columns (matching neural_controller)
-    joint_names:
-      - "leg_front_r_1"
-      - "leg_front_r_2"
-      - "leg_front_r_3"
-      - "leg_front_l_1"
-      - "leg_front_l_2"
-      - "leg_front_l_3"
-      - "leg_back_r_1"
-      - "leg_back_r_2"
-      - "leg_back_r_3"
-      - "leg_back_l_1"
-      - "leg_back_l_2"
-      - "leg_back_l_3"
+# Lie-sit-lie animation controller
+lie_sit_animation_controller:
+  ros__parameters:
+    update_rate: 260 # Hz
+    csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
 
-    # Animation playback settings
-    frame_rate: 30.0 # Hz
-    interpolation_enabled: true # Smooth interpolation between keyframes
-    loop_animation: true # Loop animation continuously
-    auto_start: true # Start animation automatically when activated
+# Stand-sit-shake-stand animation controller
+stand_sit_shake_animation_controller:
+  ros__parameters:
+    update_rate: 260 # Hz
+    csv_file_path: "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0.csv"
 
-    # Control gains for all joints (kp=5, kd=0.25)
-    kps: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
-    kds:
-      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
-
-    # Initialization gains (for smooth startup to first frame, matching neural_controller)
-    init_kps: [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5]
-    init_kds:
-      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
-
-    # Timing parameters (matching neural_controller)
-    init_duration: 2.0 # Time to move to first frame on startup (seconds)
-    estop_kd: 0.1 # Emergency stop damping
+# Stand-sit-stand animation controller
+stand_sit_stand_animation_controller:
+  ros__parameters:
+    update_rate: 260 # Hz
+    csv_file_path: "stand_sit_stand_recording_2025-09-03_12-46-36_0.csv"
 
 joint_state_broadcaster:
   ros__parameters:
