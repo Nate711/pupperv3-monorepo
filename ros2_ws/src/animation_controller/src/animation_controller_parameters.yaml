@@ -34,13 +34,6 @@ animation_controller:
       description: "Playback frame rate in Hz",
     }
 
-  interpolation_enabled:
-    {
-      type: bool,
-      default_value: true,
-      description: "Whether to interpolate between keyframes for smooth animation",
-    }
-
   loop_animation:
     {
       type: bool,
@@ -114,9 +107,3 @@ animation_controller:
       description: "Time to move to the first animation frame on startup",
     }
 
-  estop_kd:
-    {
-      type: double,
-      default_value: 0.1,
-      description: "Velocity gain for the joints during emergency stop",
-    }

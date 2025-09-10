@@ -252,8 +252,6 @@ void AnimationController::switch_animation(const std::string& animation_name) {
   // Reset animation state for new animation
   current_animation_time_ = 0.0;
   current_frame_index_ = 0;
-  animation_switch_requested_ = true;
-  animation_switch_time_ = get_node()->now();
   
   // If not currently playing, start playing the new animation
   if (!animation_active_) {
@@ -267,7 +265,15 @@ void AnimationController::interpolate_keyframes(
     double alpha, size_t frame_a, size_t frame_b,
     std::array<double, kActionSize> &result) {
   auto it = animations_.find(current_animation_name_);
-  if (it == animations_.end() || it->second.empty()) {
+  if (it == animations_.end()) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Animation '%s' not found in loaded animations", 
+                 current_animation_name_.c_str());
+    return;
+  }
+  
+  if (it->second.empty()) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Animation '%s' has no keyframes", 
+                 current_animation_name_.c_str());
     return;
   }
 
@@ -368,7 +374,13 @@ controller_interface::CallbackReturn AnimationController::on_activate(
 
   // Initialize target positions to first frame if available
   auto it = animations_.find(current_animation_name_);
-  if (it != animations_.end() && !it->second.empty()) {
+  if (it == animations_.end()) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Cannot initialize: animation '%s' not found", 
+                 current_animation_name_.c_str());
+  } else if (it->second.empty()) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Cannot initialize: animation '%s' has no keyframes", 
+                 current_animation_name_.c_str());
+  } else {
     target_positions_ = it->second[0];
   }
 
@@ -377,7 +389,6 @@ controller_interface::CallbackReturn AnimationController::on_activate(
   animation_start_time_.reset(); // Will be set after interpolation completes
   current_animation_time_ = 0.0;
   current_frame_index_ = 0;
-  estop_active_ = false;
   animation_active_ = false; // Only start when explicitly requested via topic
 
   // Create animation selection subscriber
@@ -418,7 +429,7 @@ controller_interface::CallbackReturn AnimationController::on_deactivate(
     command_interfaces_map_.at(params_.joint_names[i])
         .at("kd")
         .get()
-        .set_value(params_.estop_kd);
+        .set_value(0.1); // High damping for safe deactivation
   }
 
   // Clear RT buffer
@@ -452,9 +463,15 @@ AnimationController::update(const rclcpp::Time &time,
   }
   
   auto it = animations_.find(current_animation_name_);
-  if (it == animations_.end() || it->second.empty()) {
-    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(),
-                         5000, "No animation keyframes loaded for '%s'", current_animation_name_.c_str());
+  if (it == animations_.end()) {
+    RCLCPP_ERROR_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(),
+                         5000, "Animation '%s' not found in loaded animations", current_animation_name_.c_str());
+    return controller_interface::return_type::OK;
+  }
+  
+  if (it->second.empty()) {
+    RCLCPP_ERROR_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(),
+                         5000, "Animation '%s' has no keyframes", current_animation_name_.c_str());
     return controller_interface::return_type::OK;
   }
   const auto& keyframes = it->second;
@@ -463,8 +480,7 @@ AnimationController::update(const rclcpp::Time &time,
   double time_since_init = (time - init_time_).seconds();
   if (time_since_init < params_.init_duration) {
     for (int i = 0; i < kActionSize; i++) {
-      // Interpolate between the initial joint positions and the first animation
-      // frame (handle animation switches during init)
+      // Interpolate between the initial joint positions and the first animation frame
       const auto& target_first_frame = keyframes[0];
       
       double interpolated_joint_pos =
@@ -493,19 +509,7 @@ AnimationController::update(const rclcpp::Time &time,
     animation_start_time_ = time;
   }
 
-  // If an emergency stop is active, set all commands to 0 and high damping
-  if (estop_active_) {
-    for (auto &command_interface : command_interfaces_) {
-      command_interface.set_value(0.0);
-    }
-    for (int i = 0; i < kActionSize; i++) {
-      command_interfaces_map_.at(params_.joint_names[i])
-          .at("kd")
-          .get()
-          .set_value(params_.estop_kd);
-    }
-    return controller_interface::return_type::OK;
-  }
+  // Emergency stop logic removed - handled by controller manager
 
   // Update animation time if playing
   if (animation_active_ && animation_start_time_.has_value()) {
@@ -531,8 +535,8 @@ AnimationController::update(const rclcpp::Time &time,
 
     current_frame_index_ = static_cast<size_t>(exact_frame);
 
-    // Calculate target positions
-    if (params_.interpolation_enabled && keyframes.size() > 1) {
+    // Calculate target positions with interpolation for smooth animation
+    if (keyframes.size() > 1) {
       // Interpolate between current and next frame
       size_t next_frame =
           std::min(current_frame_index_ + 1, keyframes.size() - 1);
@@ -540,14 +544,10 @@ AnimationController::update(const rclcpp::Time &time,
       interpolate_keyframes(alpha, current_frame_index_, next_frame,
                             target_positions_);
     } else {
-      // Use exact frame positions (no interpolation)
+      // Use exact frame positions (single frame animation)
       target_positions_ = keyframes[current_frame_index_];
     }
     
-    // Clear animation switch flag after successful frame calculation
-    if (animation_switch_requested_) {
-      animation_switch_requested_ = false;
-    }
   }
   }
 
