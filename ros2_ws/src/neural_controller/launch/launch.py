@@ -144,6 +144,59 @@ def generate_launch_description():
         ],
     )
 
+    # Animation controller spawners
+    twerk_animation_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "twerk_animation_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
+    lie_sit_lie_animation_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "lie_sit_lie_animation_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
+    stand_sit_shake_sit_stand_animation_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "stand_sit_shake_sit_stand_animation_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
+    stand_sit_stand_animation_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "stand_sit_stand_animation_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
@@ -227,6 +280,11 @@ def generate_launch_description():
         control_node,
         robot_controller_spawner,
         three_legged_robot_controller_spawner,
+        # Animation controller spawners
+        twerk_animation_controller_spawner,
+        lie_sit_lie_animation_controller_spawner,
+        stand_sit_shake_sit_stand_animation_controller_spawner,
+        stand_sit_stand_animation_controller_spawner,
         joint_state_broadcaster_spawner,
         # Comment/uncomment as needed:
         imu_sensor_broadcaster_spawner,

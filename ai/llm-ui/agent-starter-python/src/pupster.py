@@ -179,6 +179,27 @@ class PupsterAgent(Agent):
         return await self.tool_impl.queue_wait(duration)
 
     @function_tool
+    async def queue_animation(self, context: RunContext, animation_name: str):
+        """Use this tool to queue an animation sequence. This switches to a pre-recorded animation controller.
+
+        Available animations:
+        - "twerk": Makes the robot twerk
+        - "sit" or "stand_sit_stand": Makes the robot sit down and stand back up
+        - "lie_down" or "lie_sit_lie": Makes the robot lie down
+        - "shake" or "stand_sit_shake_sit_stand": Makes the robot sit, shake, and stand
+
+        Args:
+            animation_name (str): The name of the animation to play (e.g., 'twerk', 'sit', 'lie_down', 'shake')
+
+        Example:
+            To make the robot twerk: queue_animation(animation_name="twerk")
+            To make the robot sit: queue_animation(animation_name="sit")
+        """
+        logger.info(f"Queueing animation: {animation_name}")
+
+        return await self.tool_impl.queue_animation(animation_name)
+
+    @function_tool
     async def reset_command_queue(self, context: RunContext):
         """Use this tool to remove all pending commands from the command queue."""
         logger.info(f"Resetting command queue")

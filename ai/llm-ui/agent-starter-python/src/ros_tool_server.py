@@ -23,6 +23,18 @@ CONTROLLER_NAME_MAP = {
     "3-legged": "neural_controller_three_legged",
 }
 
+# Animation controller names mapping
+ANIMATION_CONTROLLERS = {
+    "twerk": "twerk_animation_controller",
+    "lie_sit_lie": "lie_sit_lie_animation_controller", 
+    "lie_down": "lie_sit_lie_animation_controller",
+    "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_animation_controller",
+    "stand_sit_shake": "stand_sit_shake_sit_stand_animation_controller",
+    "shake": "stand_sit_shake_sit_stand_animation_controller",
+    "stand_sit_stand": "stand_sit_stand_animation_controller",
+    "sit": "stand_sit_stand_animation_controller",
+}
+
 
 @dataclass
 class MoveCfg:
@@ -194,6 +206,39 @@ class DeactivateCommand(Command):
         else:
             logger.error("❌ Failed to deactivate robot")
             return False, "Failed to deactivate robot - controller switch failed"
+
+
+class AnimationCommand(Command):
+    def __init__(self, animation_name: str):
+        super().__init__(f"animation_{animation_name}")
+        self.animation_name = animation_name
+        
+        # Validate animation name
+        if animation_name not in ANIMATION_CONTROLLERS:
+            raise ValueError(
+                f"Unknown animation '{animation_name}'. Available animations: {list(ANIMATION_CONTROLLERS.keys())}"
+            )
+        
+        self.controller_name = ANIMATION_CONTROLLERS[animation_name]
+
+    async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
+        req = SwitchController.Request()
+        
+        # Deactivate all other controllers and activate the animation controller
+        all_controllers = list(AVAILABLE_CONTROLLERS) + list(ANIMATION_CONTROLLERS.values())
+        req.activate_controllers = [self.controller_name]
+        req.deactivate_controllers = [c for c in all_controllers if c != self.controller_name]
+        req.strictness = 1
+
+        future = server.switch_controller_client.call_async(req)
+        rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
+
+        if future.done() and future.result().ok:
+            logger.info(f"🎭 Animation '{self.animation_name}' started")
+            return True, f"Animation '{self.animation_name}' started successfully"
+        else:
+            logger.error(f"❌ Failed to start animation '{self.animation_name}'")
+            return False, f"Failed to start animation '{self.animation_name}' - controller switch failed"
 
 
 class RosToolServer(ToolServer):
@@ -373,6 +418,17 @@ class RosToolServer(ToolServer):
         logger.info(f"Queueing wait command for {duration} seconds")
         await self.add_command(WaitCommand(duration))
         return True, f"Wait command for {duration} seconds queued"
+
+    async def queue_animation(self, animation_name: str):
+        """Queue an animation command"""
+        logger.info(f"Queueing animation command: {animation_name}")
+        try:
+            animation_cmd = AnimationCommand(animation_name)
+            await self.add_command(animation_cmd)
+            return True, f"Animation '{animation_name}' queued"
+        except ValueError as e:
+            logger.warning(f"Invalid animation name: {e}")
+            return False, str(e)
 
     async def _interrupt_and_stop(self) -> Tuple[bool, str]:
         """Interrupt current command and immediately stop the robot"""

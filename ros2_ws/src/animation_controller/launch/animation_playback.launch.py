@@ -101,11 +101,11 @@ def generate_launch_description():
         ],
     )
 
-    lie_sit_animation_controller_spawner = Node(
+    lie_sit_lie_animation_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=[
-            "lie_sit_animation_controller",
+            "lie_sit_lie_animation_controller",
             "--controller-manager",
             "/controller_manager",
             "--controller-manager-timeout",
@@ -114,11 +114,11 @@ def generate_launch_description():
         ],
     )
 
-    stand_sit_shake_animation_controller_spawner = Node(
+    stand_sit_shake_sit_stand_animation_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=[
-            "stand_sit_shake_animation_controller",
+            "stand_sit_shake_sit_stand_animation_controller",
             "--controller-manager",
             "/controller_manager",
             "--controller-manager-timeout",
@@ -178,8 +178,8 @@ def generate_launch_description():
         robot_state_publisher,
         control_node,
         twerk_animation_controller_spawner,
-        lie_sit_animation_controller_spawner,
-        stand_sit_shake_animation_controller_spawner,
+        lie_sit_lie_animation_controller_spawner,
+        stand_sit_shake_sit_stand_animation_controller_spawner,
         stand_sit_stand_animation_controller_spawner,
         joint_state_broadcaster_spawner,
         imu_sensor_broadcaster_spawner,

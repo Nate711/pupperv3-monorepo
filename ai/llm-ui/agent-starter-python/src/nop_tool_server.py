@@ -38,6 +38,10 @@ class NopToolServer(ToolServer):
         logger.info(f"NOOP queue_wait called for {duration} seconds")
         return True, f"NOOP wait queued for {duration} seconds"
 
+    async def queue_animation(self, animation_name: str) -> Tuple[bool, str]:
+        logger.info(f"NOOP queue_animation called: animation_name={animation_name}")
+        return True, f"NOOP animation '{animation_name}' queued"
+
     async def clear_queue(self) -> Tuple[bool, str]:
         logger.info("NOOP clear_queue called")
         return True, "NOOP cleared command queue"

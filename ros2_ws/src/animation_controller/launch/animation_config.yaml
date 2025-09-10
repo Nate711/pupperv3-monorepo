@@ -6,10 +6,10 @@ controller_manager:
     twerk_animation_controller:
       type: animation_controller/AnimationController
 
-    lie_sit_animation_controller:
+    lie_sit_lie_animation_controller:
       type: animation_controller/AnimationController
 
-    stand_sit_shake_animation_controller:
+    stand_sit_shake_sit_stand_animation_controller:
       type: animation_controller/AnimationController
 
     stand_sit_stand_animation_controller:
@@ -28,13 +28,13 @@ twerk_animation_controller:
     csv_file_path: "twerk_recording_2025-09-04_16-14-51_0.csv"
 
 # Lie-sit-lie animation controller
-lie_sit_animation_controller:
+lie_sit_lie_animation_controller:
   ros__parameters:
     update_rate: 260 # Hz
     csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
 
-# Stand-sit-shake-stand animation controller
-stand_sit_shake_animation_controller:
+# Stand-sit-shake-sit-stand animation controller
+stand_sit_shake_sit_stand_animation_controller:
   ros__parameters:
     update_rate: 260 # Hz
     csv_file_path: "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0.csv"

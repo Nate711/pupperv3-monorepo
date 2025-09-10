@@ -40,6 +40,18 @@ class ToolServer(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def queue_animation(self, animation_name: str) -> Tuple[bool, str]:
+        """Queue an animation sequence.
+        
+        Args:
+            animation_name: Name of the animation to play (e.g., 'twerk', 'sit', 'lie_down')
+            
+        Returns:
+            Tuple of (success, message) indicating if the animation was queued successfully
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def clear_queue(self) -> Tuple[bool, str]:
         """Clear any pending commands from the queue."""
         raise NotImplementedError
