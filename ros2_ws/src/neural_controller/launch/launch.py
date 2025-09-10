@@ -158,6 +158,46 @@ def generate_launch_description():
         ],
     )
 
+    # Forward command controllers for animation system (inactive by default)
+    forward_position_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "forward_position_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
+    forward_kp_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "forward_kp_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
+    forward_kd_controller_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "forward_kd_controller",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "30",
+            "--inactive",
+        ],
+    )
+
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
@@ -233,6 +273,14 @@ def generate_launch_description():
         output="both",
     )
 
+    animation_controller_py_node = Node(
+        package="animation_controller_py",
+        executable="animation_controller_py",
+        name="animation_controller_py",
+        parameters=[node_parameters],
+        output="both",
+    )
+
     #
     # 7. Put them all together
     #
@@ -242,7 +290,11 @@ def generate_launch_description():
         robot_controller_spawner,
         three_legged_robot_controller_spawner,
         # Animation controller spawner
-        animation_controller_spawner,
+        # animation_controller_spawner,
+        # Forward command controllers for animation
+        forward_position_controller_spawner,
+        forward_kp_controller_spawner,
+        forward_kd_controller_spawner,
         joint_state_broadcaster_spawner,
         # Comment/uncomment as needed:
         imu_sensor_broadcaster_spawner,
@@ -254,7 +306,8 @@ def generate_launch_description():
         camera_node,
         cmd_vel_mux_node,
         bag_recorder_node,
-        imu_to_tf_node
+        imu_to_tf_node,
+        animation_controller_py_node,
     ]
 
     #

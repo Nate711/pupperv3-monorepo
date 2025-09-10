@@ -14,6 +14,16 @@ controller_manager:
     animation_controller:
       type: animation_controller/AnimationController
 
+    # Forward command controllers for animation
+    forward_position_controller:
+      type: forward_command_controller/ForwardCommandController
+
+    forward_kp_controller:
+      type: forward_command_controller/ForwardCommandController
+
+    forward_kd_controller:
+      type: forward_command_controller/ForwardCommandController
+
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
@@ -182,3 +192,55 @@ animation_controller:
   ros__parameters:
     update_rate: 260 # Hz
     default_animation: "twerk_recording_2025-09-04_16-14-51_0"
+
+# Forward command controllers for animation system
+forward_position_controller:
+  ros__parameters:
+    joints:
+      - leg_front_r_1
+      - leg_front_r_2
+      - leg_front_r_3
+      - leg_front_l_1
+      - leg_front_l_2
+      - leg_front_l_3
+      - leg_back_r_1
+      - leg_back_r_2
+      - leg_back_r_3
+      - leg_back_l_1
+      - leg_back_l_2
+      - leg_back_l_3
+    interface_name: position
+
+forward_kp_controller:
+  ros__parameters:
+    joints:
+      - leg_front_r_1
+      - leg_front_r_2
+      - leg_front_r_3
+      - leg_front_l_1
+      - leg_front_l_2
+      - leg_front_l_3
+      - leg_back_r_1
+      - leg_back_r_2
+      - leg_back_r_3
+      - leg_back_l_1
+      - leg_back_l_2
+      - leg_back_l_3
+    interface_name: kp
+
+forward_kd_controller:
+  ros__parameters:
+    joints:
+      - leg_front_r_1
+      - leg_front_r_2
+      - leg_front_r_3
+      - leg_front_l_1
+      - leg_front_l_2
+      - leg_front_l_3
+      - leg_back_r_1
+      - leg_back_r_2
+      - leg_back_r_3
+      - leg_back_l_1
+      - leg_back_l_2
+      - leg_back_l_3
+    interface_name: kd

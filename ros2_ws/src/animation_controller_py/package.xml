@@ -10,6 +10,7 @@
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>ament_index_python</depend>
+  <depend>controller_manager_msgs</depend>
   <depend>python3-pandas</depend>
   <depend>python3-numpy</depend>
 
