@@ -18,7 +18,13 @@ from abc import ABC, abstractmethod
 import time
 
 logger = logging.getLogger("ros_tool_server")
-AVAILABLE_CONTROLLERS = {"neural_controller", "neural_controller_three_legged"}
+AVAILABLE_CONTROLLERS = {
+    "neural_controller",
+    "neural_controller_three_legged",
+    "forward_kp_controller",
+    "forward_position_controller",
+    "forward_kd_controller",
+}
 CONTROLLER_NAME_MAP = {
     "4-legged": "neural_controller",
     "3-legged": "neural_controller_three_legged",
@@ -31,7 +37,7 @@ ANIMATION_CONTROLLER_NAME = "animation_controller"
 ANIMATION_NAMES = {
     "twerk": "twerk_recording_2025-09-04_16-14-51_0",
     "lie_sit_lie": "lie_sit_lie_recording_2025-09-03_12-44-08_0",
-    "lie_down": "lie_sit_lie_recording_2025-09-03_12-44-08_0", 
+    "lie_down": "lie_sit_lie_recording_2025-09-03_12-44-08_0",
     "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
     "stand_sit_shake": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
     "shake": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
@@ -216,13 +222,13 @@ class AnimationCommand(Command):
     def __init__(self, animation_name: str):
         super().__init__(f"animation_{animation_name}")
         self.animation_name = animation_name
-        
+
         # Validate animation name and resolve alias
         if animation_name not in ANIMATION_NAMES:
             raise ValueError(
                 f"Unknown animation '{animation_name}'. Available animations: {list(ANIMATION_NAMES.keys())}"
             )
-        
+
         # Get the actual animation name (resolves aliases)
         self.actual_animation_name = ANIMATION_NAMES[animation_name]
 
@@ -241,23 +247,21 @@ class AnimationCommand(Command):
             if not (future.done() and future.result().ok):
                 logger.error(f"❌ Failed to switch to animation controller for animation '{self.animation_name}'")
                 return False, f"Failed to switch to animation controller for animation '{self.animation_name}'"
-            
+
             # Then, publish the animation name to the controller's topic
             topic_name = f"/{ANIMATION_CONTROLLER_NAME}/animation_select"
             if topic_name not in server.animation_publishers:
                 # Create publisher if it doesn't exist
-                server.animation_publishers[topic_name] = server.node.create_publisher(
-                    String, topic_name, 10
-                )
-            
+                server.animation_publishers[topic_name] = server.node.create_publisher(String, topic_name, 10)
+
             # Publish animation selection
             msg = String()
             msg.data = self.actual_animation_name
             server.animation_publishers[topic_name].publish(msg)
-            
+
             logger.info(f"🎭 Animation '{self.animation_name}' (actual: '{self.actual_animation_name}') started")
             return True, f"Animation '{self.animation_name}' started successfully"
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to start animation '{self.animation_name}': {e}")
             return False, f"Failed to start animation '{self.animation_name}': {e}"
@@ -281,7 +285,7 @@ class RosToolServer(ToolServer):
 
         # Create twist publisher for movement commands
         self.twist_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
-        
+
         # Dictionary to hold animation publishers (created on demand)
         self.animation_publishers = {}
 
