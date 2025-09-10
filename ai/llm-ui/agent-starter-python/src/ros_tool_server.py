@@ -26,13 +26,9 @@ CONTROLLER_NAME_MAP = {
 # Animation controller names mapping
 ANIMATION_CONTROLLERS = {
     "twerk": "twerk_animation_controller",
-    "lie_sit_lie": "lie_sit_lie_animation_controller", 
-    "lie_down": "lie_sit_lie_animation_controller",
+    "lie_sit_lie": "lie_sit_lie_animation_controller",
     "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_animation_controller",
-    "stand_sit_shake": "stand_sit_shake_sit_stand_animation_controller",
-    "shake": "stand_sit_shake_sit_stand_animation_controller",
     "stand_sit_stand": "stand_sit_stand_animation_controller",
-    "sit": "stand_sit_stand_animation_controller",
 }
 
 
@@ -212,18 +208,18 @@ class AnimationCommand(Command):
     def __init__(self, animation_name: str):
         super().__init__(f"animation_{animation_name}")
         self.animation_name = animation_name
-        
+
         # Validate animation name
         if animation_name not in ANIMATION_CONTROLLERS:
             raise ValueError(
                 f"Unknown animation '{animation_name}'. Available animations: {list(ANIMATION_CONTROLLERS.keys())}"
             )
-        
+
         self.controller_name = ANIMATION_CONTROLLERS[animation_name]
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
         req = SwitchController.Request()
-        
+
         # Deactivate all other controllers and activate the animation controller
         all_controllers = list(AVAILABLE_CONTROLLERS) + list(ANIMATION_CONTROLLERS.values())
         req.activate_controllers = [self.controller_name]

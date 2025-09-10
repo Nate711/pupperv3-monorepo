@@ -184,9 +184,9 @@ class PupsterAgent(Agent):
 
         Available animations:
         - "twerk": Makes the robot twerk
-        - "sit" or "stand_sit_stand": Makes the robot sit down and stand back up
-        - "lie_down" or "lie_sit_lie": Makes the robot lie down
-        - "shake" or "stand_sit_shake_sit_stand": Makes the robot sit, shake, and stand
+        - "lie_sit_lie": Given the robot is lying down, makes the robot sit up and then lie back down
+        - "stand_sit_shake_sit_stand": Given the robot is standing, makes the robot sit, shake, and then stand back up
+        - "stand_sit_stand": Given the robot is standing, makes the robot sit and then stand back up
 
         Args:
             animation_name (str): The name of the animation to play (e.g., 'twerk', 'sit', 'lie_down', 'shake')
