@@ -12,6 +12,7 @@ from controller_manager_msgs.srv import SwitchController
 from dataclasses import dataclass, field
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import CompressedImage
+from std_msgs.msg import String
 import asyncio
 from abc import ABC, abstractmethod
 import time
@@ -23,12 +24,19 @@ CONTROLLER_NAME_MAP = {
     "3-legged": "neural_controller_three_legged",
 }
 
-# Animation controller names mapping
-ANIMATION_CONTROLLERS = {
-    "twerk": "twerk_animation_controller",
-    "lie_sit_lie": "lie_sit_lie_animation_controller",
-    "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_animation_controller",
-    "stand_sit_stand": "stand_sit_stand_animation_controller",
+# Single animation controller name
+ANIMATION_CONTROLLER_NAME = "animation_controller"
+
+# Animation name mapping from friendly names to exact CSV base names (without .csv extension)
+ANIMATION_NAMES = {
+    "twerk": "twerk_recording_2025-09-04_16-14-51_0",
+    "lie_sit_lie": "lie_sit_lie_recording_2025-09-03_12-44-08_0",
+    "lie_down": "lie_sit_lie_recording_2025-09-03_12-44-08_0", 
+    "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
+    "stand_sit_shake": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
+    "shake": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
+    "stand_sit_stand": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
+    "sit": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
 }
 
 
@@ -208,33 +216,51 @@ class AnimationCommand(Command):
     def __init__(self, animation_name: str):
         super().__init__(f"animation_{animation_name}")
         self.animation_name = animation_name
-
-        # Validate animation name
-        if animation_name not in ANIMATION_CONTROLLERS:
+        
+        # Validate animation name and resolve alias
+        if animation_name not in ANIMATION_NAMES:
             raise ValueError(
-                f"Unknown animation '{animation_name}'. Available animations: {list(ANIMATION_CONTROLLERS.keys())}"
+                f"Unknown animation '{animation_name}'. Available animations: {list(ANIMATION_NAMES.keys())}"
             )
-
-        self.controller_name = ANIMATION_CONTROLLERS[animation_name]
+        
+        # Get the actual animation name (resolves aliases)
+        self.actual_animation_name = ANIMATION_NAMES[animation_name]
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
-        req = SwitchController.Request()
+        try:
+            # First, switch to the animation controller
+            req = SwitchController.Request()
+            all_controllers = list(AVAILABLE_CONTROLLERS) + [ANIMATION_CONTROLLER_NAME]
+            req.activate_controllers = [ANIMATION_CONTROLLER_NAME]
+            req.deactivate_controllers = [c for c in all_controllers if c != ANIMATION_CONTROLLER_NAME]
+            req.strictness = 1
 
-        # Deactivate all other controllers and activate the animation controller
-        all_controllers = list(AVAILABLE_CONTROLLERS) + list(ANIMATION_CONTROLLERS.values())
-        req.activate_controllers = [self.controller_name]
-        req.deactivate_controllers = [c for c in all_controllers if c != self.controller_name]
-        req.strictness = 1
+            future = server.switch_controller_client.call_async(req)
+            rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
 
-        future = server.switch_controller_client.call_async(req)
-        rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
-
-        if future.done() and future.result().ok:
-            logger.info(f"🎭 Animation '{self.animation_name}' started")
+            if not (future.done() and future.result().ok):
+                logger.error(f"❌ Failed to switch to animation controller for animation '{self.animation_name}'")
+                return False, f"Failed to switch to animation controller for animation '{self.animation_name}'"
+            
+            # Then, publish the animation name to the controller's topic
+            topic_name = f"/{ANIMATION_CONTROLLER_NAME}/animation_select"
+            if topic_name not in server.animation_publishers:
+                # Create publisher if it doesn't exist
+                server.animation_publishers[topic_name] = server.node.create_publisher(
+                    String, topic_name, 10
+                )
+            
+            # Publish animation selection
+            msg = String()
+            msg.data = self.actual_animation_name
+            server.animation_publishers[topic_name].publish(msg)
+            
+            logger.info(f"🎭 Animation '{self.animation_name}' (actual: '{self.actual_animation_name}') started")
             return True, f"Animation '{self.animation_name}' started successfully"
-        else:
-            logger.error(f"❌ Failed to start animation '{self.animation_name}'")
-            return False, f"Failed to start animation '{self.animation_name}' - controller switch failed"
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to start animation '{self.animation_name}': {e}")
+            return False, f"Failed to start animation '{self.animation_name}': {e}"
 
 
 class RosToolServer(ToolServer):
@@ -255,6 +281,9 @@ class RosToolServer(ToolServer):
 
         # Create twist publisher for movement commands
         self.twist_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
+        
+        # Dictionary to hold animation publishers (created on demand)
+        self.animation_publishers = {}
 
         # Image subscription node: keep only the most recent compressed image
         self.image_node = Node("ros_tool_server_images")

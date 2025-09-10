@@ -87,51 +87,12 @@ def generate_launch_description():
         output="both",
     )
 
-    # Spawn multiple animation controllers
-    twerk_animation_controller_spawner = Node(
+    # Spawn animation controller
+    animation_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=[
-            "twerk_animation_controller",
-            "--controller-manager",
-            "/controller_manager",
-            "--controller-manager-timeout",
-            "30",
-            "--inactive",  # Start inactive, activate when needed
-        ],
-    )
-
-    lie_sit_lie_animation_controller_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=[
-            "lie_sit_lie_animation_controller",
-            "--controller-manager",
-            "/controller_manager",
-            "--controller-manager-timeout",
-            "30",
-            "--inactive",  # Start inactive, activate when needed
-        ],
-    )
-
-    stand_sit_shake_sit_stand_animation_controller_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=[
-            "stand_sit_shake_sit_stand_animation_controller",
-            "--controller-manager",
-            "/controller_manager",
-            "--controller-manager-timeout",
-            "30",
-            "--inactive",  # Start inactive, activate when needed
-        ],
-    )
-
-    stand_sit_stand_animation_controller_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=[
-            "stand_sit_stand_animation_controller",
+            "animation_controller",
             "--controller-manager",
             "/controller_manager",
             "--controller-manager-timeout",
@@ -177,10 +138,7 @@ def generate_launch_description():
     nodes = [
         robot_state_publisher,
         control_node,
-        twerk_animation_controller_spawner,
-        lie_sit_lie_animation_controller_spawner,
-        stand_sit_shake_sit_stand_animation_controller_spawner,
-        stand_sit_stand_animation_controller_spawner,
+        animation_controller_spawner,
         joint_state_broadcaster_spawner,
         imu_sensor_broadcaster_spawner,
         foxglove_bridge,

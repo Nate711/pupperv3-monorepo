@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -18,7 +19,7 @@
 namespace animation_controller {
 
 AnimationController::AnimationController()
-    : controller_interface::ControllerInterface() {}
+    : controller_interface::ControllerInterface(), rt_animation_select_ptr_(nullptr) {}
 
 // Check parameter vectors have the correct size
 bool AnimationController::check_param_vector_size() {
@@ -39,11 +40,67 @@ bool AnimationController::check_param_vector_size() {
   return true;
 }
 
-bool AnimationController::load_animation_csv() {
-  animation_keyframes_.clear();
+bool AnimationController::load_all_animations() {
+  animations_.clear();
 
-  if (params_.csv_file_path.empty()) {
-    RCLCPP_ERROR(get_node()->get_logger(), "CSV file path is empty");
+  // Get launch directory path
+  std::string launch_dir;
+  try {
+    std::string package_path = ament_index_cpp::get_package_share_directory("animation_controller");
+    launch_dir = package_path + "/launch";
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Failed to find animation_controller package: %s", e.what());
+    return false;
+  }
+
+  // Auto-discover all CSV files in launch directory
+  std::vector<std::string> csv_files;
+  try {
+    for (const auto& entry : std::filesystem::directory_iterator(launch_dir)) {
+      if (entry.is_regular_file() && entry.path().extension() == ".csv") {
+        std::string filename = entry.path().filename().string();
+        // Remove .csv extension to get animation name
+        std::string animation_name = filename.substr(0, filename.length() - 4);
+        csv_files.push_back(filename);
+        
+        if (!load_animation_csv(animation_name, filename)) {
+          RCLCPP_ERROR(get_node()->get_logger(), "Failed to load animation '%s' from file '%s'", 
+                       animation_name.c_str(), filename.c_str());
+          return false;
+        }
+      }
+    }
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Error scanning directory '%s': %s", launch_dir.c_str(), e.what());
+    return false;
+  }
+
+  if (animations_.empty()) {
+    RCLCPP_ERROR(get_node()->get_logger(), "No CSV animation files found in '%s'", launch_dir.c_str());
+    return false;
+  }
+
+  // Set default animation
+  if (!params_.default_animation.empty()) {
+    if (animations_.find(params_.default_animation) == animations_.end()) {
+      RCLCPP_ERROR(get_node()->get_logger(), "Default animation '%s' not found in discovered animations", 
+                   params_.default_animation.c_str());
+      return false;
+    }
+    current_animation_name_ = params_.default_animation;
+  } else if (!animations_.empty()) {
+    // Use first animation as default if none specified
+    current_animation_name_ = animations_.begin()->first;
+  }
+
+  RCLCPP_INFO(get_node()->get_logger(), "Auto-discovered %zu animations from CSV files. Current: %s", 
+              animations_.size(), current_animation_name_.c_str());
+  return true;
+}
+
+bool AnimationController::load_animation_csv(const std::string& name, const std::string& csv_path) {
+  if (csv_path.empty()) {
+    RCLCPP_ERROR(get_node()->get_logger(), "CSV file path is empty for animation '%s'", name.c_str());
     return false;
   }
 
@@ -51,8 +108,8 @@ bool AnimationController::load_animation_csv() {
   std::string resolved_path;
   try {
     std::string package_path = ament_index_cpp::get_package_share_directory("animation_controller");
-    resolved_path = package_path + "/launch/" + params_.csv_file_path;
-    RCLCPP_INFO(get_node()->get_logger(), "Loading animation from: %s", resolved_path.c_str());
+    resolved_path = package_path + "/launch/" + csv_path;
+    RCLCPP_INFO(get_node()->get_logger(), "Loading animation '%s' from: %s", name.c_str(), resolved_path.c_str());
   } catch (const std::exception& e) {
     RCLCPP_ERROR(get_node()->get_logger(), "Failed to find animation_controller package: %s", e.what());
     return false;
@@ -165,32 +222,66 @@ bool AnimationController::load_animation_csv() {
       }
     }
 
-    animation_keyframes_.push_back(keyframe);
+    animations_[name].push_back(keyframe);
   }
 
-  if (animation_keyframes_.empty()) {
-    RCLCPP_ERROR(get_node()->get_logger(), "No keyframes loaded from CSV file");
+  if (animations_[name].empty()) {
+    RCLCPP_ERROR(get_node()->get_logger(), "No keyframes loaded from CSV file for animation '%s'", name.c_str());
     return false;
   }
 
-  RCLCPP_INFO(get_node()->get_logger(), "Loaded %zu keyframes from %s",
-              animation_keyframes_.size(), resolved_path.c_str());
+  RCLCPP_INFO(get_node()->get_logger(), "Loaded %zu keyframes for animation '%s' from %s",
+              animations_[name].size(), name.c_str(), resolved_path.c_str());
   return true;
+}
+
+void AnimationController::switch_animation(const std::string& animation_name) {
+  if (animations_.find(animation_name) == animations_.end()) {
+    RCLCPP_WARN(get_node()->get_logger(), "Animation '%s' not found, ignoring switch request", animation_name.c_str());
+    return;
+  }
+
+  if (current_animation_name_ == animation_name) {
+    RCLCPP_DEBUG(get_node()->get_logger(), "Restarting animation '%s'", animation_name.c_str());
+    // Don't return - fall through to restart the animation
+  } else {
+    RCLCPP_INFO(get_node()->get_logger(), "Switching from animation '%s' to '%s'", current_animation_name_.c_str(), animation_name.c_str());
+    current_animation_name_ = animation_name;
+  }
+  
+  // Reset animation state for new animation
+  current_animation_time_ = 0.0;
+  current_frame_index_ = 0;
+  animation_switch_requested_ = true;
+  animation_switch_time_ = get_node()->now();
+  
+  // If not currently playing, start playing the new animation
+  if (!animation_active_) {
+    animation_active_ = true;
+    init_time_ = get_node()->now();
+    animation_start_time_.reset(); // Will be set after interpolation
+  }
 }
 
 void AnimationController::interpolate_keyframes(
     double alpha, size_t frame_a, size_t frame_b,
     std::array<double, kActionSize> &result) {
+  auto it = animations_.find(current_animation_name_);
+  if (it == animations_.end() || it->second.empty()) {
+    return;
+  }
+
   // Clamp alpha to [0, 1]
   alpha = std::clamp(alpha, 0.0, 1.0);
 
+  const auto& keyframes = it->second;
   // Clamp frame indices
-  frame_a = std::min(frame_a, animation_keyframes_.size() - 1);
-  frame_b = std::min(frame_b, animation_keyframes_.size() - 1);
+  frame_a = std::min(frame_a, keyframes.size() - 1);
+  frame_b = std::min(frame_b, keyframes.size() - 1);
 
   for (size_t i = 0; i < kActionSize; i++) {
-    result[i] = animation_keyframes_[frame_a][i] * (1.0 - alpha) +
-                animation_keyframes_[frame_b][i] * alpha;
+    result[i] = keyframes[frame_a][i] * (1.0 - alpha) +
+                keyframes[frame_b][i] * alpha;
   }
 }
 
@@ -205,7 +296,7 @@ controller_interface::CallbackReturn AnimationController::on_init() {
       return controller_interface::CallbackReturn::ERROR;
     }
 
-    if (!load_animation_csv()) {
+    if (!load_all_animations()) {
       return controller_interface::CallbackReturn::ERROR;
     }
   } catch (const std::exception &e) {
@@ -276,8 +367,9 @@ controller_interface::CallbackReturn AnimationController::on_activate(
   }
 
   // Initialize target positions to first frame if available
-  if (!animation_keyframes_.empty()) {
-    target_positions_ = animation_keyframes_[0];
+  auto it = animations_.find(current_animation_name_);
+  if (it != animations_.end() && !it->second.empty()) {
+    target_positions_ = it->second[0];
   }
 
   // Reset animation state
@@ -286,41 +378,18 @@ controller_interface::CallbackReturn AnimationController::on_activate(
   current_animation_time_ = 0.0;
   current_frame_index_ = 0;
   estop_active_ = false;
-  animation_active_ = params_.auto_start;
+  animation_active_ = false; // Only start when explicitly requested via topic
 
-  // Create services for animation control
-  play_animation_service_ = get_node()->create_service<std_srvs::srv::Empty>(
-      "~/play_animation",
-      [this](const std::shared_ptr<std_srvs::srv::Empty::Request> /*request*/,
-             std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
-        animation_active_ = true;
-        init_time_ = get_node()->now();
-        animation_start_time_.reset(); // Will be set after interpolation
-        current_animation_time_ = 0.0;
-        current_frame_index_ = 0;
-        RCLCPP_INFO(get_node()->get_logger(), "Animation playback started");
+  // Create animation selection subscriber
+  animation_select_subscriber_ = get_node()->create_subscription<std_msgs::msg::String>(
+      "~/animation_select", rclcpp::SystemDefaultsQoS(),
+      [this](const std_msgs::msg::String::SharedPtr msg) {
+        rt_animation_select_ptr_.writeFromNonRT(msg);
       });
-
-  stop_animation_service_ = get_node()->create_service<std_srvs::srv::Empty>(
-      "~/stop_animation",
-      [this](const std::shared_ptr<std_srvs::srv::Empty::Request> /*request*/,
-             std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
-        animation_active_ = false;
-        RCLCPP_INFO(get_node()->get_logger(), "Animation playback stopped");
-      });
-
-  reset_animation_service_ = get_node()->create_service<std_srvs::srv::Empty>(
-      "~/reset_animation",
-      [this](const std::shared_ptr<std_srvs::srv::Empty::Request> /*request*/,
-             std::shared_ptr<std_srvs::srv::Empty::Response> /*response*/) {
-        animation_active_ = false;
-        current_animation_time_ = 0.0;
-        current_frame_index_ = 0;
-        if (!animation_keyframes_.empty()) {
-          target_positions_ = animation_keyframes_[0];
-        }
-        RCLCPP_INFO(get_node()->get_logger(), "Animation reset to beginning");
-      });
+  
+  // Initialize RT buffer
+  rt_animation_select_ptr_ = 
+      realtime_tools::RealtimeBuffer<std::shared_ptr<std_msgs::msg::String>>(nullptr);
 
   // Initialize the publisher
   animation_state_publisher_ = get_node()->create_publisher<AnimationStateMsg>(
@@ -352,6 +421,10 @@ controller_interface::CallbackReturn AnimationController::on_deactivate(
         .set_value(params_.estop_kd);
   }
 
+  // Clear RT buffer
+  rt_animation_select_ptr_ = 
+      realtime_tools::RealtimeBuffer<std::shared_ptr<std_msgs::msg::String>>(nullptr);
+
   // Clear command and state interfaces maps
   command_interfaces_map_.clear();
   state_interfaces_map_.clear();
@@ -371,22 +444,32 @@ controller_interface::CallbackReturn AnimationController::on_deactivate(
 controller_interface::return_type
 AnimationController::update(const rclcpp::Time &time,
                             const rclcpp::Duration &period) {
-  if (animation_keyframes_.empty()) {
+  
+  // Check for animation switch requests
+  auto animation_select = rt_animation_select_ptr_.readFromRT();
+  if (animation_select && animation_select->get()) {
+    switch_animation(animation_select->get()->data);
+  }
+  
+  auto it = animations_.find(current_animation_name_);
+  if (it == animations_.end() || it->second.empty()) {
     RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *get_node()->get_clock(),
-                         5000, "No animation keyframes loaded");
+                         5000, "No animation keyframes loaded for '%s'", current_animation_name_.c_str());
     return controller_interface::return_type::OK;
   }
+  const auto& keyframes = it->second;
 
   // During initialization, smoothly move to the first animation frame
   double time_since_init = (time - init_time_).seconds();
   if (time_since_init < params_.init_duration) {
     for (int i = 0; i < kActionSize; i++) {
       // Interpolate between the initial joint positions and the first animation
-      // frame
+      // frame (handle animation switches during init)
+      const auto& target_first_frame = keyframes[0];
+      
       double interpolated_joint_pos =
           init_joint_pos_[i] * (1 - time_since_init / params_.init_duration) +
-          animation_keyframes_[0][i] *
-              (time_since_init / params_.init_duration);
+          target_first_frame[i] * (time_since_init / params_.init_duration);
 
       command_interfaces_map_.at(params_.joint_names[i])
           .at("position")
@@ -433,7 +516,7 @@ AnimationController::update(const rclcpp::Time &time,
     double exact_frame = current_animation_time_ / frame_time;
 
     // Check if animation has finished
-    if (exact_frame >= animation_keyframes_.size()) {
+    if (exact_frame >= keyframes.size()) {
       if (params_.loop_animation) {
         // Loop back to beginning
         animation_start_time_ = time;
@@ -442,24 +525,30 @@ AnimationController::update(const rclcpp::Time &time,
       } else {
         // Stop at last frame
         animation_active_ = false;
-        exact_frame = animation_keyframes_.size() - 1;
+        exact_frame = keyframes.size() - 1;
       }
     }
 
     current_frame_index_ = static_cast<size_t>(exact_frame);
 
     // Calculate target positions
-    if (params_.interpolation_enabled && animation_keyframes_.size() > 1) {
+    if (params_.interpolation_enabled && keyframes.size() > 1) {
       // Interpolate between current and next frame
       size_t next_frame =
-          std::min(current_frame_index_ + 1, animation_keyframes_.size() - 1);
+          std::min(current_frame_index_ + 1, keyframes.size() - 1);
       double alpha = exact_frame - current_frame_index_;
       interpolate_keyframes(alpha, current_frame_index_, next_frame,
                             target_positions_);
     } else {
       // Use exact frame positions (no interpolation)
-      target_positions_ = animation_keyframes_[current_frame_index_];
+      target_positions_ = keyframes[current_frame_index_];
     }
+    
+    // Clear animation switch flag after successful frame calculation
+    if (animation_switch_requested_) {
+      animation_switch_requested_ = false;
+    }
+  }
   }
 
   // Send commands to hardware interface
@@ -489,7 +578,7 @@ AnimationController::update(const rclcpp::Time &time,
     rt_animation_state_publisher_->msg_.data[kActionSize] =
         static_cast<float>(current_frame_index_);
     rt_animation_state_publisher_->msg_.data[kActionSize + 1] =
-        static_cast<float>(animation_keyframes_.size());
+        static_cast<float>(keyframes.size());
     rt_animation_state_publisher_->msg_.data[kActionSize + 2] =
         animation_active_ ? 1.0f : 0.0f;
     rt_animation_state_publisher_->unlockAndPublish();

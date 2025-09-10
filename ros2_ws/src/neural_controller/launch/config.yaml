@@ -10,17 +10,8 @@ controller_manager:
     neural_controller_three_legged:
       type: neural_controller/NeuralController
 
-    # Animation controllers
-    twerk_animation_controller:
-      type: animation_controller/AnimationController
-
-    lie_sit_lie_animation_controller:
-      type: animation_controller/AnimationController
-
-    stand_sit_shake_sit_stand_animation_controller:
-      type: animation_controller/AnimationController
-
-    stand_sit_stand_animation_controller:
+    # Animation controller
+    animation_controller:
       type: animation_controller/AnimationController
 
     joint_state_broadcaster:
@@ -186,26 +177,8 @@ joy_util_node:
     controller_names: ["neural_controller", "neural_controller_three_legged"]
     switch_button_indices: [0, 1]
 
-# Twerk animation controller
-twerk_animation_controller:
+# Animation controller - handles all animations (auto-discovers CSV files)
+animation_controller:
   ros__parameters:
     update_rate: 260 # Hz
-    csv_file_path: "twerk_recording_2025-09-04_16-14-51_0.csv"
-
-# Lie-sit-lie animation controller
-lie_sit_lie_animation_controller:
-  ros__parameters:
-    update_rate: 260 # Hz
-    csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
-
-# Stand-sit-shake-sit-stand animation controller
-stand_sit_shake_sit_stand_animation_controller:
-  ros__parameters:
-    update_rate: 260 # Hz
-    csv_file_path: "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0.csv"
-
-# Stand-sit-stand animation controller
-stand_sit_stand_animation_controller:
-  ros__parameters:
-    update_rate: 260 # Hz
-    csv_file_path: "stand_sit_stand_recording_2025-09-03_12-46-36_0.csv"
+    default_animation: "twerk_recording_2025-09-04_16-14-51_0"

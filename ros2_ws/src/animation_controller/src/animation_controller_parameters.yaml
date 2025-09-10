@@ -1,9 +1,9 @@
 animation_controller:
-  csv_file_path:
+  default_animation:
     {
       type: string,
       default_value: "",
-      description: "Path to the CSV file containing animation keyframes. Each row is a keyframe, each column is a joint position.",
+      description: "Name of the default animation to play when the controller starts (CSV base name without extension)",
     }
 
   joint_names:
@@ -48,12 +48,6 @@ animation_controller:
       description: "Whether to loop the animation continuously",
     }
 
-  auto_start:
-    {
-      type: bool,
-      default_value: true,
-      description: "Whether to start the animation automatically when the controller is activated",
-    }
 
   kps:
     {

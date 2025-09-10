@@ -2,17 +2,8 @@ controller_manager:
   ros__parameters:
     update_rate: 260 # Hz
 
-    # Define multiple animation controllers
-    twerk_animation_controller:
-      type: animation_controller/AnimationController
-
-    lie_sit_lie_animation_controller:
-      type: animation_controller/AnimationController
-
-    stand_sit_shake_sit_stand_animation_controller:
-      type: animation_controller/AnimationController
-
-    stand_sit_stand_animation_controller:
+    # Single animation controller that handles all animations
+    animation_controller:
       type: animation_controller/AnimationController
 
     joint_state_broadcaster:
@@ -21,29 +12,11 @@ controller_manager:
     imu_sensor_broadcaster:
       type: imu_sensor_broadcaster/IMUSensorBroadcaster
 
-# Twerk animation controller
-twerk_animation_controller:
+# Animation controller - handles all animations (auto-discovers CSV files)
+animation_controller:
   ros__parameters:
     update_rate: 260 # Hz
-    csv_file_path: "twerk_recording_2025-09-04_16-14-51_0.csv"
-
-# Lie-sit-lie animation controller
-lie_sit_lie_animation_controller:
-  ros__parameters:
-    update_rate: 260 # Hz
-    csv_file_path: "lie_sit_lie_recording_2025-09-03_12-44-08_0.csv"
-
-# Stand-sit-shake-sit-stand animation controller
-stand_sit_shake_sit_stand_animation_controller:
-  ros__parameters:
-    update_rate: 260 # Hz
-    csv_file_path: "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0.csv"
-
-# Stand-sit-stand animation controller
-stand_sit_stand_animation_controller:
-  ros__parameters:
-    update_rate: 260 # Hz
-    csv_file_path: "stand_sit_stand_recording_2025-09-03_12-46-36_0.csv"
+    default_animation: "twerk_recording_2025-09-04_16-14-51_0"
 
 joint_state_broadcaster:
   ros__parameters:
