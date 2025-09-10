@@ -129,12 +129,12 @@ class AnimationControllerPy(Node):
         self.get_logger().info(f"Current animation: {self.current_animation_name}")
 
     def load_all_animations(self) -> bool:
-        """Load all CSV animation files from the animation_controller package."""
+        """Load all CSV animation files from the animation_controller_py package."""
         try:
-            package_path = get_package_share_directory("animation_controller")
-            launch_dir = Path(package_path) / "launch"
+            package_path = get_package_share_directory("animation_controller_py")
+            launch_dir = Path(package_path) / "launch" / "animations"
         except Exception as e:
-            self.get_logger().error(f"Failed to find animation_controller package: {e}")
+            self.get_logger().error(f"Failed to find animation_controller_py package: {e}")
             return False
 
         if not launch_dir.exists():
@@ -204,9 +204,9 @@ class AnimationControllerPy(Node):
         request = SwitchController.Request()
         request.activate_controllers = self.forward_controllers
         request.deactivate_controllers = self.neural_controllers
-        request.strictness = SwitchController.Request.STRICT
+        request.strictness = SwitchController.Request.BEST_EFFORT
         request.activate_asap = True
-        request.timeout = rclpy.duration.Duration(seconds=5.0)
+        request.timeout = rclpy.duration.Duration(seconds=5.0).to_msg()
 
         try:
             future = self.controller_switch_client.call_async(request)

@@ -1,4 +1,6 @@
 from setuptools import find_packages, setup
+from glob import glob
+import os
 
 package_name = 'animation_controller_py'
 
@@ -11,6 +13,9 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/animation_controller_py.launch.py']),
+        # Include all animation CSV files from launch/animations folder
+        (os.path.join('share', package_name, 'launch', 'animations'), 
+            glob('launch/animations/*.csv')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
