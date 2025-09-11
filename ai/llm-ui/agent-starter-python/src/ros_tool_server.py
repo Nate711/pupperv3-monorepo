@@ -9,7 +9,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 import logging
-from controller_manager_msgs.srv import SwitchController
+from controller_manager_msgs.srv import SwitchController, ListControllers
 from dataclasses import dataclass, field
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import CompressedImage
@@ -25,10 +25,6 @@ AVAILABLE_CONTROLLERS = {
     "forward_kp_controller",
     "forward_position_controller",
     "forward_kd_controller",
-}
-CONTROLLER_NAME_MAP = {
-    "4-legged": "neural_controller",
-    "3-legged": "neural_controller_three_legged",
 }
 
 # Single animation controller name
@@ -131,6 +127,7 @@ class WaitCommand(Command):
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
         await asyncio.sleep(self.duration)
+        logger.info(f"Executed WaitCommand for {self.duration} seconds")
         return True, f"Waited for {self.duration} seconds"
 
 
@@ -163,14 +160,37 @@ class MoveForTimeCommand(Command):
         )
 
 
-class ActivateCommand(Command):
+def is_controller_active(server: "RosToolServer", controller_name: str) -> bool:
+    """Check if a specific controller is currently active.
+
+    Args:
+        server: The RosToolServer instance
+        controller_name: Name of the controller to check
+
+    Returns:
+        True if the controller is active, False otherwise
+    """
+    list_req = ListControllers.Request()
+    list_future = server.list_controllers_client.call_async(list_req)
+    rclpy.spin_until_future_complete(server.node, list_future, timeout_sec=2.0)
+
+    if list_future.done() and list_future.result():
+        controllers = list_future.result().controller
+        for controller in controllers:
+            if controller.name == controller_name and controller.state == "active":
+                return True
+    return False
+
+
+class ActivateWalkingCommand(Command):
     def __init__(self):
-        super().__init__("activate")
+        super().__init__("activate_walking")
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
-        req = SwitchController.Request()
-        controller_name = CONTROLLER_NAME_MAP[server.current_gait]
+        controller_name = server.current_walking_controller
 
+        # Activate the walking controller
+        req = SwitchController.Request()
         req.activate_controllers = [controller_name]
         logger.info(f"Activating controller: {controller_name}")
         req.deactivate_controllers = list(AVAILABLE_CONTROLLERS - {controller_name})
@@ -181,11 +201,11 @@ class ActivateCommand(Command):
         rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
 
         if future.done() and future.result().ok:
-            logger.info("🤖 Robot ACTIVATED")
-            return True, f"Robot activated successfully with {server.current_gait} gait"
+            logger.info("🤖 Walking mode ACTIVATED")
+            return True, f"Walking mode activated successfully with {controller_name}"
         else:
-            logger.error("❌ Failed to activate robot")
-            return False, "Failed to activate robot - controller switch failed"
+            logger.error("❌ Failed to activate walking mode")
+            return False, "Failed to activate walking mode - controller switch failed"
 
 
 class DeactivateCommand(Command):
@@ -245,7 +265,8 @@ class RosToolServer(ToolServer):
         self.switch_controller_client = self.node.create_client(
             SwitchController, "/controller_manager/switch_controller"
         )
-        self.current_gait = "4-legged"  # default gait
+        self.list_controllers_client = self.node.create_client(ListControllers, "/controller_manager/list_controllers")
+        self.current_walking_controller = "neural_controller"  # default walking controller
 
         # Initialize command queue
         self.command_queue = asyncio.Queue()
@@ -386,6 +407,10 @@ class RosToolServer(ToolServer):
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
         """Queue a move_for_time operation as a single command"""
         logger.info(f"Queueing move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
+
+        # Ensure walking controller is active before moving
+        await self.queue_activate_walking()
+
         try:
             move_for_time_cmd = MoveForTimeCommand(vx, vy, wz, duration, self)
         except ValueError as e:
@@ -394,11 +419,22 @@ class RosToolServer(ToolServer):
         await self.add_command(move_for_time_cmd)
         return True, f"Queued move_for_time: vx={vx}, vy={vy}, wz={wz} for {duration}s"
 
-    async def queue_activate(self):
-        """Queue an activate command"""
-        logger.info("Queueing activate command")
-        await self.add_command(ActivateCommand())
-        return True, "Activate command queued"
+    async def queue_activate_walking(self):
+        """Queue an activate walking command"""
+
+        # Check if walking controller is active, if not queue activation and wait
+        do_wait = False
+        if not is_controller_active(self, self.current_walking_controller):
+            logger.info(
+                f"Walking controller {self.current_walking_controller} not active, will wait for activation to finish"
+            )
+            do_wait = True
+
+        logger.info("Queueing activate walking command")
+        await self.add_command(ActivateWalkingCommand())
+        if do_wait:
+            await self.add_command(WaitCommand(5.0))  # wait 5 seconds for controller to activate
+        return True, "Activate walking command queued"
 
     async def queue_deactivate(self):
         """Queue a deactivate command"""

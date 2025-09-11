@@ -20,8 +20,8 @@ class ToolServer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def queue_activate(self) -> Tuple[bool, str]:
-        """Queue activation of motors/controllers."""
+    async def queue_activate_walking(self) -> Tuple[bool, str]:
+        """Queue activation of walking mode (supports both 4-legged and 3-legged gaits)."""
         raise NotImplementedError
 
     @abstractmethod

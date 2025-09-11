@@ -19,7 +19,7 @@ from ros_tool_server import (
     StopCommand,
     WaitCommand,
     MoveForTimeCommand,
-    ActivateCommand,
+    ActivateWalkingCommand,
     DeactivateCommand,
     MoveCfg,
     DefaultCfg,
@@ -242,9 +242,9 @@ async def test_emergency_stop(server, mock_ros_dependencies):
 
 
 @pytest.mark.asyncio
-async def test_activate_command(server, mock_ros_dependencies):
-    """Test activate command execution"""
-    activate_cmd = ActivateCommand()
+async def test_activate_walking_command(server, mock_ros_dependencies):
+    """Test activate walking command execution"""
+    activate_cmd = ActivateWalkingCommand()
     success, message = await activate_cmd.execute(server)
 
     assert success
@@ -341,8 +341,8 @@ async def test_queue_methods(server):
     assert not success
     assert "below their movement thresholds" in message
 
-    # Test queue_activate
-    success, message = await server.queue_activate()
+    # Test queue_activate_walking
+    success, message = await server.queue_activate_walking()
     assert success
     # Immediately after adding, the command should be in the queue
     assert not server.command_queue.empty()

@@ -155,9 +155,9 @@ class PupsterAgent(Agent):
     # all functions annotated with @function_tool will be passed to the LLM when this
     # agent is active
     @function_tool
-    async def queue_activate(self, context: RunContext):
-        """Use this tool to activate your motors (you have 12 motors on your body, 3 per leg.)."""
-        return await self.tool_impl.queue_activate()
+    async def queue_activate_walking(self, context: RunContext):
+        """Use this tool to activate your walking mode (you have 12 motors on your body, 3 per leg). This supports both 4-legged and 3-legged walking gaits."""
+        return await self.tool_impl.queue_activate_walking()
 
     @function_tool
     async def queue_deactivate(self, context: RunContext):
@@ -166,7 +166,7 @@ class PupsterAgent(Agent):
 
     @function_tool
     async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
-        """Use this tool to queue up a move command which makes the robot move with a certain body velocity for a certain amount of time.
+        """Use this tool to queue up a move command which makes the robot walk with a certain body velocity for a certain amount of time.
         This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
         You can queue up multiple moves to accomplish complex movement like a dance.
 
@@ -189,7 +189,6 @@ class PupsterAgent(Agent):
         """
 
         logger.info(f"Moving motors: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
-        await self.tool_impl.queue_activate()
         return await self.tool_impl.queue_move_for_time(vx, vy, wz, duration)
 
     @function_tool

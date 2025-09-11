@@ -22,9 +22,9 @@ class NopToolServer(ToolServer):
         logger.info(f"NOOP queue_move_for_time called: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
         return True, f"NOOP queued move_for_time vx={vx}, vy={vy}, wz={wz} for {duration}s"
 
-    async def queue_activate(self) -> Tuple[bool, str]:
-        logger.info("NOOP queue_activate called")
-        return True, "NOOP activate queued"
+    async def queue_activate_walking(self) -> Tuple[bool, str]:
+        logger.info("NOOP queue_activate_walking called")
+        return True, "NOOP activate walking queued"
 
     async def queue_deactivate(self) -> Tuple[bool, str]:
         logger.info("NOOP queue_deactivate called")
