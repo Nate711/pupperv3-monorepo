@@ -1,7 +1,0 @@
-<library path="animation_controller">
-  <class name="animation_controller/AnimationController" type="animation_controller::AnimationController" base_class_type="controller_interface::ControllerInterface">
-    <description>
-      Animation playback controller that reads joint positions from CSV files and plays them back at configurable frame rates
-    </description>
-  </class>
-</library>
