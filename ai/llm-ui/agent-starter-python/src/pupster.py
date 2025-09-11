@@ -166,7 +166,8 @@ class PupsterAgent(Agent):
 
     @function_tool
     async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
-        """Use this tool to queue up a move. This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
+        """Use this tool to queue up a move command which makes the robot move with a certain body velocity for a certain amount of time.
+        This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
         You can queue up multiple moves to accomplish complex movement like a dance.
 
         If the user specifies a certain angle (e.g. 180 degrees), you will need 1) come up with a reasonable duration (eg 3 seconds) and
@@ -188,7 +189,7 @@ class PupsterAgent(Agent):
         """
 
         logger.info(f"Moving motors: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
-
+        await self.tool_impl.queue_activate()
         return await self.tool_impl.queue_move_for_time(vx, vy, wz, duration)
 
     @function_tool

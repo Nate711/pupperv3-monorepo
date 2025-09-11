@@ -278,7 +278,7 @@ class AnimationControllerPy(Node):
         """Main control loop called at 120 Hz."""
         # No animation selected - nothing to do
         if self.current_animation_name is None:
-            self.get_logger().info("No animation selected, skipping control loop")
+            self.get_logger().debug("No animation selected, skipping control loop")
             return
 
         current_time = time.time()
@@ -287,7 +287,7 @@ class AnimationControllerPy(Node):
         # Phase 1: Initialization - smoothly move to first animation frame
         if self.init_start_time is not None:
             time_since_init = current_time - self.init_start_time
-            self.get_logger().info(f"Initialization phase, time since init: {time_since_init:.2f}s")
+            self.get_logger().debug(f"Initialization phase, time since init: {time_since_init:.2f}s")
 
             if time_since_init < self.init_duration:
                 if self.init_positions is None:
@@ -308,7 +308,7 @@ class AnimationControllerPy(Node):
         # Phase 2: Animation playback
         if self.animation_start_time is not None:
             animation_time = current_time - self.animation_start_time
-            self.get_logger().info(f"Animation playback phase, animation time: {animation_time:.2f}s")
+            self.get_logger().debug(f"Animation playback phase, animation time: {animation_time:.2f}s")
 
             # Calculate current frame position
             frame_time = 1.0 / self.frame_rate
