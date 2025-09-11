@@ -269,12 +269,12 @@ class TestAnimationLogic(TestAnimationController):
         self.controller = AnimationControllerPy.__new__(AnimationControllerPy)
         self.controller.joint_names = self.joint_names
         self.controller.animations = {}
-        self.controller.current_animation_name = ""
-        self.controller.animation_active = False
-        self.controller.current_animation_time = 0.0
-        self.controller.current_frame_index = 0
+        self.controller.current_animation_name = None
         self.controller.animation_start_time = None
-        self.controller.animation_mode_active = False  # Add new attribute
+        self.controller.init_start_time = None
+        self.controller.current_joint_positions = None  # Add new attribute for joint positions
+        self.controller.last_joint_states_time = None  # Add new attribute for joint states time
+        self.controller.init_positions = None  # Add new attribute for init positions
         self.controller.get_logger = lambda: self.node.get_logger()
 
         # Mock the switch_to_animation_mode method to avoid service calls in tests
@@ -293,10 +293,8 @@ class TestAnimationLogic(TestAnimationController):
         self.controller.switch_animation("anim1")
 
         self.assertEqual(self.controller.current_animation_name, "anim1")
-        self.assertEqual(self.controller.current_animation_time, 0.0)
-        self.assertEqual(self.controller.current_frame_index, 0)
-        self.assertIsNone(self.controller.animation_start_time)
-        self.assertTrue(self.controller.animation_active)
+        self.assertIsNone(self.controller.animation_start_time)  # Not started until after init
+        self.assertIsNotNone(self.controller.init_start_time)  # Init phase started
 
     def test_switch_animation_invalid(self):
         """Test switching to an invalid animation."""
@@ -309,22 +307,18 @@ class TestAnimationLogic(TestAnimationController):
     def test_switch_animation_restart_same(self):
         """Test restarting the same animation."""
         self.controller.current_animation_name = "anim1"
-        self.controller.current_animation_time = 5.0
-        self.controller.current_frame_index = 3
-        self.controller.animation_active = True
+        self.controller.animation_start_time = 1234.5  # Some arbitrary start time
+        self.controller.init_start_time = None  # Not in init phase
 
         self.controller.switch_animation("anim1")
 
         # Should reset animation state
-        self.assertEqual(self.controller.current_animation_time, 0.0)
-        self.assertEqual(self.controller.current_frame_index, 0)
-        self.assertIsNone(self.controller.animation_start_time)
-        self.assertTrue(self.controller.animation_active)
+        self.assertIsNone(self.controller.animation_start_time)  # Animation not started yet
+        self.assertIsNotNone(self.controller.init_start_time)  # Back to init phase
+        self.assertEqual(self.controller.current_animation_name, "anim1")  # Still the same animation
 
     def test_controller_switching_attributes(self):
-        """Test that controller switching attributes are properly initialized."""
-        # Test that the new attributes exist and have correct initial values
-        self.assertFalse(self.controller.animation_mode_active)
+        """Test that controller switching is called when switching animations."""
         self.assertIsNotNone(self.controller.switch_to_animation_mode)
         
         # Test that switching logic is called when switching animations
@@ -336,7 +330,7 @@ class TestAnimationLogic(TestAnimationController):
         self.controller.switch_to_animation_mode = mock_switch
         self.controller.switch_animation("anim1")
         
-        # Should have called the switch method since animation_mode_active is False
+        # Should have called the switch method
         self.assertTrue(switch_called)
 
 

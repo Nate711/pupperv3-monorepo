@@ -24,7 +24,6 @@ class AnimationControllerPy(Node):
 
         # Parameters
         self.declare_parameter("frame_rate", 30.0)
-        self.declare_parameter("loop_animation", False)
         self.declare_parameter("init_duration", 2.0)
 
         self.declare_parameter(
@@ -52,7 +51,6 @@ class AnimationControllerPy(Node):
 
         # Get parameters
         self.frame_rate = self.get_parameter("frame_rate").value
-        self.loop_animation = self.get_parameter("loop_animation").value
         self.init_duration = self.get_parameter("init_duration").value
 
         self.joint_names = self.get_parameter("joint_names").value
@@ -73,14 +71,11 @@ class AnimationControllerPy(Node):
 
         # Animation data
         self.animations: Dict[str, np.ndarray] = {}
-        self.current_animation_name = None
+        self.current_animation_name: Optional[str] = None
 
-        # Animation state
-        self.animation_active = False
-        self.current_animation_time = 0.0
-        self.current_frame_index = 0
+        # Animation state - None means unstarted/done, float means animation start time
         self.animation_start_time: Optional[float] = None
-        self.init_start_time = time.time()
+        self.init_start_time: Optional[float] = None
 
         # Target positions
         self.init_positions: Optional[np.ndarray] = None
@@ -119,7 +114,6 @@ class AnimationControllerPy(Node):
             raise RuntimeError("Failed to load animations")
 
         self.get_logger().info(f"Animation controller initialized with {len(self.animations)} animations")
-        self.get_logger().info(f"Current animation: {self.current_animation_name}")
         self.get_logger().info("Waiting for joint_states messages to initialize current positions...")
 
     def load_all_animations(self) -> bool:
@@ -249,12 +243,13 @@ class AnimationControllerPy(Node):
         # us knowing
         self.switch_to_animation_mode()
 
-        self.get_logger().info(f"Switching from '{self.current_animation_name}' to '{animation_name}'")
+        old_animation = self.current_animation_name if self.current_animation_name else "None"
+        self.get_logger().info(f"Starting animation '{animation_name}' (was: {old_animation})")
+
+        # Set new animation
         self.current_animation_name = animation_name
 
-        # Reset animation state
-        self.current_animation_time = 0.0
-        self.current_frame_index = 0
+        # Reset state - animation will start after init phase
         self.animation_start_time = None
         self.init_start_time = time.time()
 
@@ -262,16 +257,12 @@ class AnimationControllerPy(Node):
         if self.current_joint_positions is not None:
             self.init_positions = self.current_joint_positions.copy()
             self.get_logger().info(
-                f"Using current joint positions as initial positions for animation '{animation_name}': {self.init_positions}"
+                f"Using current joint positions as initial positions for animation '{animation_name}'"
             )
         else:
             # Fallback: use first frame as init position
             self.init_positions = self.animations[animation_name][0].copy()
             self.get_logger().warn("No joint_states available, using first animation frame as initial position")
-
-        # Start playing if not already active
-        if not self.animation_active:
-            self.animation_active = True
 
     def interpolate_keyframes(self, alpha: float, frame_a: int, frame_b: int) -> np.ndarray:
         """Interpolate between two keyframes."""
@@ -285,63 +276,60 @@ class AnimationControllerPy(Node):
 
     def control_loop(self):
         """Main control loop called at 120 Hz."""
-        current_time = time.time()
-        time_since_init = current_time - self.init_start_time
-
+        # No animation selected - nothing to do
         if self.current_animation_name is None:
+            self.get_logger().info("No animation selected, skipping control loop")
             return
 
+        current_time = time.time()
         keyframes = self.animations[self.current_animation_name]
 
-        # During initialization, smoothly move to first animation frame
-        if time_since_init < self.init_duration:
-            if self.init_positions is None:
-                self.get_logger().warn("No initial positions set, cannot initialize animation")
+        # Phase 1: Initialization - smoothly move to first animation frame
+        if self.init_start_time is not None:
+            time_since_init = current_time - self.init_start_time
+            self.get_logger().info(f"Initialization phase, time since init: {time_since_init:.2f}s")
+
+            if time_since_init < self.init_duration:
+                if self.init_positions is None:
+                    self.get_logger().warn("No initial positions set, cannot initialize animation")
+                    return
+
+                # Interpolate between init positions and first frame
+                alpha = time_since_init / self.init_duration
+                interpolated_positions = self.init_positions * (1.0 - alpha) + keyframes[0] * alpha
+                self.publish_commands(interpolated_positions, self.init_kps, self.init_kds)
+                return
+            else:
+                # Initialization complete, start animation
+                self.animation_start_time = current_time
+                self.init_start_time = None  # Clear init state
+                self.get_logger().info(f"Starting animation playback: {self.current_animation_name}")
+
+        # Phase 2: Animation playback
+        if self.animation_start_time is not None:
+            animation_time = current_time - self.animation_start_time
+            self.get_logger().info(f"Animation playback phase, animation time: {animation_time:.2f}s")
+
+            # Calculate current frame position
+            frame_time = 1.0 / self.frame_rate
+            exact_frame = animation_time / frame_time
+
+            # Check if animation is complete
+            if exact_frame >= len(keyframes):
+                # Animation done - clear state
+                self.get_logger().info(f"Animation '{self.current_animation_name}' completed")
+                self.current_animation_name = None
+                self.animation_start_time = None
                 return
 
-            # Interpolate between init positions and first frame
-            alpha = time_since_init / self.init_duration
-            interpolated_positions = self.init_positions * (1.0 - alpha) + keyframes[0] * alpha
-            self.get_logger().debug(f"Initializing animation, alpha={alpha:.2f}, positions={interpolated_positions}")
-
-            self.publish_commands(interpolated_positions, self.init_kps, self.init_kds)
-            return
-
-        # Set animation start time after initialization
-        if self.animation_start_time is None:
-            self.animation_start_time = current_time
-
-        # Update animation if active
-        if self.animation_active:
-            self.current_animation_time = current_time - self.animation_start_time
-
-            # Calculate current frame
-            frame_time = 1.0 / self.frame_rate
-            exact_frame = self.current_animation_time / frame_time
-
-            # Check if animation finished
-            if exact_frame >= len(keyframes):
-                if self.loop_animation:
-                    # Loop back to beginning
-                    self.animation_start_time = current_time
-                    self.current_animation_time = 0.0
-                    exact_frame = 0.0
-                else:
-                    # Stop at last frame and switch back to neural mode
-                    self.animation_active = False
-                    exact_frame = len(keyframes) - 1
-                    self.get_logger().info("Animation completed")
-                    self.current_animation_name = None
-
-            self.current_frame_index = int(exact_frame)
-
-            # Calculate target positions with interpolation
-            if len(keyframes) > 1:
-                next_frame = min(self.current_frame_index + 1, len(keyframes) - 1)
-                alpha = exact_frame - self.current_frame_index
-                target_positions = self.interpolate_keyframes(alpha, self.current_frame_index, next_frame)
+            # Calculate interpolated position
+            current_frame_index = int(exact_frame)
+            if len(keyframes) > 1 and current_frame_index < len(keyframes) - 1:
+                next_frame = current_frame_index + 1
+                alpha = exact_frame - current_frame_index
+                target_positions = self.interpolate_keyframes(alpha, current_frame_index, next_frame)
             else:
-                target_positions = keyframes[self.current_frame_index]
+                target_positions = keyframes[min(current_frame_index, len(keyframes) - 1)]
 
             # Publish commands
             self.publish_commands(target_positions, self.kps, self.kds)
