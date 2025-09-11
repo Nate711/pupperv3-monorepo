@@ -10,6 +10,7 @@ import rclpy
 from ament_index_python.packages import get_package_share_directory
 from controller_manager_msgs.srv import SwitchController
 from rclpy.node import Node
+from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64MultiArray, String
 
 
@@ -24,7 +25,6 @@ class AnimationControllerPy(Node):
         # Parameters
         self.declare_parameter("frame_rate", 30.0)
         self.declare_parameter("loop_animation", False)
-        self.declare_parameter("default_animation", "")
         self.declare_parameter("init_duration", 2.0)
 
         self.declare_parameter(
@@ -53,7 +53,6 @@ class AnimationControllerPy(Node):
         # Get parameters
         self.frame_rate = self.get_parameter("frame_rate").value
         self.loop_animation = self.get_parameter("loop_animation").value
-        self.default_animation = self.get_parameter("default_animation").value
         self.init_duration = self.get_parameter("init_duration").value
 
         self.joint_names = self.get_parameter("joint_names").value
@@ -74,7 +73,7 @@ class AnimationControllerPy(Node):
 
         # Animation data
         self.animations: Dict[str, np.ndarray] = {}
-        self.current_animation_name = ""
+        self.current_animation_name = None
 
         # Animation state
         self.animation_active = False
@@ -84,8 +83,9 @@ class AnimationControllerPy(Node):
         self.init_start_time = time.time()
 
         # Target positions
-        self.target_positions = np.zeros(self.ACTION_SIZE)
         self.init_positions: Optional[np.ndarray] = None
+        self.current_joint_positions: Optional[np.ndarray] = None
+        self.last_joint_states_time: Optional[float] = None
 
         # Publishers for the three forward command controllers
         self.position_publisher = self.create_publisher(Float64MultiArray, "/forward_position_controller/commands", 10)
@@ -97,6 +97,11 @@ class AnimationControllerPy(Node):
         # Subscriber for animation selection
         self.animation_select_subscriber = self.create_subscription(
             String, "~/animation_select", self.animation_select_callback, 10
+        )
+
+        # Subscriber for joint states
+        self.joint_states_subscriber = self.create_subscription(
+            JointState, "/joint_states", self.joint_states_callback, 10
         )
 
         # Service client for controller switching
@@ -113,17 +118,9 @@ class AnimationControllerPy(Node):
         if not self.load_all_animations():
             raise RuntimeError("Failed to load animations")
 
-        # Set default animation
-        if self.default_animation and self.default_animation in self.animations:
-            self.current_animation_name = self.default_animation
-        elif self.animations:
-            self.current_animation_name = list(self.animations.keys())[0]
-
-        if self.current_animation_name:
-            self.target_positions = self.animations[self.current_animation_name][0].copy()
-
         self.get_logger().info(f"Animation controller initialized with {len(self.animations)} animations")
         self.get_logger().info(f"Current animation: {self.current_animation_name}")
+        self.get_logger().info("Waiting for joint_states messages to initialize current positions...")
 
     def load_all_animations(self) -> bool:
         """Load all CSV animation files from the animation_controller_py package."""
@@ -181,6 +178,27 @@ class AnimationControllerPy(Node):
             self.get_logger().error(f"Error loading CSV file {csv_path}: {e}")
             return False
 
+    def joint_states_callback(self, msg: JointState):
+        """Handle joint states updates."""
+        try:
+            # Create mapping from joint name to position
+            joint_position_map = {name: pos for name, pos in zip(msg.name, msg.position)}
+
+            # Extract positions for our joints in the correct order
+            positions = []
+            for joint_name in self.joint_names:
+                if joint_name in joint_position_map:
+                    positions.append(joint_position_map[joint_name])
+                else:
+                    self.get_logger().warn(f"Joint '{joint_name}' not found in joint_states")
+                    positions.append(0.0)
+
+            self.current_joint_positions = np.array(positions)
+            self.last_joint_states_time = time.time()
+
+        except Exception as e:
+            self.get_logger().error(f"Error processing joint_states: {e}")
+
     def animation_select_callback(self, msg: String):
         """Handle animation selection requests."""
         self.switch_animation(msg.data)
@@ -231,16 +249,25 @@ class AnimationControllerPy(Node):
         # us knowing
         self.switch_to_animation_mode()
 
-        if self.current_animation_name == animation_name:
-            self.get_logger().info(f"Restarting animation '{animation_name}'")
-        else:
-            self.get_logger().info(f"Switching from '{self.current_animation_name}' to '{animation_name}'")
-            self.current_animation_name = animation_name
+        self.get_logger().info(f"Switching from '{self.current_animation_name}' to '{animation_name}'")
+        self.current_animation_name = animation_name
 
         # Reset animation state
         self.current_animation_time = 0.0
         self.current_frame_index = 0
         self.animation_start_time = None
+        self.init_start_time = time.time()
+
+        # Capture current joint positions as initial positions for this animation
+        if self.current_joint_positions is not None:
+            self.init_positions = self.current_joint_positions.copy()
+            self.get_logger().info(
+                f"Using current joint positions as initial positions for animation '{animation_name}': {self.init_positions}"
+            )
+        else:
+            # Fallback: use first frame as init position
+            self.init_positions = self.animations[animation_name][0].copy()
+            self.get_logger().warn("No joint_states available, using first animation frame as initial position")
 
         # Start playing if not already active
         if not self.animation_active:
@@ -261,7 +288,7 @@ class AnimationControllerPy(Node):
         current_time = time.time()
         time_since_init = current_time - self.init_start_time
 
-        if not self.current_animation_name:
+        if self.current_animation_name is None:
             return
 
         keyframes = self.animations[self.current_animation_name]
@@ -269,12 +296,13 @@ class AnimationControllerPy(Node):
         # During initialization, smoothly move to first animation frame
         if time_since_init < self.init_duration:
             if self.init_positions is None:
-                # Use first frame as init position if we don't have real initial positions
-                self.init_positions = keyframes[0].copy()
+                self.get_logger().warn("No initial positions set, cannot initialize animation")
+                return
 
             # Interpolate between init positions and first frame
             alpha = time_since_init / self.init_duration
             interpolated_positions = self.init_positions * (1.0 - alpha) + keyframes[0] * alpha
+            self.get_logger().debug(f"Initializing animation, alpha={alpha:.2f}, positions={interpolated_positions}")
 
             self.publish_commands(interpolated_positions, self.init_kps, self.init_kds)
             return
@@ -303,6 +331,7 @@ class AnimationControllerPy(Node):
                     self.animation_active = False
                     exact_frame = len(keyframes) - 1
                     self.get_logger().info("Animation completed")
+                    self.current_animation_name = None
 
             self.current_frame_index = int(exact_frame)
 
@@ -310,12 +339,12 @@ class AnimationControllerPy(Node):
             if len(keyframes) > 1:
                 next_frame = min(self.current_frame_index + 1, len(keyframes) - 1)
                 alpha = exact_frame - self.current_frame_index
-                self.target_positions = self.interpolate_keyframes(alpha, self.current_frame_index, next_frame)
+                target_positions = self.interpolate_keyframes(alpha, self.current_frame_index, next_frame)
             else:
-                self.target_positions = keyframes[self.current_frame_index]
+                target_positions = keyframes[self.current_frame_index]
 
-        # Publish commands
-        self.publish_commands(self.target_positions, self.kps, self.kds)
+            # Publish commands
+            self.publish_commands(target_positions, self.kps, self.kds)
 
     def publish_commands(self, positions: np.ndarray, kps: np.ndarray, kds: np.ndarray):
         """Publish position, kp, and kd commands to forward controllers."""
