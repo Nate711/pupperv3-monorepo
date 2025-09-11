@@ -37,12 +37,8 @@ ANIMATION_CONTROLLER_NAME = "animation_controller"
 ANIMATION_NAMES = {
     "twerk": "twerk_recording_2025-09-04_16-14-51_0",
     "lie_sit_lie": "lie_sit_lie_recording_2025-09-03_12-44-08_0",
-    "lie_down": "lie_sit_lie_recording_2025-09-03_12-44-08_0",
     "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
-    "stand_sit_shake": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
-    "shake": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
     "stand_sit_stand": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
-    "sit": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
 }
 
 
