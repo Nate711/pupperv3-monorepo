@@ -10,10 +10,6 @@ controller_manager:
     neural_controller_three_legged:
       type: neural_controller/NeuralController
 
-    # Animation controller
-    animation_controller:
-      type: animation_controller/AnimationController
-
     # Forward command controllers for animation
     forward_position_controller:
       type: forward_command_controller/ForwardCommandController
@@ -187,12 +183,6 @@ joy_util_node:
     controller_names: ["neural_controller", "neural_controller_three_legged"]
     switch_button_indices: [0, 1]
 
-# Animation controller - handles all animations (auto-discovers CSV files)
-animation_controller:
-  ros__parameters:
-    update_rate: 260 # Hz
-    default_animation: "twerk_recording_2025-09-04_16-14-51_0"
-
 # Forward command controllers for animation system
 forward_position_controller:
   ros__parameters:
@@ -244,3 +234,29 @@ forward_kd_controller:
       - leg_back_l_2
       - leg_back_l_3
     interface_name: kd
+
+animation_controller_py:
+  ros__parameters:
+    joint_names:
+      [
+        "leg_front_r_1",
+        "leg_front_r_2",
+        "leg_front_r_3",
+        "leg_front_l_1",
+        "leg_front_l_2",
+        "leg_front_l_3",
+        "leg_back_r_1",
+        "leg_back_r_2",
+        "leg_back_r_3",
+        "leg_back_l_1",
+        "leg_back_l_2",
+        "leg_back_l_3",
+      ]
+    kps: [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5]
+    kds:
+      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+    init_kps: [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5]
+    init_kds:
+      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+    frame_rate: 45.0 # 1.5x the normal 30fps
+    init_duration: 1.0 # seconds given to reach initial keyframe

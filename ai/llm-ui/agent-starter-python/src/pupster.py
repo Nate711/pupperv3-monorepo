@@ -44,6 +44,22 @@ ANIMATION_NAMES = {
         "csv_name": "stand_downward_dog_recording_2025-09-04_16-09-51_0",
         "description": "From standing position, moves into a downward dog yoga pose",
     },
+    "push_up": {
+        "csv_name": "push_up_recording_2025-09-04_16-11-34_0",
+        "description": "From standing position, performs a push-up motion by lowering and raising the body",
+    },
+    "sneeze": {
+        "csv_name": "sneeze_recording_2025-09-04_16-13-54_0",
+        "description": "From standing position, mimics a sneezing motion with head and body movement",
+    },
+    "spider": {
+        "csv_name": "spider_recording_2025-09-04_16-12-38_0",
+        "description": "From lying position, moves legs in a silly spider-like motion",
+    },
+    "swim": {
+        "csv_name": "swim_recording_2025-09-04_16-10-45_0",
+        "description": "From lying position, performs silly swimming motions with the legs",
+    },
 }
 
 

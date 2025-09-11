@@ -4,6 +4,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+import time
 from typing import Dict, List, Optional
 
 import rosbag2_py
@@ -42,6 +43,7 @@ def read_joint_states(mcap_file: str, topic_name: str = "/joint_states") -> List
 
     joint_states = []
 
+    start = time.time()
     # Read messages
     while reader.has_next():
         topic, data, timestamp = reader.read_next()
@@ -51,6 +53,8 @@ def read_joint_states(mcap_file: str, topic_name: str = "/joint_states") -> List
             msg_type = get_message(type_map[topic])
             msg = deserialize_message(data, msg_type)
             joint_states.append((timestamp, msg))
+    end = time.time()
+    print(f"Read {len(joint_states)} messages from {mcap_file} in {end - start:.2f} seconds")
 
     return joint_states
 
