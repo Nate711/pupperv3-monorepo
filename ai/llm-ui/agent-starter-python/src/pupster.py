@@ -12,7 +12,14 @@ import logging
 
 from livekit.plugins import cartesia, openai, google, deepgram, silero
 from livekit.agents import UserInputTranscribedEvent
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+CASCADE_OK = True
+try:
+    from livekit.plugins.turn_detector.multilingual import MultilingualModel
+except ImportError:
+    CASCADE_OK = False
+except RuntimeError:
+    CASCADE_OK = False
 
 
 logger = logging.getLogger("agent")
@@ -140,6 +147,8 @@ def gemini_cartesia_session():
 
 def get_pupster_session(agent_design: str):
     if agent_design == "cascade":
+        if not CASCADE_OK:
+            raise RuntimeError("Cascade agent design selected but cascade dependencies could not be loaded.")
         return cascaded_session()
     elif agent_design == "google-cartesia":
         return gemini_cartesia_session()
