@@ -433,7 +433,7 @@ class RosToolServer(ToolServer):
         logger.info("Queueing activate walking command")
         await self.add_command(ActivateWalkingCommand())
         if do_wait:
-            await self.add_command(WaitCommand(5.0))  # wait 5 seconds for controller to activate
+            await self.add_command(WaitCommand(2.5))  # wait 2.5 seconds for controller to activate
         return True, "Activate walking command queued"
 
     async def queue_deactivate(self):

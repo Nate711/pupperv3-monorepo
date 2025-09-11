@@ -66,8 +66,8 @@ neural_controller:
     init_kds:
       [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
 
-    init_duration: 2.0
-    fade_in_duration: 2.0
+    init_duration: 1.0
+    fade_in_duration: 1.0
 
     action_types:
       [
