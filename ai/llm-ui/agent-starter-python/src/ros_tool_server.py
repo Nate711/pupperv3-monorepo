@@ -172,7 +172,9 @@ class ActivateCommand(Command):
         controller_name = CONTROLLER_NAME_MAP[server.current_gait]
 
         req.activate_controllers = [controller_name]
+        logger.info(f"Activating controller: {controller_name}")
         req.deactivate_controllers = list(AVAILABLE_CONTROLLERS - {controller_name})
+        logger.info(f"Deactivating controllers: {list(AVAILABLE_CONTROLLERS - {controller_name})}")
         req.strictness = 1
 
         future = server.switch_controller_client.call_async(req)
@@ -207,6 +209,7 @@ class DeactivateCommand(Command):
             return False, "Failed to deactivate robot - controller switch failed"
 
 
+# TODO: Make this block while the animation runs by using a service!
 class AnimationCommand(Command):
     def __init__(self, animation_csv_name: str):
         super().__init__(f"animation_{animation_csv_name}")

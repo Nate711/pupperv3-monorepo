@@ -17,6 +17,8 @@ from livekit.agents import (
     WorkerOptions,
     cli,
     metrics,
+    ConversationItemAddedEvent,
+    llm,
 )
 from livekit.agents import UserInputTranscribedEvent
 
@@ -49,21 +51,18 @@ async def entrypoint(ctx: JobContext):
 
     session = get_pupster_session(AGENT_DESIGN)
 
-    # @session.on("conversation_item_added")
-    # def on_conversation_item_added(event: ConversationItemAddedEvent):
-    #     logger.info(
-    #         f"Conversation item added from {event.item.role}: {event.item.text_content}. interrupted: {event.item.interrupted}"
-    #     )
-    #     # to iterate over all types of content:
-    #     for content in event.item.content:
-    #         if isinstance(content, str):
-    #             logger.info(f" - text: {content}")
-    #         elif isinstance(content, ImageContent):
-    #             # image is either a rtc.VideoFrame or URL to the image
-    #             logger.info(f" - image: {content.image}")
-    #         elif isinstance(content, AudioContent):
-    #             # frame is a list[rtc.AudioFrame]
-    #             logger.info(f" - audio: {content.frame}, transcript: {content.transcript}")
+    @session.on("conversation_item_added")
+    def on_conversation_item_added(event: ConversationItemAddedEvent):
+        # to iterate over all types of content:
+        for content in event.item.content:
+            if isinstance(content, str):
+                logger.info(f" - text: {content}")
+            elif isinstance(content, llm.ImageContent):
+                # image is either a rtc.VideoFrame or URL to the image
+                logger.info(f" - image: {content.image}")
+            elif isinstance(content, llm.AudioContent):
+                # frame is a list[rtc.AudioFrame]
+                logger.info(f" - audio: {content.frame}, transcript: {content.transcript}")
 
     # sometimes background noise could interrupt the agent session, these are considered false positive interruptions
     # when it's detected, you may resume the agent's speech

@@ -398,6 +398,7 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
   double time_since_measurement_seconds = 0;
   try {
     // read IMU states from hardware interface
+    RCLCPP_DEBUG(get_node()->get_logger(), "Attempting to read IMU angular_velocity.x from %s", params_.imu_sensor_name.c_str());
     ang_vel_x = state_interfaces_map_.at(params_.imu_sensor_name)
                     .at("angular_velocity.x")
                     .get()
@@ -419,10 +420,15 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
     orientation_z =
         state_interfaces_map_.at(params_.imu_sensor_name).at("orientation.z").get().get_value();
 
-    time_since_measurement_seconds = state_interfaces_map_.at(params_.imu_sensor_name)
-                                         .at("time_since_measurement_seconds")
-                                         .get()
-                                         .get_value();
+    // Try to read time_since_measurement_seconds if available (optional for simulation)
+    auto imu_interfaces = state_interfaces_map_.at(params_.imu_sensor_name);
+    if (imu_interfaces.find("time_since_measurement_seconds") != imu_interfaces.end()) {
+      time_since_measurement_seconds = imu_interfaces.at("time_since_measurement_seconds").get().get_value();
+    } else {
+      // Default to 0 if not available (simulation case)
+      time_since_measurement_seconds = 0.0;
+      RCLCPP_DEBUG_ONCE(get_node()->get_logger(), "time_since_measurement_seconds interface not available, using default value 0.0");
+    }
 
     // Check that the orientation is identity if we are not using the IMU. Use approximate checks
     // to avoid floating point errors
@@ -478,13 +484,58 @@ controller_interface::return_type NeuralController::update(const rclcpp::Time &t
       // Only include the joint position in the observation if the action type
       // is position
       if (params_.action_types.at(i) == "position") {
+        RCLCPP_DEBUG(get_node()->get_logger(), "Attempting to read joint position for %s (index %d)", params_.joint_names.at(i).c_str(), i);
         float joint_pos =
             state_interfaces_map_.at(params_.joint_names.at(i)).at("position").get().get_value();
         observation_.at(kJointPositionIdx + i) = joint_pos - params_.default_joint_pos.at(i);
       }
     }
   } catch (const std::out_of_range &e) {
-    RCLCPP_INFO(get_node()->get_logger(), "Failed to read joint states from hardware interface");
+    RCLCPP_ERROR(get_node()->get_logger(), "Failed to read states from hardware interface - std::out_of_range exception: %s", e.what());
+    
+    // Check which interfaces are missing
+    RCLCPP_ERROR(get_node()->get_logger(), "=== Debug Information ===");
+    
+    // Check IMU interface
+    if (state_interfaces_map_.find(params_.imu_sensor_name) == state_interfaces_map_.end()) {
+      RCLCPP_ERROR(get_node()->get_logger(), "Missing IMU sensor interface: %s", params_.imu_sensor_name.c_str());
+    } else {
+      RCLCPP_INFO(get_node()->get_logger(), "IMU sensor interface '%s' found", params_.imu_sensor_name.c_str());
+      auto &imu_interfaces = state_interfaces_map_.at(params_.imu_sensor_name);
+      std::vector<std::string> required_imu = {"angular_velocity.x", "angular_velocity.y", "angular_velocity.z", 
+                                               "orientation.x", "orientation.y", "orientation.z", "orientation.w"};
+      for (const auto &iface : required_imu) {
+        if (imu_interfaces.find(iface) == imu_interfaces.end()) {
+          RCLCPP_ERROR(get_node()->get_logger(), "Missing IMU interface: %s.%s", params_.imu_sensor_name.c_str(), iface.c_str());
+        }
+      }
+    }
+    
+    // Check joint interfaces
+    for (size_t i = 0; i < params_.joint_names.size(); i++) {
+      const auto &joint_name = params_.joint_names.at(i);
+      if (state_interfaces_map_.find(joint_name) == state_interfaces_map_.end()) {
+        RCLCPP_ERROR(get_node()->get_logger(), "Missing joint interface: %s", joint_name.c_str());
+      } else if (params_.action_types.at(i) == "position") {
+        auto &joint_interfaces = state_interfaces_map_.at(joint_name);
+        if (joint_interfaces.find("position") == joint_interfaces.end()) {
+          RCLCPP_ERROR(get_node()->get_logger(), "Missing position interface for joint: %s", joint_name.c_str());
+        }
+      }
+    }
+    
+    // List all available interfaces for debugging
+    RCLCPP_ERROR(get_node()->get_logger(), "Available state interfaces:");
+    for (const auto &[name, interfaces] : state_interfaces_map_) {
+      std::string interface_list;
+      for (const auto &[iface_name, iface_ref] : interfaces) {
+        if (!interface_list.empty()) interface_list += ", ";
+        interface_list += iface_name;
+      }
+      RCLCPP_ERROR(get_node()->get_logger(), "  %s: [%s]", name.c_str(), interface_list.c_str());
+    }
+    RCLCPP_ERROR(get_node()->get_logger(), "========================");
+    
     return controller_interface::return_type::ERROR;
   }
 
