@@ -30,15 +30,17 @@ CONTROLLER_NAME_MAP = {
     "3-legged": "neural_controller_three_legged",
 }
 
-# Single animation controller name
-ANIMATION_CONTROLLER_NAME = "animation_controller"
+# Single animation controller name  
+ANIMATION_CONTROLLER_NAME = "animation_controller_py"
 
 # Animation name mapping from friendly names to exact CSV base names (without .csv extension)
 ANIMATION_NAMES = {
     "twerk": "twerk_recording_2025-09-04_16-14-51_0",
-    "lie_sit_lie": "lie_sit_lie_recording_2025-09-03_12-44-08_0",
+    "lie_sit_lie": "lie_sit_lie_recording_2025-09-03_12-44-08_0", 
     "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
     "stand_sit_stand": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
+    "lie_downward_dog": "lie_downward_dog_recording_2025-09-04_16-08-00_0",
+    "stand_downward_dog": "stand_downward_dog_recording_2025-09-04_16-09-51_0",
 }
 
 
@@ -230,21 +232,8 @@ class AnimationCommand(Command):
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
         try:
-            # First, switch to the animation controller
-            req = SwitchController.Request()
-            all_controllers = list(AVAILABLE_CONTROLLERS) + [ANIMATION_CONTROLLER_NAME]
-            req.activate_controllers = [ANIMATION_CONTROLLER_NAME]
-            req.deactivate_controllers = [c for c in all_controllers if c != ANIMATION_CONTROLLER_NAME]
-            req.strictness = 1
-
-            future = server.switch_controller_client.call_async(req)
-            rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
-
-            if not (future.done() and future.result().ok):
-                logger.error(f"❌ Failed to switch to animation controller for animation '{self.animation_name}'")
-                return False, f"Failed to switch to animation controller for animation '{self.animation_name}'"
-
-            # Then, publish the animation name to the controller's topic
+            # Publish the animation name to the animation_controller_py topic
+            # The animation_controller_py will handle controller switching automatically
             topic_name = f"/{ANIMATION_CONTROLLER_NAME}/animation_select"
             if topic_name not in server.animation_publishers:
                 # Create publisher if it doesn't exist
@@ -255,7 +244,7 @@ class AnimationCommand(Command):
             msg.data = self.actual_animation_name
             server.animation_publishers[topic_name].publish(msg)
 
-            logger.info(f"🎭 Animation '{self.animation_name}' (actual: '{self.actual_animation_name}') started")
+            logger.info(f"🎭 Animation '{self.animation_name}' (actual: '{self.actual_animation_name}') requested")
             return True, f"Animation '{self.animation_name}' started successfully"
 
         except Exception as e:
