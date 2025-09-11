@@ -18,6 +18,35 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 logger = logging.getLogger("agent")
 
 
+# Animation name mapping with descriptions for the AI assistant
+ANIMATION_NAMES = {
+    "twerk": {
+        "csv_name": "twerk_recording_2025-09-04_16-14-51_0",
+        "description": "Makes the robot twerk by moving its hips in a rhythmic motion",
+    },
+    "lie_sit_lie": {
+        "csv_name": "lie_sit_lie_recording_2025-09-03_12-44-08_0",
+        "description": "From lying position, sits up and then lies back down",
+    },
+    "stand_sit_shake_sit_stand": {
+        "csv_name": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
+        "description": "From standing, sits down, shakes body, sits, then stands back up",
+    },
+    "stand_sit_stand": {
+        "csv_name": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
+        "description": "From standing position, sits down and then stands back up",
+    },
+    "lie_downward_dog": {
+        "csv_name": "lie_downward_dog_recording_2025-09-04_16-08-00_0",
+        "description": "From lying position, moves into a downward dog yoga pose",
+    },
+    "stand_downward_dog": {
+        "csv_name": "stand_downward_dog_recording_2025-09-04_16-09-51_0",
+        "description": "From standing position, moves into a downward dog yoga pose",
+    },
+}
+
+
 def load_system_prompt():
     """Load system prompt from file with robust error handling."""
     path = Path(__file__).parent / "system_prompt.md"
@@ -178,26 +207,32 @@ class PupsterAgent(Agent):
 
         return await self.tool_impl.queue_wait(duration)
 
-    @function_tool
+    @function_tool(
+        description=f"""Use this tool to queue an animation sequence. This switches to a pre-recorded animation controller.
+
+Available animations:
+{chr(10).join([f'- "{name}": {data["description"]}' for name, data in ANIMATION_NAMES.items()])}
+
+Args:
+    animation_name (str): The name of the animation to play. Must be one of: {", ".join([f'"{name}"' for name in ANIMATION_NAMES.keys()])}
+
+Example:
+    To make the robot twerk: queue_animation(animation_name="twerk")
+    To make the robot do a downward dog: queue_animation(animation_name="stand_downward_dog")
+"""
+    )
     async def queue_animation(self, context: RunContext, animation_name: str):
-        """Use this tool to queue an animation sequence. This switches to a pre-recorded animation controller.
-
-        Available animations:
-        - "twerk": Makes the robot twerk
-        - "lie_sit_lie": Given the robot is lying down, makes the robot sit up and then lie back down
-        - "stand_sit_shake_sit_stand": Given the robot is standing, makes the robot sit, shake, and then stand back up
-        - "stand_sit_stand": Given the robot is standing, makes the robot sit and then stand back up
-
-        Args:
-            animation_name (str): The name of the animation to play (e.g., 'twerk', 'sit', 'lie_down', 'shake')
-
-        Example:
-            To make the robot twerk: queue_animation(animation_name="twerk")
-            To make the robot sit: queue_animation(animation_name="sit")
-        """
         logger.info(f"Queueing animation: {animation_name}")
 
-        return await self.tool_impl.queue_animation(animation_name)
+        # Validate animation name and resolve alias
+        if animation_name not in ANIMATION_NAMES:
+            raise ValueError(
+                f"Unknown animation '{animation_name}'. Available animations: {list(ANIMATION_NAMES.keys())}"
+            )
+
+        actual_animation_name = ANIMATION_NAMES[animation_name]["csv_name"]
+
+        return await self.tool_impl.queue_animation(actual_animation_name)
 
     @function_tool
     async def reset_command_queue(self, context: RunContext):

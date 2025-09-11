@@ -4,6 +4,7 @@ from typing import Tuple, Optional, Any, Dict
 import threading
 import queue
 from tool_server_abc import ToolServer
+from pupster import ANIMATION_NAMES
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
@@ -30,18 +31,8 @@ CONTROLLER_NAME_MAP = {
     "3-legged": "neural_controller_three_legged",
 }
 
-# Single animation controller name  
+# Single animation controller name
 ANIMATION_CONTROLLER_NAME = "animation_controller_py"
-
-# Animation name mapping from friendly names to exact CSV base names (without .csv extension)
-ANIMATION_NAMES = {
-    "twerk": "twerk_recording_2025-09-04_16-14-51_0",
-    "lie_sit_lie": "lie_sit_lie_recording_2025-09-03_12-44-08_0", 
-    "stand_sit_shake_sit_stand": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
-    "stand_sit_stand": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
-    "lie_downward_dog": "lie_downward_dog_recording_2025-09-04_16-08-00_0",
-    "stand_downward_dog": "stand_downward_dog_recording_2025-09-04_16-09-51_0",
-}
 
 
 @dataclass
@@ -217,18 +208,9 @@ class DeactivateCommand(Command):
 
 
 class AnimationCommand(Command):
-    def __init__(self, animation_name: str):
-        super().__init__(f"animation_{animation_name}")
-        self.animation_name = animation_name
-
-        # Validate animation name and resolve alias
-        if animation_name not in ANIMATION_NAMES:
-            raise ValueError(
-                f"Unknown animation '{animation_name}'. Available animations: {list(ANIMATION_NAMES.keys())}"
-            )
-
-        # Get the actual animation name (resolves aliases)
-        self.actual_animation_name = ANIMATION_NAMES[animation_name]
+    def __init__(self, animation_csv_name: str):
+        super().__init__(f"animation_{animation_csv_name}")
+        self.animation_csv_name = animation_csv_name
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
         try:
@@ -241,15 +223,15 @@ class AnimationCommand(Command):
 
             # Publish animation selection
             msg = String()
-            msg.data = self.actual_animation_name
+            msg.data = self.animation_csv_name
             server.animation_publishers[topic_name].publish(msg)
 
-            logger.info(f"🎭 Animation '{self.animation_name}' (actual: '{self.actual_animation_name}') requested")
-            return True, f"Animation '{self.animation_name}' started successfully"
+            logger.info(f"🎭 Animation '{self.animation_csv_name}' requested")
+            return True, f"Animation '{self.animation_csv_name}' started successfully"
 
         except Exception as e:
-            logger.error(f"❌ Failed to start animation '{self.animation_name}': {e}")
-            return False, f"Failed to start animation '{self.animation_name}': {e}"
+            logger.error(f"❌ Failed to start animation '{self.animation_csv_name}': {e}")
+            return False, f"Failed to start animation '{self.animation_csv_name}': {e}"
 
 
 class RosToolServer(ToolServer):
