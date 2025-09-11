@@ -106,9 +106,6 @@ class AnimationControllerPy(Node):
         self.neural_controllers = ["neural_controller", "neural_controller_three_legged"]
         self.forward_controllers = ["forward_position_controller", "forward_kp_controller", "forward_kd_controller"]
 
-        # State tracking
-        self.animation_mode_active = False
-
         # Timer for control loop
         self.control_timer = self.create_timer(1.0 / 120.0, self.control_loop)  # 120 Hz
 
@@ -190,8 +187,6 @@ class AnimationControllerPy(Node):
 
     def switch_to_animation_mode(self):
         """Switch from neural controllers to forward command controllers."""
-        if self.animation_mode_active:
-            return
 
         self.get_logger().info("Switching to animation mode...")
 
@@ -220,7 +215,6 @@ class AnimationControllerPy(Node):
         try:
             response = future.result()
             if response.ok:
-                self.animation_mode_active = True
                 self.get_logger().info("Successfully switched to animation mode")
             else:
                 self.get_logger().error("Failed to switch to animation mode")
@@ -233,9 +227,9 @@ class AnimationControllerPy(Node):
             self.get_logger().warn(f"Animation '{animation_name}' not found")
             return
 
-        # Switch to animation mode first if not already active
-        if not self.animation_mode_active:
-            self.switch_to_animation_mode()
+        # Switch to animation mode since the user may have switched back to neural mode without
+        # us knowing
+        self.switch_to_animation_mode()
 
         if self.current_animation_name == animation_name:
             self.get_logger().info(f"Restarting animation '{animation_name}'")
