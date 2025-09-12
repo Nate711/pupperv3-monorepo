@@ -14,14 +14,6 @@ import logging
 from livekit.plugins import cartesia, openai, google, deepgram, silero
 from livekit.agents import UserInputTranscribedEvent
 
-CASCADE_OK = True
-try:
-    from livekit.plugins.turn_detector.multilingual import MultilingualModel
-except ImportError:
-    CASCADE_OK = False
-except RuntimeError:
-    CASCADE_OK = False
-
 
 logger = logging.getLogger("agent")
 
@@ -146,25 +138,28 @@ def load_system_prompt():
 #########################################
 
 
-def cascaded_session():
-    # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
-    return AgentSession(
-        # FASTEST: gemini-2.5-flash and gpt-4.1
-        # llm=google.LLM(model="gemini-2.5-flash"),
-        llm=openai.LLM(model="gpt-4.1"),
-        # llm=openai.LLM(model="gpt-5-mini"),
-        max_tool_steps=20,
-        stt=deepgram.STT(model="nova-3", language="multi"),
-        # only english model supports keyterm boosting. in tests, not necessary for pupster. pupper intepreted as pepper
-        # stt=deepgram.STT(model="nova-3", language="en", keyterms=["pupster", "pupper"]),
-        # best dog: e7651bee-f073-4b79-9156-eff1f8ae4fd9
-        tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
-        # spanish
-        # tts=cartesia.TTS(voice="79743797-2087-422f-8dc7-86f9efca85f1"),
-        turn_detection=MultilingualModel(),
-        vad=silero.VAD.load(),
-        # preemptive_generation=True,
-    )
+# Commented out because having problems with turn_detector model on Pupper image
+# def cascaded_session():
+#     from livekit.plugins.turn_detector.multilingual import MultilingualModel
+#
+#     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
+#     return AgentSession(
+#         # FASTEST: gemini-2.5-flash and gpt-4.1
+#         # llm=google.LLM(model="gemini-2.5-flash"),
+#         llm=openai.LLM(model="gpt-4.1"),
+#         # llm=openai.LLM(model="gpt-5-mini"),
+#         max_tool_steps=20,
+#         stt=deepgram.STT(model="nova-3", language="multi"),
+#         # only english model supports keyterm boosting. in tests, not necessary for pupster. pupper intepreted as pepper
+#         # stt=deepgram.STT(model="nova-3", language="en", keyterms=["pupster", "pupper"]),
+#         # best dog: e7651bee-f073-4b79-9156-eff1f8ae4fd9
+#         tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9"),
+#         # spanish
+#         # tts=cartesia.TTS(voice="79743797-2087-422f-8dc7-86f9efca85f1"),
+#         turn_detection=MultilingualModel(),
+#         vad=silero.VAD.load(),
+#         # preemptive_generation=True,
+#     )
 
 
 def openairealtime_session():
