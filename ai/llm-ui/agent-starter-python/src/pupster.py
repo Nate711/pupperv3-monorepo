@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-import csv
 
 from livekit.agents import (
     Agent,
@@ -190,9 +189,8 @@ def gemini_cartesia_session():
 
 def get_pupster_session(agent_design: str):
     if agent_design == "cascade":
-        if not CASCADE_OK:
-            raise RuntimeError("Cascade agent design selected but cascade dependencies could not be loaded.")
-        return cascaded_session()
+        # return cascaded_session()
+        raise NotImplementedError("Cascade session is currently disabled due to VAD model issues on images.")
     elif agent_design == "google-cartesia":
         return gemini_cartesia_session()
     elif agent_design == "openai-cartesia":
@@ -212,6 +210,22 @@ class PupsterAgent(Agent):
         super().__init__(instructions=system_prompt)
 
         self.tool_impl = tool_impl
+
+    async def on_enter(self) -> None:
+        logger.info(f"Entering PupsterAgent")
+
+        # Write an empty file to /tmp
+        tmp_file_path = Path("/tmp/pupster_agent_started")
+        try:
+            tmp_file_path.touch()
+            logger.info(f"Created empty file at {tmp_file_path}")
+        except Exception as e:
+            logger.error(f"Failed to create empty file at {tmp_file_path}: {e}")
+
+        chat_ctx = self.chat_ctx.copy()
+        chat_ctx.add_message(role="system", content="Say hi to the user and introduce yourself as Pupster.")
+        await self.update_chat_ctx(chat_ctx)
+        self.session.generate_reply()
 
     # Waiting on openai and livekit to support images for realtime models
     # Would work for cascade models
