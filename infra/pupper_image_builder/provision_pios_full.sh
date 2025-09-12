@@ -129,7 +129,7 @@ echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/$DEFAULT_USER/.bashrc
 # Install utils
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_battery_monitor.sh
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_robot_auto_start_service.sh
-
+sudo systemctl enable systemd-time-wait-sync.service
 
 # Build Rust GUI
 cd /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs

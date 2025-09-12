@@ -1,6 +1,6 @@
 [Unit]
 Description=LLM Voice Agent Service
-After=network.target sound.target
+After=network-online.target time-sync.target sound.target
 
 [Service]
 Type=simple
