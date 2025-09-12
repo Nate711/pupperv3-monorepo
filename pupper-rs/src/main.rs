@@ -1,3 +1,4 @@
+use clap::Parser;
 use eframe::{App, egui};
 use egui::{Color32, Vec2};
 
@@ -12,6 +13,15 @@ use system::{BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor, Ll
 use ui::{
     draw_battery_indicator, draw_cpu_stats, draw_fullscreen_button, SimpleStatus, draw_status_badge,
 };
+
+/// Pupper robot GUI application
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Start in windowed mode instead of fullscreen
+    #[arg(long, default_value_t = false)]
+    windowed: bool,
+}
 
 struct ImageApp {
     config: Config,
@@ -33,10 +43,7 @@ impl ImageApp {
         let config = load_config()?;
         print_config_info(&config);
 
-        // Don't start fullscreen on macOS
-        #[cfg(target_os = "macos")]
-        let is_fullscreen = false;
-        #[cfg(not(target_os = "macos"))]
+        // Start fullscreen by default (controlled by CLI args in main)
         let is_fullscreen = true;
 
         Ok(Self {
@@ -222,11 +229,11 @@ impl App for ImageApp {
 }
 
 fn main() -> eframe::Result<()> {
-    // Don't start fullscreen on macOS
-    #[cfg(target_os = "macos")]
-    let fullscreen = false;
-    #[cfg(not(target_os = "macos"))]
-    let fullscreen = true;
+    // Parse command line arguments
+    let args = Args::parse();
+    
+    // Start fullscreen by default, unless --windowed is specified
+    let fullscreen = !args.windowed;
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
