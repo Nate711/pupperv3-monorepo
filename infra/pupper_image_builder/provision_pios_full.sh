@@ -64,7 +64,7 @@ export RUSTUP_HOME=/home/$DEFAULT_USER/.rustup
 # put these in bashrc as well
 echo 'export CARGO_HOME=/home/pi/.cargo' >> /home/$DEFAULT_USER/.bashrc
 echo 'export RUSTUP_HOME=/home/pi/.rustup' >> /home/$DEFAULT_USER/.bashrc
-
+echo 'source $HOME/.cargo/env' >> /home/$DEFAULT_USER/.bashrc
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
@@ -134,3 +134,6 @@ bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_robot_auto_start_
 # Build Rust GUI
 cd /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs
 cargo build --release --target aarch64-unknown-linux-gnu
+
+# Try chowning again 
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER
