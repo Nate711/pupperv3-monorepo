@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+import csv
 
 from livekit.agents import (
     Agent,
@@ -68,6 +69,53 @@ ANIMATION_NAMES = {
         "description": "From lying position, performs silly swimming motions with the legs",
     },
 }
+
+
+# Animation playback frame rate constant (Hz)
+ANIMATION_FRAME_RATE = 40.0
+FADE_IN_DURATION = 1.0
+
+
+def get_animation_duration(csv_filename: str) -> float:
+    """Calculate animation duration from CSV file based on frame count.
+
+    Args:
+        csv_filename: Name of the CSV file (without path)
+
+    Returns:
+        Duration in seconds based on frame count and ANIMATION_FRAME_RATE
+    """
+    base_path = (
+        Path(__file__).parent.parent.parent.parent.parent
+        / "ros2_ws"
+        / "src"
+        / "animation_controller_py"
+        / "launch"
+        / "animations"
+    )
+    csv_path = base_path / f"{csv_filename}.csv"
+
+    try:
+        with open(csv_path, "r") as f:
+            # Count rows excluding header
+            row_count = sum(1 for _ in f) - 1  # Subtract 1 for header
+
+            if row_count <= 0:
+                raise ValueError(f"Animation CSV {csv_filename} is empty or has no data rows.")
+
+            # Calculate duration based on frame count and frame rate
+            duration = row_count / ANIMATION_FRAME_RATE + FADE_IN_DURATION
+
+            logger.info(
+                f"Animation {csv_filename} duration: {duration:.2f} seconds ({row_count} frames at {ANIMATION_FRAME_RATE} Hz)"
+            )
+            return duration
+
+    except Exception as e:
+        logger.warning(f"Could not calculate duration for animation {csv_filename}: {e}")
+        # Fallback: estimate based on typical frame count and rate
+        # Most animations seem to be around 10-15 seconds
+        return 0.1
 
 
 def load_system_prompt():
@@ -257,7 +305,15 @@ Example:
 
         actual_animation_name = ANIMATION_NAMES[animation_name]["csv_name"]
 
-        return await self.tool_impl.queue_animation(actual_animation_name)
+        # Queue the animation
+        result = await self.tool_impl.queue_animation(actual_animation_name)
+
+        # Calculate animation duration and queue a wait command
+        duration = get_animation_duration(actual_animation_name)
+        logger.info(f"Queueing wait for {duration:.2f} seconds for animation {animation_name}")
+        await self.tool_impl.queue_wait(duration)
+
+        return result
 
     @function_tool
     async def reset_command_queue(self, context: RunContext):

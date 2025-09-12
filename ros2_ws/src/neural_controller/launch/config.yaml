@@ -258,5 +258,5 @@ animation_controller_py:
     init_kps: [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5]
     init_kds:
       [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
-    frame_rate: 45.0 # 1.5x the normal 30fps
+    frame_rate: 40.0 # 1.33x the normal 30fps
     init_duration: 1.0 # seconds given to reach initial keyframe
