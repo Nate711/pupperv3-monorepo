@@ -15,6 +15,7 @@ pub enum ServiceStatus {
 pub enum LlmServiceStatus {
     Active,
     Inactive,
+    Loading,  // Service is up but agent not yet confirmed
     Unknown,
 }
 
@@ -70,7 +71,7 @@ impl LlmServiceMonitor {
             // Update status based on systemctl and agent confirmation
             self.status = match new_status {
                 LlmServiceStatus::Active if self.agent_confirmed => LlmServiceStatus::Active,
-                LlmServiceStatus::Active => LlmServiceStatus::Unknown, // Service up but agent not confirmed - show loading
+                LlmServiceStatus::Active => LlmServiceStatus::Loading, // Service up but agent not confirmed - show loading
                 LlmServiceStatus::Inactive => {
                     // Service is down, reset agent confirmation
                     self.agent_confirmed = false;
