@@ -68,7 +68,7 @@ pip install pandas
 
 # Prepare monorepo
 cd /home/$DEFAULT_USER/pupperv3-monorepo/
-chown -R pi:pi /home/$DEFAULT_USER/pupperv3-monorepo/
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo/
 git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
 git pull
 
