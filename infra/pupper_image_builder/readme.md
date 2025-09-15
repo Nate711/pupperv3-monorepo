@@ -20,6 +20,8 @@ In order to use LLM capabilities, you must create a `.env.local` in the `pupper_
 ./make_pios_full_image.sh --include-keys
 ```
 
+Sometimes you will get lfs errors which is due to rate limiting. Wait a bit a try again.
+
 
 ### Default credentials
 Hostname: `pupper`

@@ -28,7 +28,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 DEFAULT_USER=pi
 mkdir -p /home/$DEFAULT_USER
-chown -R $DEFAULT_USER /home/$DEFAULT_USER
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER
 
 export APT_LISTCHANGES_FRONTEND=none
 # (Optional) avoid services trying to start in chroot
@@ -51,6 +51,7 @@ export RUSTUP_HOME=/home/$DEFAULT_USER/.rustup
 # put these in bashrc as well
 echo 'export CARGO_HOME=/home/pi/.cargo' >> /home/$DEFAULT_USER/.bashrc
 echo 'export RUSTUP_HOME=/home/pi/.rustup' >> /home/$DEFAULT_USER/.bashrc
+echo 'source $HOME/.cargo/env' >> /home/$DEFAULT_USER/.bashrc
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
@@ -67,7 +68,7 @@ pip install pandas
 
 # Prepare monorepo
 cd /home/$DEFAULT_USER/pupperv3-monorepo/
-chown -R pi:pi .
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo/
 git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
 git pull
 
@@ -87,3 +88,7 @@ cargo build --release --target aarch64-unknown-linux-gnu
 # Install systemctl services
 bash /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs/install_service.sh
 bash /home/$DEFAULT_USER/pupperv3-monorepo/ai/llm-ui/agent-starter-python/install_service.sh
+sudo systemctl enable systemd-time-wait-sync.service
+
+# Try chowning again 
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER
