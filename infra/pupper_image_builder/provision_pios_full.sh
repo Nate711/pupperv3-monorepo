@@ -96,7 +96,7 @@ export RUSTUP_HOME=/home/$DEFAULT_USER/.rustup
 # put these in bashrc as well
 echo 'export CARGO_HOME=/home/pi/.cargo' >> /home/$DEFAULT_USER/.bashrc
 echo 'export RUSTUP_HOME=/home/pi/.rustup' >> /home/$DEFAULT_USER/.bashrc
-echo 'source $HOME/.cargo/env' >> /home/$DEFAULT_USER/.bashrc
+echo "source /home/$DEFAULT_USER/.cargo/env" >> /home/$DEFAULT_USER/.bashrc
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source /home/$DEFAULT_USER/.cargo/env
@@ -115,9 +115,10 @@ apt install git-lfs -y
 cd /home/$DEFAULT_USER
 retry_command "git clone https://github.com/Nate711/pupperv3-monorepo.git --recurse-submodules"
 cd /home/$DEFAULT_USER/pupperv3-monorepo/
-chown -R pi:pi .
+git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
 git lfs install
 git lfs pull
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo
 
 ############################## Install ros2 deps from source ##################################
 
