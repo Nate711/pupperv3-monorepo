@@ -212,7 +212,7 @@ class PupsterAgent(Agent):
         self.tool_impl = tool_impl
 
     async def on_enter(self) -> None:
-        logger.info(f"Entering PupsterAgent")
+        logger.info(f"ON_ENTER. Entering PupsterAgent")
 
         # Write an empty file to /tmp
         tmp_file_path = Path("/tmp/pupster_agent_started")
@@ -229,16 +229,19 @@ class PupsterAgent(Agent):
 
     # Waiting on openai and livekit to support images for realtime models
     # Would work for cascade models
-    # @function_tool
-    # async def get_camera_image(self, context: RunContext):
-    #     """Use this tool to take a picture with Pupster's camera and add it to the conversation."""
-    #     return await self.tool_impl.get_camera_image(context)
+    @function_tool
+    async def get_camera_image(self, context: RunContext):
+        """Use this tool to take a picture with Pupster's camera and add it to the conversation."""
+        return await self.tool_impl.get_camera_image(context)
 
     # all functions annotated with @function_tool will be passed to the LLM when this
     # agent is active
+
+
     @function_tool
     async def queue_activate_walking(self, context: RunContext):
         """Use this tool to activate your walking mode (you have 12 motors on your body, 3 per leg). This supports both 4-legged and 3-legged walking gaits."""
+        logger.info("FUNCTION CALL: queue_activate_walking()")
         return await self.tool_impl.queue_activate_walking()
 
     @function_tool
@@ -269,13 +272,13 @@ class PupsterAgent(Agent):
             Small movements such as queue_move(vx=0.1, vy=0.0, wz=0.0, duration=2.0) are invalid and will be ignored because the real robot
             is not responsive to small velocities. Use 0 or a velocity above the threshold.
         """
-
-        logger.info(f"Moving motors: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
+        logger.info(f"FUNCTION CALL: queue_move(vx={vx}, vy={vy}, wz={wz}, duration={duration})")
         return await self.tool_impl.queue_move_for_time(vx, vy, wz, duration)
 
     @function_tool
     async def queue_stop(self, context: RunContext):
         """Use this tool to queue a Stop command (vx=0, vy=0, wz=0) at the end of the command queue."""
+        logging.info("FUNCTION CALL: queue_stop()")
         return await self.tool_impl.queue_stop()
 
     @function_tool
@@ -285,7 +288,7 @@ class PupsterAgent(Agent):
         Args:
             duration (float): The duration to wait, in seconds.
         """
-        logger.info(f"Waiting for {duration} seconds")
+        logger.info(f"FUNCTION CALL: Waiting for {duration} seconds")
 
         return await self.tool_impl.queue_wait(duration)
 
@@ -304,7 +307,7 @@ Example:
 """
     )
     async def queue_animation(self, context: RunContext, animation_name: str):
-        logger.info(f"Queueing animation: {animation_name}")
+        logger.info(f"FUNCTION CALL: queue_animation(animation_name={animation_name})")
 
         # Validate animation name and resolve alias
         if animation_name not in ANIMATION_NAMES:
@@ -327,13 +330,13 @@ Example:
     @function_tool
     async def reset_command_queue(self, context: RunContext):
         """Use this tool to remove all pending commands from the command queue."""
-        logger.info(f"Resetting command queue")
+        logger.info(f"FUNCTION CALL: reset_command_queue()")
 
         return await self.tool_impl.clear_queue()
 
     @function_tool
     async def immediate_stop(self, context: RunContext):
         """Clears the command queue. Then interrupts and stops the executing command whatever it may be. Finanlly sends a Stop command (vx=0, vy=0, wz=0)."""
-        logger.info(f"Immediate stop requested")
+        logger.info(f"FUNCTION CALL: immediate_stop()")
 
-        return await self.tool_impl.emergency_stop()
+        return await self.tool_impl.immediate_stop()

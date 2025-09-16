@@ -46,6 +46,6 @@ class NopToolServer(ToolServer):
         logger.info("NOOP clear_queue called")
         return True, "NOOP cleared command queue"
 
-    async def emergency_stop(self) -> Tuple[bool, str]:
-        logger.warning("NOOP emergency_stop called")
-        return True, "NOOP emergency stop executed"
+    async def immediate_stop(self) -> Tuple[bool, str]:
+        logger.warning("NOOP immediate_stop called")
+        return True, "NOOP immediate stop executed"
