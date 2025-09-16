@@ -48,6 +48,7 @@ pub struct BlinkConfig {
 pub struct EyeTrackingConfig {
     pub enabled: bool,
     pub mode: EyeTrackingMode,
+    pub source: EyeTrackingSource,
     pub sensitivity: f32,
     pub max_pupil_offset: f32,
     pub max_eye_offset: f32,
@@ -66,6 +67,13 @@ pub enum EyeTrackingMode {
     PupilsOnly,
     WholeEye,
     Combined,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum EyeTrackingSource {
+    Mouse,
+    Person,  // Track the largest detected person
 }
 
 impl Default for Config {
@@ -91,6 +99,7 @@ impl Default for Config {
             eye_tracking: EyeTrackingConfig {
                 enabled: true,
                 mode: EyeTrackingMode::Combined,
+                source: EyeTrackingSource::Mouse,
                 sensitivity: 0.3,
                 max_pupil_offset: 25.0,
                 max_eye_offset: 50.0,

@@ -1,10 +1,13 @@
-use crate::config::{EyeTrackingConfig, EyeTrackingMode};
+use crate::config::{EyeTrackingConfig, EyeTrackingMode, EyeTrackingSource};
+use crate::detection::PersonLocation;
 use eframe::egui;
 use egui::{Pos2, Vec2};
 
 pub struct EyeTracker {
     pub mouse_position: Option<Pos2>,
     pub window_center: Option<Pos2>,
+    pub window_size: Vec2,
+    pub latest_people: Option<Vec<PersonLocation>>,
 }
 
 impl EyeTracker {
@@ -12,14 +15,64 @@ impl EyeTracker {
         Self {
             mouse_position: None,
             window_center: None,
+            window_size: Vec2::new(800.0, 600.0), // Default size, will be updated
+            latest_people: None,
         }
     }
 
-    pub fn update(&mut self, ctx: &egui::Context, window_rect: egui::Rect) {
+    pub fn update(&mut self, ctx: &egui::Context, window_rect: egui::Rect, people: Option<Vec<PersonLocation>>) {
         self.window_center = Some(window_rect.center());
+        self.window_size = window_rect.size();
+        self.latest_people = people;
 
         if let Some(pointer_pos) = ctx.input(|i| i.pointer.hover_pos()) {
             self.mouse_position = Some(pointer_pos);
+        }
+    }
+
+    fn get_largest_person(&self) -> Option<PersonLocation> {
+        if let Some(ref people) = self.latest_people {
+            // Find the person with the largest bounding box area
+            people.iter()
+                .max_by(|a, b| {
+                    let area_a = a.width * a.height;
+                    let area_b = b.width * b.height;
+                    area_a.partial_cmp(&area_b).unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .cloned()
+        } else {
+            None
+        }
+    }
+
+    fn get_tracking_position(&self, config: &EyeTrackingConfig) -> Option<Pos2> {
+        match config.source {
+            EyeTrackingSource::Mouse => self.mouse_position,
+            EyeTrackingSource::Person => {
+                if let Some(person) = self.get_largest_person() {
+                    // Convert normalized coordinates (0-1) to window coordinates
+                    // Person detection gives us center of bounding box
+                    if let Some(window_center) = self.window_center {
+                        let window_left = window_center.x - self.window_size.x / 2.0;
+                        let window_top = window_center.y - self.window_size.y / 2.0;
+
+                        // Calculate center of person bounding box
+                        let person_center_x = person.x + person.width / 2.0;
+                        let person_center_y = person.y + person.height / 2.0;
+
+                        // Convert to window coordinates
+                        Some(Pos2::new(
+                            window_left + person_center_x * self.window_size.x,
+                            window_top + person_center_y * self.window_size.y,
+                        ))
+                    } else {
+                        None
+                    }
+                } else {
+                    // No person detected, center the eyes
+                    self.window_center
+                }
+            }
         }
     }
 
@@ -28,9 +81,9 @@ impl EyeTracker {
             return Vec2::ZERO;
         }
 
-        if let (Some(mouse_pos), Some(window_center)) = (self.mouse_position, self.window_center) {
-            // Calculate direction from window center to mouse
-            let direction = mouse_pos - window_center;
+        if let (Some(tracking_pos), Some(window_center)) = (self.get_tracking_position(config), self.window_center) {
+            // Calculate direction from window center to tracking position
+            let direction = tracking_pos - window_center;
 
             // Apply sensitivity
             direction * config.sensitivity

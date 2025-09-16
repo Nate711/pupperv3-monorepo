@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PersonLocation {
     pub x: f32,      // Normalized x position (0.0 - 1.0)
     pub y: f32,      // Normalized y position (0.0 - 1.0)

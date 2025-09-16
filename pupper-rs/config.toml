@@ -29,8 +29,10 @@ duration_secs = 0.25
 eye_delay_secs = 0.02
 
 [eye_tracking]
-# Enable mouse tracking for eyes
+# Enable eye tracking
 enabled = true
+# Tracking source: "mouse" or "person" (tracks largest detected person)
+source = "person"
 # Movement mode: "pupils_only", "whole_eye", or "combined"
 mode = "combined"
 # Movement sensitivity (0.0 to 1.0)
