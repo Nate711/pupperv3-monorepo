@@ -2,6 +2,38 @@
 
 set -x
 
+# Handle optional GitHub token for authenticated clones
+GIT_ASKPASS_SCRIPT=""
+GITHUB_TOKEN_CONFIGURED=false
+
+cleanup_github_credentials() {
+    if [ -n "${GIT_ASKPASS_SCRIPT:-}" ] && [ -f "${GIT_ASKPASS_SCRIPT}" ]; then
+        rm -f "${GIT_ASKPASS_SCRIPT}"
+    fi
+    unset GIT_ASKPASS_SCRIPT
+    unset GIT_ASKPASS
+    unset GIT_TERMINAL_PROMPT
+    unset GITHUB_TOKEN
+    GITHUB_TOKEN_CONFIGURED=false
+}
+
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    GITHUB_TOKEN_CONFIGURED=true
+    GIT_ASKPASS_SCRIPT=$(mktemp /tmp/git-askpass-XXXXXX.sh)
+    cat <<'EOF' > "${GIT_ASKPASS_SCRIPT}"
+#!/bin/sh
+case "$1" in
+  Username*) echo "x-access-token" ;;
+  Password*) echo "${GITHUB_TOKEN}" ;;
+  *) echo "${GITHUB_TOKEN}" ;;
+esac
+EOF
+    chmod 700 "${GIT_ASKPASS_SCRIPT}"
+    export GIT_ASKPASS="${GIT_ASKPASS_SCRIPT}"
+    export GIT_TERMINAL_PROMPT=0
+    trap cleanup_github_credentials EXIT
+fi
+
 # Function to retry a command
 retry_command() {
     local cmd="$1"
@@ -116,6 +148,11 @@ repos=(
 for repo in "${repos[@]}"; do
     retry_command "git clone $repo --recurse-submodules"
 done
+
+if [ "$GITHUB_TOKEN_CONFIGURED" = true ]; then
+    cleanup_github_credentials
+    trap - EXIT
+fi
 
 ############################### Build everything #############################################
 

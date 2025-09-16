@@ -20,6 +20,8 @@ In order to use LLM capabilities, you must create a `.env.local` in the `pupper_
 ./make_pios_full_image.sh --include-keys
 ```
 
+To avoid GitHub rate limits during cloning and Git LFS checkout, add a `GITHUB_TOKEN=<your_token>` entry to `.env.local`. The build scripts automatically use this token for authenticated git operations but scrub it before the image is finalized (even when `--include-keys` is used), so the token is never stored on the resulting image.
+
 Sometimes you will get lfs errors which is due to rate limiting. Wait a bit a try again.
 
 
