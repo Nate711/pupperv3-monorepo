@@ -16,7 +16,7 @@ import cv2
 import queue
 import sys
 import os
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 import threading
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -118,7 +118,7 @@ class HailoDetectionNode(Node):
             results = self.yolo_model(frame, conf=self.score_threshold, verbose=False)
             
             # Convert YOLOv8 results to our detection format
-            detections = self.extract_yolo_detections(results[0], video_h, video_w)
+            detections = self.extract_yolo_detections(results[0])
         else:
             # Swap r and b channels, then multiply r by 0.5 to fix the colors (Hailo specific)
             frame = frame[:, :, ::-1]
@@ -137,62 +137,8 @@ class HailoDetectionNode(Node):
             # Process Hailo detections
             detections = self.extract_detections(results, video_h, video_w, self.score_threshold)
 
-        # Create Detection2DArray message
-        detection_msg = Detection2DArray()
-        detection_msg.header = msg.header
-
-        # Create MarkerArray message
-        marker_array = MarkerArray()
-
         # Convert detections to ROS messages
-        for i in range(detections["num_detections"]):
-            print("Class ID: ", detections["class_id"][i])
-            if str(detections["class_id"][i]) != "0":
-                continue
-            det = Detection2D()
-            det.bbox.center.position.x = float((detections["xyxy"][i][0] + detections["xyxy"][i][2]) / 2)
-            det.bbox.center.position.y = float((detections["xyxy"][i][1] + detections["xyxy"][i][3]) / 2)
-            det.bbox.size_x = float(detections["xyxy"][i][2] - detections["xyxy"][i][0])
-            det.bbox.size_y = float(detections["xyxy"][i][3] - detections["xyxy"][i][1])
-
-            hyp = ObjectHypothesisWithPose()
-            hyp.hypothesis.class_id = str(detections["class_id"][i])
-            hyp.hypothesis.score = float(detections["confidence"][i])
-            det.results.append(hyp)
-
-            detection_msg.detections.append(det)
-
-            # Create marker for bounding box
-            marker = Marker()
-            marker.header = msg.header
-            marker.ns = "detection_boxes"
-            marker.id = i
-            marker.type = Marker.LINE_STRIP
-            marker.action = Marker.ADD
-            marker.scale.x = 0.01  # Line width
-            marker.color.r = 1.0
-            marker.color.g = 0.0
-            marker.color.b = 0.0
-            marker.color.a = 1.0
-
-            # Add points to form rectangle
-            x1, y1 = float(detections["xyxy"][i][0]), float(detections["xyxy"][i][1])
-            x2, y2 = float(detections["xyxy"][i][2]), float(detections["xyxy"][i][3])
-            points = [
-                (x1, y1, 0.0),
-                (x2, y1, 0.0),
-                (x2, y2, 0.0),
-                (x1, y2, 0.0),
-                (x1, y1, 0.0)  # Close the rectangle
-            ]
-            for x, y, z in points:
-                p = Point()
-                p.x = x
-                p.y = y
-                p.z = z
-                marker.points.append(p)
-
-            marker_array.markers.append(marker)
+        detection_msg, marker_array = self.detections_to_ros_messages(detections, msg.header)
 
         # Publish detections
         self.detection_pub.publish(detection_msg)
@@ -223,7 +169,69 @@ class HailoDetectionNode(Node):
             frame = cv2.resize(frame, (model_w, model_h))
         return frame
 
-    def extract_yolo_detections(self, result, h: int = None, w: int = None) -> Dict[str, np.ndarray]:
+    def detections_to_ros_messages(self, detections: Dict[str, np.ndarray], header) -> tuple[Detection2DArray, MarkerArray]:
+        """Convert detections dictionary to ROS Detection2DArray and MarkerArray messages."""
+        # Create Detection2DArray message
+        detection_msg = Detection2DArray()
+        detection_msg.header = header
+
+        # Create MarkerArray message
+        marker_array = MarkerArray()
+
+        # Convert detections to ROS messages
+        for i in range(detections["num_detections"]):
+            if str(detections["class_id"][i]) != "0":
+                continue
+
+            # Create Detection2D message
+            det = Detection2D()
+            det.bbox.center.position.x = float((detections["xyxy"][i][0] + detections["xyxy"][i][2]) / 2)
+            det.bbox.center.position.y = float((detections["xyxy"][i][1] + detections["xyxy"][i][3]) / 2)
+            det.bbox.size_x = float(detections["xyxy"][i][2] - detections["xyxy"][i][0])
+            det.bbox.size_y = float(detections["xyxy"][i][3] - detections["xyxy"][i][1])
+
+            hyp = ObjectHypothesisWithPose()
+            hyp.hypothesis.class_id = str(detections["class_id"][i])
+            hyp.hypothesis.score = float(detections["confidence"][i])
+            det.results.append(hyp)
+
+            detection_msg.detections.append(det)
+
+            # Create marker for bounding box
+            marker = Marker()
+            marker.header = header
+            marker.ns = "detection_boxes"
+            marker.id = i
+            marker.type = Marker.LINE_STRIP
+            marker.action = Marker.ADD
+            marker.scale.x = 0.01  # Line width
+            marker.color.r = 1.0
+            marker.color.g = 0.0
+            marker.color.b = 0.0
+            marker.color.a = 1.0
+
+            # Add points to form rectangle
+            x1, y1 = float(detections["xyxy"][i][0]), float(detections["xyxy"][i][1])
+            x2, y2 = float(detections["xyxy"][i][2]), float(detections["xyxy"][i][3])
+            points = [
+                (x1, y1, 0.0),
+                (x2, y1, 0.0),
+                (x2, y2, 0.0),
+                (x1, y2, 0.0),
+                (x1, y1, 0.0)  # Close the rectangle
+            ]
+            for x, y, z in points:
+                p = Point()
+                p.x = x
+                p.y = y
+                p.z = z
+                marker.points.append(p)
+
+            marker_array.markers.append(marker)
+
+        return detection_msg, marker_array
+
+    def extract_yolo_detections(self, result) -> Dict[str, np.ndarray]:
         """Extract detections from YOLOv8 results."""
         xyxy: List[np.ndarray] = []
         confidence: List[float] = []
