@@ -67,7 +67,7 @@ echo 'export RUSTUP_HOME=/home/pi/.rustup' >> /home/$DEFAULT_USER/.bashrc
 echo 'source $HOME/.cargo/env' >> /home/$DEFAULT_USER/.bashrc
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
+source /home/$DEFAULT_USER/.cargo/env
 
 rustup target add aarch64-unknown-linux-gnu
 
