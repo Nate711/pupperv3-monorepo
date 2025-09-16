@@ -60,7 +60,8 @@ build {
 
   # Common provisioning script
   provisioner "shell" {
-    script = "provision_pios_ai.sh"
+    script           = "provision_pios_ai.sh"
+    environment_vars = ["GITHUB_TOKEN={{ env `GITHUB_TOKEN` }}"]
   }
 
   # Ensure destination directory exists (with-keys only)
