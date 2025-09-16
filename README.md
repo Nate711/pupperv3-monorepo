@@ -25,3 +25,12 @@ Please see the [docs](https://pupper-v3-documentation.readthedocs.io/en/latest/)
 #. Copy csv to ros2_ws/src/animation_controller_py/launch/animations
 #. Update pupster.py with animation nickname
 #. If editing animation frame rate or fade time, make sure to edit both config.yaml and pupster.yaml
+
+## Camera
+```
+ros2 launch hailo detection_with_mock_camera_launch.py
+```
+
+```
+ros2 run foxglove_bridge foxglove_bridge
+```
