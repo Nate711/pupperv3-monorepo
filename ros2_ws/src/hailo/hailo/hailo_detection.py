@@ -18,6 +18,9 @@ import sys
 import os
 from typing import Dict, List
 import threading
+import zmq
+import json
+import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -65,6 +68,12 @@ class HailoDetectionNode(Node):
         self.box_annotator = sv.RoundBoxAnnotator()
         self.label_annotator = sv.LabelAnnotator()
         self.tracker = sv.ByteTrack()
+
+        # Initialize ZMQ publisher for detection messages
+        self.zmq_context = zmq.Context()
+        self.zmq_socket = self.zmq_context.socket(zmq.PUB)
+        self.zmq_socket.bind("tcp://*:5556")
+        self.get_logger().info("ZMQ publisher bound to tcp://*:5556")
 
         # Initialize model based on mode
         if self.sim_mode:
@@ -143,6 +152,9 @@ class HailoDetectionNode(Node):
         # Publish detections
         self.detection_pub.publish(detection_msg)
         self.marker_pub.publish(marker_array)
+
+        # Publish ZMQ messages with bounding box positions and IDs
+        self.publish_zmq_detections(detections, video_w, video_h)
 
         # Create and publish annotated image
         if detections["num_detections"]:
@@ -230,6 +242,49 @@ class HailoDetectionNode(Node):
             marker_array.markers.append(marker)
 
         return detection_msg, marker_array
+
+    def publish_zmq_detections(self, detections: Dict[str, np.ndarray], image_width: int, image_height: int):
+        """Publish detection bounding boxes and IDs over ZMQ as JSON."""
+        people_locations = []
+
+        for i in range(detections["num_detections"]):
+            # Only process person detections (class_id == 0 for COCO person class)
+            if str(detections["class_id"][i]) != "0":
+                continue
+
+            # Calculate center position and bounding box size
+            center_x = float((detections["xyxy"][i][0] + detections["xyxy"][i][2]) / 2)
+            center_y = float((detections["xyxy"][i][1] + detections["xyxy"][i][3]) / 2)
+            bbox_width = float(detections["xyxy"][i][2] - detections["xyxy"][i][0])
+            bbox_height = float(detections["xyxy"][i][3] - detections["xyxy"][i][1])
+
+            # Normalize coordinates and sizes to 0.0-1.0 range
+            normalized_x = center_x / image_width
+            normalized_y = center_y / image_height
+            normalized_width = bbox_width / image_width
+            normalized_height = bbox_height / image_height
+
+            # Use tracker ID if available, otherwise use detection index
+            tracker_id = i  # Default fallback
+            # Note: If we had tracker IDs from the tracker, we'd use those instead
+
+            people_locations.append({
+                "x": normalized_x,
+                "y": normalized_y,
+                "width": normalized_width,
+                "height": normalized_height,
+                "id": tracker_id
+            })
+
+        # Create the message in the expected format
+        zmq_message = {
+            "people": people_locations,
+            "timestamp": time.time()
+        }
+
+        # Send JSON message over ZMQ
+        json_str = json.dumps(zmq_message)
+        self.zmq_socket.send_string(json_str)
 
     def extract_yolo_detections(self, result) -> Dict[str, np.ndarray]:
         """Extract detections from YOLOv8 results."""

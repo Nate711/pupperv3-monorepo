@@ -3,15 +3,20 @@ use eframe::{App, egui};
 use egui::{Color32, Vec2};
 
 mod config;
+mod detection;
 mod eyes;
 mod system;
 mod ui;
 
 use config::{Config, load_config, print_config_info};
+use detection::DetectionReceiver;
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
-use system::{BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor, LlmServiceMonitor, ServiceMonitor};
+use system::{
+    BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor, LlmServiceMonitor,
+    ServiceMonitor,
+};
 use ui::{
-    draw_battery_indicator, draw_cpu_stats, draw_fullscreen_button, SimpleStatus, draw_status_badge,
+    SimpleStatus, draw_battery_indicator, draw_cpu_stats, draw_fullscreen_button, draw_status_badge,
 };
 
 /// Pupper robot GUI application
@@ -33,6 +38,7 @@ struct ImageApp {
     llm_service_monitor: LlmServiceMonitor,
     internet_monitor: InternetMonitor,
     eye_tracker: EyeTracker,
+    detection_receiver: DetectionReceiver,
     is_fullscreen: bool,
     show_topbar: bool,
 }
@@ -56,6 +62,7 @@ impl ImageApp {
             llm_service_monitor: LlmServiceMonitor::new(),
             internet_monitor: InternetMonitor::new(),
             eye_tracker: EyeTracker::new(),
+            detection_receiver: DetectionReceiver::new(),
             is_fullscreen,
             show_topbar: true,
         })
@@ -103,6 +110,14 @@ impl ImageApp {
                 // Draw eyebrows on top layer so they're never covered by blinks
                 draw_eyebrow(&painter, left_eye_center);
                 draw_eyebrow(&painter, right_eye_center);
+
+                // Get people positions for potential eye tracking
+                let people = self.detection_receiver.get_people_locations();
+                if people.is_some() {
+                    println!("Detected people: {:?}", people);
+                }
+
+                // TODO: Use people positions to update eye tracker target
             });
     }
 
@@ -114,11 +129,12 @@ impl ImageApp {
                 .anchor(egui::Align2::CENTER_TOP, [0.0, 6.0])
                 .order(egui::Order::Foreground)
                 .show(ctx, |ui| {
-                    let label = if self.show_topbar { "Hide UI" } else { "Show UI" };
-                    let resp = ui.add(
-                        egui::Button::new(label)
-                            .min_size(egui::vec2(110.0, 28.0))
-                    );
+                    let label = if self.show_topbar {
+                        "Hide UI"
+                    } else {
+                        "Show UI"
+                    };
+                    let resp = ui.add(egui::Button::new(label).min_size(egui::vec2(110.0, 28.0)));
                     if resp.clicked() {
                         self.show_topbar = !self.show_topbar;
                     }
@@ -130,7 +146,8 @@ impl ImageApp {
                 .order(egui::Order::Foreground)
                 .show(ctx, |ui| {
                     let desired_size = egui::vec2(200.0, 40.0);
-                    let (_rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+                    let (_rect, response) =
+                        ui.allocate_exact_size(desired_size, egui::Sense::click());
                     if response.clicked() {
                         self.show_topbar = !self.show_topbar;
                     }
@@ -231,7 +248,7 @@ impl App for ImageApp {
 fn main() -> eframe::Result<()> {
     // Parse command line arguments
     let args = Args::parse();
-    
+
     // Start fullscreen by default, unless --windowed is specified
     let fullscreen = !args.windowed;
 
