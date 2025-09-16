@@ -57,6 +57,6 @@ class ToolServer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def emergency_stop(self) -> Tuple[bool, str]:
+    async def immediate_stop(self) -> Tuple[bool, str]:
         """Stop execution, clear the queue, and ensure robot is stopped."""
         raise NotImplementedError

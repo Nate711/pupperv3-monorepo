@@ -500,9 +500,9 @@ class RosToolServer(ToolServer):
         logger.info(f"Cleared {count} commands from queue")
         return True, f"Cleared {count} pending commands from queue"
 
-    async def emergency_stop(self) -> Tuple[bool, str]:
-        """Emergency stop: interrupt current command, stop robot, and clear queue"""
-        logger.warning("EMERGENCY STOP initiated")
+    async def immediate_stop(self) -> Tuple[bool, str]:
+        """Immediate stop: interrupt current command, stop robot, and clear queue"""
+        logger.warning("IMMEDIATE STOP initiated")
 
         # Then clear the queue
         await self.clear_queue()
@@ -510,5 +510,5 @@ class RosToolServer(ToolServer):
         # First interrupt and stop
         await self._interrupt_and_stop()
 
-        logger.warning("EMERGENCY STOP completed")
-        return True, "Emergency stop executed: robot stopped and queue cleared"
+        logger.warning("IMMEDIATE STOP completed")
+        return True, "Immediate stop completed: robot stopped and queue cleared"
