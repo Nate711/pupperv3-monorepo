@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup_scripts/github_auth.sh
+source "${SCRIPT_DIR}/setup_scripts/github_auth.sh"
+trap cleanup_github_auth EXIT
+
 set -x
 
 # Function to retry a command
@@ -70,7 +75,9 @@ pip install pandas
 cd /home/$DEFAULT_USER/pupperv3-monorepo/
 chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo/
 git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
+setup_github_auth
 git pull
+cleanup_github_auth
 
 ############################## Download turn detector model #############################################
 cd /home/$DEFAULT_USER/pupperv3-monorepo/ai/llm-ui/agent-starter-python/

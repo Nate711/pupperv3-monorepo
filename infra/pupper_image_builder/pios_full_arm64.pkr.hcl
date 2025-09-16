@@ -55,7 +55,8 @@ build {
   }
 
   provisioner "shell" {
-    script = "provision_pios_full.sh"
+    script            = "provision_pios_full.sh"
+    environment_vars  = ["GITHUB_TOKEN={{ env `GITHUB_TOKEN` }}"]
   }
 
   provisioner "file" {
