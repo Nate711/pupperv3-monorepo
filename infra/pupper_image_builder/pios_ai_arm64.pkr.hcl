@@ -7,6 +7,16 @@ packer {
   }
 }
 
+variable "github_token" {
+  type    = string
+  default = ""
+}
+
+variable "env_file_with_keys" {
+  type    = string
+  default = ".env.local"
+}
+
 source "arm" "raspbian" {
   file_urls             = ["./pupOS_pios_full.img"]
   file_checksum_type    = "none"
@@ -60,7 +70,10 @@ build {
 
   # Common provisioning script
   provisioner "shell" {
-    script = "provision_pios_ai.sh"
+    script           = "provision_pios_ai.sh"
+    environment_vars = [
+      "GITHUB_TOKEN=${var.github_token}"
+    ]
   }
 
   # Ensure destination directory exists (with-keys only)
@@ -74,7 +87,7 @@ build {
   # Copy the .env.local file (with-keys only)
   provisioner "file" {
     only        = ["arm.with-keys"]
-    source      = ".env.local"
+    source      = var.env_file_with_keys
     destination = "/home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/.env.local"
   }
 

@@ -7,6 +7,11 @@ packer {
   }
 }
 
+variable "github_token" {
+  type    = string
+  default = ""
+}
+
 source "arm" "raspbian" {
   file_urls             = ["./pupOS_pios_base.img"]
   file_checksum_type    = "none"
@@ -55,7 +60,10 @@ build {
   }
 
   provisioner "shell" {
-    script = "provision_pios_full.sh"
+    script            = "provision_pios_full.sh"
+    environment_vars  = [
+      "GITHUB_TOKEN=${var.github_token}"
+    ]
   }
 
   provisioner "file" {

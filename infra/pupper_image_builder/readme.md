@@ -10,17 +10,20 @@ An automated OS image builder for the Pupper robot. Pulls the latest Ubuntu imag
 
 
 ### Build PiOS image
+To use Git LFS reliably, you must create a `.env.local` in the `pupper_image_builder` directory based on `.env.example` and include a Github personal access token (PAT). You can make one from the Github website from the settings menu.
 ```
 ./make_pios_base_image.sh
 ./make_pios_full_image.sh
+```
+
+#### AI image
+```
 ./make_pios_ai_image.sh
 ```
-In order to use LLM capabilities, you must create a `.env.local` in the `pupper_image_builder` directory based on `.env.example` and then run with the flag `--include-keys`
+If you want to use chat AI capabilities out-of-the-box, you can bake in cloud API keys to the image by adding the relevant cloud AI keys to `.env.local` and then running the build script with the flag `--include-keys`
 ```
 ./make_pios_full_image.sh --include-keys
 ```
-
-Sometimes you will get lfs errors which is due to rate limiting. Wait a bit a try again.
 
 
 ### Default credentials
@@ -31,7 +34,7 @@ User: `pi`
 Password: `rhea123`
 
 ### First boot
-1. Disable a NetworkManager service to decrease boot time from ~90s to ~30s:
+1. Disable a NetworkManager service to decrease boot time from ~90s to ~30s (Don't do this if using AI):
 
 `sudo systemctl disable NetworkManager-wait-online.service`
 
@@ -46,9 +49,6 @@ AutomaticLogin=pi
 ```
 (TODO: add this to some startup script)
 
-## Operating systems
-* Ubuntu - see above.
-* PiOS - checkout `pios` branch. 
 
 ## Troubleshooting
 ### No sound from Pupper speaker when using PiOS
@@ -63,8 +63,6 @@ AutomaticLogin=pi
 * `NetworkManager-wait-online.service` adds 1 min to startup time
     * Have to run `sudo systemctl disable NetworkManager-wait-online.service` after booting actual RPi. Could not disable it for some reason in the provisioning scripts.
 * Sometimes get errors like `arm.ubuntu:         <urlopen error <urlopen error [Errno -3] Temporary failure in name resolution> (https://raw.githubusercontent.com/ros/rosdistro/master/humble/distribution.yaml)>` during image build where the container can't properly get web resources. 
-* Using the pre-built Ubuntu Desktop image does not work. Any window takes a very long time to open. So instead we install ubuntu-desktop on top of the pre-built Ubuntu Server image.
-* Sometimes user-data is not correctly installed. You'll know if the Pi boots and you don't see the pi user to log in to. PiOS uses a system daemon to run a script on first boot. Maybe cloud-init isn't working. Can try to put setup script in cloud-init per-boot folder or once folder.
 
 
 
