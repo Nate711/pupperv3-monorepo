@@ -68,7 +68,8 @@ chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER
 ############################ Prepare monorepo ###############################################
 
 # Prepare monorepo
-apt install git-lfs -y
+apt-get update
+apt-get install git-lfs -y
 cd /home/$DEFAULT_USER
 git clone https://github.com/Nate711/pupperv3-monorepo.git --recurse-submodules
 cd /home/$DEFAULT_USER/pupperv3-monorepo/
@@ -84,7 +85,7 @@ export APT_LISTCHANGES_FRONTEND=none
 printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
 
 
-sudo apt-get update
+apt-get update
 
 apt-get -y \
   -o Dpkg::Options::="--force-confdef" \
@@ -93,15 +94,15 @@ apt-get -y \
 
 rm -f /usr/sbin/policy-rc.d
 
-sudo apt install -y vim
+apt-get install -y vim
 
-sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
+rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 pip install wandb sounddevice openai[realtime] pydub pyaudio black supervision opencv-python loguru
 
 # Install hailo
-yes N | sudo DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+yes N | DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
 
-sudo apt install -y hailo-all
+apt-get install -y hailo-all
 
 # Source ros2
 source /opt/ros/jazzy/setup.bash
@@ -134,13 +135,13 @@ mkdir /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common
 cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common
 
 # install libcap-dev
-sudo apt install -y libcap-dev
+apt-get install -y libcap-dev
 
 # install dependencies for foxglove-bridge
-sudo apt-get install -y libwebsocketpp-dev nlohmann-json3-dev
+apt-get install -y libwebsocketpp-dev nlohmann-json3-dev
 
 # install dependencies for camera_ros
-sudo apt-get install -y libcamera-dev
+apt-get install -y libcamera-dev
 
 pip install typeguard
 pip uninstall em
