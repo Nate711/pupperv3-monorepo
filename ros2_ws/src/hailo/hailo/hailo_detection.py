@@ -27,12 +27,14 @@ from ament_index_python.packages import get_package_share_directory
 # Conditional imports based on sim mode
 try:
     from ultralytics import YOLO
+
     YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
-    
+
 try:
     from hailo.utils import HailoAsyncInference
+
     HAILO_AVAILABLE = True
 except ImportError:
     HAILO_AVAILABLE = False
@@ -40,31 +42,31 @@ except ImportError:
 
 class HailoDetectionNode(Node):
     def __init__(self):
-        super().__init__('hailo_detection_node')
+        super().__init__("hailo_detection_node")
 
         # Declare and get parameters
-        self.declare_parameter('sim', False)
-        self.declare_parameter('model_name', 'yolov8m.hef')
-        self.declare_parameter('yolo_model', 'yolov8m.pt')  # For sim mode
-        self.declare_parameter('labels_path', 'coco.txt')
-        self.declare_parameter('score_threshold', 0.5)
+        self.declare_parameter("sim", False)
+        self.declare_parameter("model_name", "yolov8m.hef")
+        self.declare_parameter("yolo_model", "yolov8m.pt")  # For sim mode
+        self.declare_parameter("labels_path", "coco.txt")
+        self.declare_parameter("score_threshold", 0.5)
 
-        self.sim_mode = self.get_parameter('sim').value
+        self.sim_mode = self.get_parameter("sim").value
 
-        package_dir = Path(get_package_share_directory('hailo'))
-        self.model_path = (package_dir / "config" / self.get_parameter('model_name').value).as_posix()
-        self.yolo_model_name = self.get_parameter('yolo_model').value
-        self.labels_path = self.get_parameter('labels_path').value
-        self.score_threshold = self.get_parameter('score_threshold').value
+        package_dir = Path(get_package_share_directory("hailo"))
+        self.model_path = (package_dir / "config" / self.get_parameter("model_name").value).as_posix()
+        self.yolo_model_name = self.get_parameter("yolo_model").value
+        self.labels_path = self.get_parameter("labels_path").value
+        self.score_threshold = self.get_parameter("score_threshold").value
 
         # Initialize CV bridge
         self.bridge = CvBridge()
 
         # Set up publishers and subscribers
-        self.detection_pub = self.create_publisher(Detection2DArray, 'detections', 10)
-        self.annotated_pub = self.create_publisher(CompressedImage, 'annotated_image', 10)
-        self.marker_pub = self.create_publisher(MarkerArray, 'detection_markers', 10)
-        self.image_sub = self.create_subscription(Image, '/camera/image_raw', self.image_callback, 10)
+        self.detection_pub = self.create_publisher(Detection2DArray, "detections", 10)
+        self.annotated_pub = self.create_publisher(CompressedImage, "annotated_image", 10)
+        self.marker_pub = self.create_publisher(MarkerArray, "detection_markers", 10)
+        self.image_sub = self.create_subscription(Image, "/camera/image_raw", self.image_callback, 10)
 
         # Initialize tracking and annotation
         self.box_annotator = sv.RoundBoxAnnotator()
@@ -83,20 +85,20 @@ class HailoDetectionNode(Node):
             if not YOLO_AVAILABLE:
                 self.get_logger().error("Ultralytics not available! Install with: pip install ultralytics")
                 raise RuntimeError("YOLOv8 not available for simulation mode")
-            
+
             # Initialize YOLOv8
             self.yolo_model = YOLO(self.yolo_model_name)
-            
+
             # Get COCO class names from YOLOv8
             self.class_names = list(self.yolo_model.names.values())
             self.model_h, self.model_w = 640, 640  # Default YOLOv8 input size
-            
+
         else:
             self.get_logger().info("Running in real mode with Hailo")
             if not HAILO_AVAILABLE:
                 self.get_logger().error("Hailo utils not available!")
                 raise RuntimeError("Hailo not available for real mode")
-                
+
             # Initialize Hailo inference
             self.input_queue = queue.Queue()
             self.output_queue = queue.Queue()
@@ -106,11 +108,11 @@ class HailoDetectionNode(Node):
                 output_queue=self.output_queue,
             )
             self.model_h, self.model_w, _ = self.hailo_inference.get_input_shape()
-            
+
             # Load class names from file
             with open(self.labels_path, "r", encoding="utf-8") as f:
                 self.class_names = f.read().splitlines()
-            
+
             # Start inference thread
             self.inference_thread = threading.Thread(target=self.hailo_inference.run)
             self.inference_thread.start()
@@ -127,7 +129,7 @@ class HailoDetectionNode(Node):
         if self.sim_mode:
             # Run YOLOv8 inference
             results = self.yolo_model(frame, conf=self.score_threshold, verbose=False)
-            
+
             # Convert YOLOv8 results to our detection format
             detections = self.extract_yolo_detections(results[0])
         else:
@@ -159,15 +161,14 @@ class HailoDetectionNode(Node):
         # Create and publish annotated image
         if detections["num_detections"]:
             annotated_frame = self.postprocess_detections(
-                frame, detections, self.class_names, self.tracker,
-                self.box_annotator, self.label_annotator
+                frame, detections, self.class_names, self.tracker, self.box_annotator, self.label_annotator
             )
-            _, jpg_buffer = cv2.imencode('.jpg', annotated_frame)
+            _, jpg_buffer = cv2.imencode(".jpg", annotated_frame)
             annotated_msg = CompressedImage()
             annotated_msg.format = "jpeg"
             annotated_msg.data = jpg_buffer.tobytes()
         else:
-            _, jpg_buffer = cv2.imencode('.jpg', frame)
+            _, jpg_buffer = cv2.imencode(".jpg", frame)
             annotated_msg = CompressedImage()
             annotated_msg.format = "jpeg"
             annotated_msg.data = jpg_buffer.tobytes()
@@ -181,7 +182,9 @@ class HailoDetectionNode(Node):
             frame = cv2.resize(frame, (model_w, model_h))
         return frame
 
-    def detections_to_ros_messages(self, detections: Dict[str, np.ndarray], header) -> tuple[Detection2DArray, MarkerArray]:
+    def detections_to_ros_messages(
+        self, detections: Dict[str, np.ndarray], header
+    ) -> tuple[Detection2DArray, MarkerArray]:
         """Convert detections dictionary to ROS Detection2DArray and MarkerArray messages."""
         # Create Detection2DArray message
         detection_msg = Detection2DArray()
@@ -225,13 +228,7 @@ class HailoDetectionNode(Node):
             # Add points to form rectangle
             x1, y1 = float(detections["xyxy"][i][0]), float(detections["xyxy"][i][1])
             x2, y2 = float(detections["xyxy"][i][2]), float(detections["xyxy"][i][3])
-            points = [
-                (x1, y1, 0.0),
-                (x2, y1, 0.0),
-                (x2, y2, 0.0),
-                (x1, y2, 0.0),
-                (x1, y1, 0.0)  # Close the rectangle
-            ]
+            points = [(x1, y1, 0.0), (x2, y1, 0.0), (x2, y2, 0.0), (x1, y2, 0.0), (x1, y1, 0.0)]  # Close the rectangle
             for x, y, z in points:
                 p = Point()
                 p.x = x
@@ -268,19 +265,18 @@ class HailoDetectionNode(Node):
             tracker_id = i  # Default fallback
             # Note: If we had tracker IDs from the tracker, we'd use those instead
 
-            people_locations.append({
-                "x": normalized_x,
-                "y": normalized_y,
-                "width": normalized_width,
-                "height": normalized_height,
-                "id": tracker_id
-            })
+            people_locations.append(
+                {
+                    "x": normalized_x,
+                    "y": normalized_y,
+                    "width": normalized_width,
+                    "height": normalized_height,
+                    "id": tracker_id,
+                }
+            )
 
         # Create the message in the expected format
-        zmq_message = {
-            "people": people_locations,
-            "timestamp": time.time()
-        }
+        zmq_message = {"people": people_locations, "timestamp": time.time()}
 
         # Send JSON message over ZMQ
         json_str = json.dumps(zmq_message)
@@ -292,7 +288,7 @@ class HailoDetectionNode(Node):
         confidence: List[float] = []
         class_id: List[int] = []
         num_detections: int = 0
-        
+
         if result.boxes is not None and len(result.boxes) > 0:
             boxes = result.boxes
             for box in boxes:
@@ -300,12 +296,12 @@ class HailoDetectionNode(Node):
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                 conf = box.conf[0].cpu().numpy()
                 cls = int(box.cls[0].cpu().numpy())
-                
+
                 xyxy.append([x1, y1, x2, y2])
                 confidence.append(conf)
                 class_id.append(cls)
                 num_detections += 1
-        
+
         return {
             "xyxy": np.array(xyxy) if xyxy else np.empty((0, 4)),
             "confidence": np.array(confidence) if confidence else np.empty(0),
@@ -350,7 +346,8 @@ class HailoDetectionNode(Node):
         }
 
     def postprocess_detections(
-        self, frame: np.ndarray,
+        self,
+        frame: np.ndarray,
         detections: Dict[str, np.ndarray],
         class_names: List[str],
         tracker: sv.ByteTrack,
@@ -370,9 +367,7 @@ class HailoDetectionNode(Node):
             for class_id, tracker_id in zip(sv_detections.class_id, sv_detections.tracker_id)
         ]
 
-        annotated_frame = box_annotator.annotate(
-            scene=frame.copy(), detections=sv_detections
-        )
+        annotated_frame = box_annotator.annotate(scene=frame.copy(), detections=sv_detections)
         annotated_labeled_frame = label_annotator.annotate(
             scene=annotated_frame, detections=sv_detections, labels=labels
         )

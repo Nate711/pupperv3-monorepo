@@ -10,17 +10,22 @@ import queue
 from loguru import logger
 import numpy as np
 from PIL import Image
-from hailo_platform import (HEF, VDevice,
-                            FormatType, HailoSchedulingAlgorithm)
-IMAGE_EXTENSIONS: Tuple[str, ...] = ('.jpg', '.png', '.bmp', '.jpeg')
+from hailo_platform import HEF, VDevice, FormatType, HailoSchedulingAlgorithm
+
+IMAGE_EXTENSIONS: Tuple[str, ...] = (".jpg", ".png", ".bmp", ".jpeg")
 
 
 class HailoAsyncInference:
     def __init__(
-        self, hef_path: str, input_queue: queue.Queue,
-        output_queue: queue.Queue, batch_size: int = 1,
-        input_type: Optional[str] = None, output_type: Optional[Dict[str, str]] = None,
-        send_original_frame: bool = False) -> None:
+        self,
+        hef_path: str,
+        input_queue: queue.Queue,
+        output_queue: queue.Queue,
+        batch_size: int = 1,
+        input_type: Optional[str] = None,
+        output_type: Optional[Dict[str, str]] = None,
+        send_original_frame: bool = False,
+    ) -> None:
         """
         Initialize the HailoAsyncInference class with the provided HEF model
         file path and input/output queues.
@@ -44,7 +49,7 @@ class HailoAsyncInference:
 
         # check hef file exists
         if not Path(hef_path).is_file():
-            raise FileNotFoundError(f'HEF file not found: {hef_path}')
+            raise FileNotFoundError(f"HEF file not found: {hef_path}")
 
         self.hef = HEF(hef_path)
         self.target = VDevice(params)
@@ -77,12 +82,13 @@ class HailoAsyncInference:
             output_type_dict (Optional[dict[str, str]]): Format type of the output stream.
         """
         for output_name, output_type in output_type_dict.items():
-            self.infer_model.output(output_name).set_format_type(
-                getattr(FormatType, output_type)
-            )
+            self.infer_model.output(output_name).set_format_type(getattr(FormatType, output_type))
 
     def callback(
-        self, completion_info, bindings_list: list, input_batch: list,
+        self,
+        completion_info,
+        bindings_list: list,
+        input_batch: list,
     ) -> None:
         """
         Callback function for handling inference results.
@@ -95,7 +101,7 @@ class HailoAsyncInference:
             processed_batch (list): The processed batch of images.
         """
         if completion_info.exception:
-            logger.error(f'Inference error: {completion_info.exception}')
+            logger.error(f"Inference error: {completion_info.exception}")
         else:
             for i, bindings in enumerate(bindings_list):
                 # If the model has a single output, return the output buffer.
@@ -104,15 +110,12 @@ class HailoAsyncInference:
                     result = bindings.output().get_buffer()
                 else:
                     result = {
-                        name: np.expand_dims(
-                            bindings.output(name).get_buffer(), axis=0
-                        )
+                        name: np.expand_dims(bindings.output(name).get_buffer(), axis=0)
                         for name in bindings._output_names
                     }
                 self.output_queue.put((input_batch[i], result))
 
     def get_vstream_info(self) -> Tuple[list, list]:
-
         """
         Get information about input and output stream layers.
 
@@ -120,10 +123,7 @@ class HailoAsyncInference:
             Tuple[list, list]: List of input stream layer information, List of
                                output stream layer information.
         """
-        return (
-            self.hef.get_input_vstream_infos(),
-            self.hef.get_output_vstream_infos()
-        )
+        return (self.hef.get_input_vstream_infos(), self.hef.get_output_vstream_infos())
 
     def get_hef(self) -> HEF:
         """
@@ -163,11 +163,12 @@ class HailoAsyncInference:
 
                 configured_infer_model.wait_for_async_ready(timeout_ms=10000)
                 job = configured_infer_model.run_async(
-                    bindings_list, partial(
+                    bindings_list,
+                    partial(
                         self.callback,
                         input_batch=original_batch if self.send_original_frame else preprocessed_batch,
-                        bindings_list=bindings_list
-                    )
+                        bindings_list=bindings_list,
+                    ),
                 )
             job.wait(10000)  # Wait for the last job
 
@@ -191,21 +192,18 @@ class HailoAsyncInference:
             output_buffers = {
                 output_info.name: np.empty(
                     self.infer_model.output(output_info.name).shape,
-                    dtype=(getattr(np, self._get_output_type_str(output_info)))
+                    dtype=(getattr(np, self._get_output_type_str(output_info))),
                 )
-            for output_info in self.hef.get_output_vstream_infos()
+                for output_info in self.hef.get_output_vstream_infos()
             }
         else:
             output_buffers = {
                 name: np.empty(
-                    self.infer_model.output(name).shape,
-                    dtype=(getattr(np, self.output_type[name].lower()))
+                    self.infer_model.output(name).shape, dtype=(getattr(np, self.output_type[name].lower()))
                 )
-            for name in self.output_type
+                for name in self.output_type
             }
-        return configured_infer_model.create_bindings(
-            output_buffers=output_buffers
-        )
+        return configured_infer_model.create_bindings(output_buffers=output_buffers)
 
 
 def load_input_images(images_path: str) -> List[Image.Image]:
@@ -222,10 +220,7 @@ def load_input_images(images_path: str) -> List[Image.Image]:
     if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS:
         return [Image.open(path)]
     elif path.is_dir():
-        return [
-            Image.open(img) for img in path.glob("*")
-            if img.suffix.lower() in IMAGE_EXTENSIONS
-        ]
+        return [Image.open(img) for img in path.glob("*") if img.suffix.lower() in IMAGE_EXTENSIONS]
     return []
 
 
@@ -241,15 +236,10 @@ def validate_images(images: List[Image.Image], batch_size: int) -> None:
         ValueError: If images list is empty or not divisible by batch size.
     """
     if not images:
-        raise ValueError(
-            'No valid images found in the specified path.'
-        )
+        raise ValueError("No valid images found in the specified path.")
 
     if len(images) % batch_size != 0:
-        raise ValueError(
-            'The number of input images should be divisible by the batch size '
-            'without any remainder.'
-        )
+        raise ValueError("The number of input images should be divisible by the batch size " "without any remainder.")
 
 
 def divide_list_to_batches(
@@ -267,4 +257,4 @@ def divide_list_to_batches(
                                                   of images.
     """
     for i in range(0, len(images_list), batch_size):
-        yield images_list[i: i + batch_size]
+        yield images_list[i : i + batch_size]
