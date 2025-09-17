@@ -1,6 +1,5 @@
 [Unit]
 Description=robot
-After=sound.target
 
 [Service]
 User=pi
