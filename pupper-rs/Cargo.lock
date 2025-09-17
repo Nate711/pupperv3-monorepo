@@ -2724,6 +2724,7 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
+ "tracing",
  "zmq",
 ]
 

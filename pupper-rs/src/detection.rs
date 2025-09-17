@@ -20,7 +20,7 @@ pub struct PeopleDetections {
 
 pub struct DetectionReceiver {
     latest_people: Arc<Mutex<Option<PeopleDetections>>>,
-    zmq_thread: Option<thread::JoinHandle<()>>,
+    _zmq_thread: Option<thread::JoinHandle<()>>,
 }
 
 impl DetectionReceiver {
@@ -79,7 +79,7 @@ impl DetectionReceiver {
 
         Self {
             latest_people,
-            zmq_thread: Some(zmq_thread),
+            _zmq_thread: Some(zmq_thread),
         }
     }
 

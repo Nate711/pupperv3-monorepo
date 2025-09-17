@@ -88,22 +88,6 @@ pub fn draw_fullscreen_button(ui: &mut egui::Ui) -> bool {
     response.clicked()
 }
 
-// Legacy wrappers kept for compatibility; they call the shared badge renderer
-pub fn draw_service_status(ui: &mut egui::Ui, status: &ServiceStatus) {
-    draw_status_badge(ui, "ROS", SimpleStatus::from(status));
-}
-
-pub fn draw_llm_service_status(ui: &mut egui::Ui, status: &LlmServiceStatus) {
-    draw_status_badge(ui, "LLM", SimpleStatus::from(status));
-}
-
-pub fn draw_internet_status(ui: &mut egui::Ui, status: &InternetStatus) {
-    draw_status_badge(ui, "NET", SimpleStatus::from(status));
-}
-
-pub fn draw_bag_recorder_status(ui: &mut egui::Ui, status: &BagRecorderStatus) {
-    draw_status_badge(ui, "BAG", SimpleStatus::from(status));
-}
 
 pub fn draw_battery_indicator(
     ui: &mut egui::Ui,

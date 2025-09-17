@@ -1,6 +1,7 @@
 use clap::Parser;
 use eframe::{App, egui};
 use egui::{Color32, Vec2};
+use tracing::debug;
 
 mod config;
 mod detection;
@@ -114,7 +115,7 @@ impl ImageApp {
                 // Get people positions for potential eye tracking
                 let people = self.detection_receiver.get_people_locations();
                 if people.is_some() {
-                    println!("Detected people: {:?}", people);
+                    debug!("Detected people: {:?}", people);
                 }
 
                 // TODO: Use people positions to update eye tracker target
