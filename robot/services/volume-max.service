@@ -1,6 +1,6 @@
 [Unit]
 Description=Set volume to 100%
-After=sound.target multi-user.target
+After=sound.target graphical-session.target
 Wants=sound.target
 
 [Service]
@@ -12,6 +12,9 @@ RemainAfterExit=yes
 StandardOutput=journal
 StandardError=journal
 SupplementaryGroups=audio
+Environment="PATH=/usr/bin:/usr/local/bin"
+Environment="HOME=/home/pi"
+Environment="PULSE_RUNTIME_PATH=/run/user/1000/pulse"
 
 [Install]
 WantedBy=multi-user.target
