@@ -21,8 +21,8 @@ import threading
 import zmq
 import json
 import time
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from pathlib import Path
+from ament_index_python.packages import get_package_share_directory
 
 # Conditional imports based on sim mode
 try:
@@ -32,7 +32,7 @@ except ImportError:
     YOLO_AVAILABLE = False
     
 try:
-    from utils import HailoAsyncInference
+    from hailo.utils import HailoAsyncInference
     HAILO_AVAILABLE = True
 except ImportError:
     HAILO_AVAILABLE = False
@@ -44,13 +44,15 @@ class HailoDetectionNode(Node):
 
         # Declare and get parameters
         self.declare_parameter('sim', False)
-        self.declare_parameter('model_path', 'yolov5m_wo_spp_60p.hef')
+        self.declare_parameter('model_name', 'yolov8m.hef')
         self.declare_parameter('yolo_model', 'yolov8m.pt')  # For sim mode
         self.declare_parameter('labels_path', 'coco.txt')
         self.declare_parameter('score_threshold', 0.5)
 
         self.sim_mode = self.get_parameter('sim').value
-        self.model_path = self.get_parameter('model_path').value
+
+        package_dir = Path(get_package_share_directory('hailo'))
+        self.model_path = (package_dir / "config" / self.get_parameter('model_name').value).as_posix()
         self.yolo_model_name = self.get_parameter('yolo_model').value
         self.labels_path = self.get_parameter('labels_path').value
         self.score_threshold = self.get_parameter('score_threshold').value
@@ -129,10 +131,6 @@ class HailoDetectionNode(Node):
             # Convert YOLOv8 results to our detection format
             detections = self.extract_yolo_detections(results[0])
         else:
-            # Swap r and b channels, then multiply r by 0.5 to fix the colors (Hailo specific)
-            frame = frame[:, :, ::-1]
-            frame[:, :, 0] = frame[:, :, 0] * 0.5
-
             # Preprocess frame
             preprocessed_frame = self.preprocess_frame(frame, self.model_h, self.model_w, video_h, video_w)
 
@@ -145,6 +143,8 @@ class HailoDetectionNode(Node):
 
             # Process Hailo detections
             detections = self.extract_detections(results, video_h, video_w, self.score_threshold)
+
+        self.get_logger().info(f"Detections: {detections}")
 
         # Convert detections to ROS messages
         detection_msg, marker_array = self.detections_to_ros_messages(detections, msg.header)

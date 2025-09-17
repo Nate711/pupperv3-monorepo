@@ -42,6 +42,10 @@ class HailoAsyncInference:
         # Set the scheduling algorithm to round-robin to activate the scheduler
         params.scheduling_algorithm = HailoSchedulingAlgorithm.ROUND_ROBIN
 
+        # check hef file exists
+        if not Path(hef_path).is_file():
+            raise FileNotFoundError(f'HEF file not found: {hef_path}')
+
         self.hef = HEF(hef_path)
         self.target = VDevice(params)
         self.infer_model = self.target.create_infer_model(hef_path)

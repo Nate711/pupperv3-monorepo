@@ -17,9 +17,9 @@ def generate_launch_description():
     )
     
     model_path_arg = DeclareLaunchArgument(
-        'model_path',
-        default_value='yolov5m_wo_spp_60p.hef',
-        description='Path to the Hailo HEF model file'
+        'model_name',
+        default_value='yolov8m.hef',
+        description='Name of the Hailo HEF model file'
     )
     
     yolo_model_arg = DeclareLaunchArgument(
@@ -53,7 +53,7 @@ def generate_launch_description():
         name='hailo_detection_node',
         parameters=[{
             'sim': LaunchConfiguration('sim'),
-            'model_path': LaunchConfiguration('model_path'),
+            'model_name': LaunchConfiguration('model_name'),
             'yolo_model': LaunchConfiguration('yolo_model'),
             'labels_path': LaunchConfiguration('labels_path'),
             'score_threshold': LaunchConfiguration('score_threshold'),
