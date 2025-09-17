@@ -22,7 +22,7 @@ setup(
         'supervision',
         'loguru',
         'Pillow',
-        'ultralytics',  # For YOLOv8 in simulation mode
+        # 'ultralytics',  # For YOLOv8 in simulation mode
     ],
     zip_safe=True,
     maintainer='nathankau',
