@@ -55,19 +55,30 @@ retry_command() {
     return 0
 }
 
-export DEBIAN_FRONTEND=noninteractive
+############################## Basic setup ###############################################
 
+export DEBIAN_FRONTEND=noninteractive
 
 DEFAULT_USER=pi
 mkdir -p /home/$DEFAULT_USER
 chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER
 
+############################ Prepare monorepo ###############################################
+
+# Prepare monorepo
+cd /home/$DEFAULT_USER/pupperv3-monorepo/
+git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
+git pull
+git-lfs pull
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo/
+
+######################## Update and upgrade ########################
 export APT_LISTCHANGES_FRONTEND=none
 # (Optional) avoid services trying to start in chroot
 printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
 
 
-sudo apt-get update
+apt-get update
 
 apt-get -y \
   -o Dpkg::Options::="--force-confdef" \
@@ -75,7 +86,6 @@ apt-get -y \
   upgrade
 
 rm -f /usr/sbin/policy-rc.d
-
 
 ########################### Install rust ########################
 export CARGO_HOME=/home/$DEFAULT_USER/.cargo
@@ -86,28 +96,17 @@ echo 'export RUSTUP_HOME=/home/pi/.rustup' >> /home/$DEFAULT_USER/.bashrc
 echo "source /home/$DEFAULT_USER/.cargo/env" >> /home/$DEFAULT_USER/.bashrc
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
+source /home/$DEFAULT_USER/.cargo/env
 
 rustup target add aarch64-unknown-linux-gnu
 
+
 ############################### Install LLM deps ###########################
-sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
+rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 pip install "livekit-agents[cartesia,google,openai,deepgram,silero,turn-detector]~=1.2"
 pip install "python-dotenv"
 pip install pandas
 
-############################ Prepare monorepo ###############################################
-
-# Prepare monorepo
-cd /home/$DEFAULT_USER/pupperv3-monorepo/
-git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
-git pull
-chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo/
-
-
-############################## Download turn detector model #############################################
-cd /home/$DEFAULT_USER/pupperv3-monorepo/ai/llm-ui/agent-starter-python/
-python3 src/agent.py download-files
 
 ############################### Build everything #############################################
 
