@@ -260,3 +260,11 @@ animation_controller_py:
       [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
     frame_rate: 40.0 # 1.33x the normal 30fps
     init_duration: 1.0 # seconds given to reach initial keyframe
+
+
+camera:
+  ros__parameters:
+    FrameDurationLimits: [100000, 100000] # 10fps
+    format: "RGB888"
+    width: 1400
+    height: 1050

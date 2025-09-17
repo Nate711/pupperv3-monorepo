@@ -225,8 +225,9 @@ def generate_launch_description():
     camera_node = Node(
         package="camera_ros",
         executable="camera_node",
+        name="camera",
         output="both",
-        parameters=[{"format": "RGB888", "width": 1400, "height": 1050, "FrameDurationLimits": [1000000, 1000000]}],
+        parameters=[node_parameters],
         condition=UnlessCondition(LaunchConfiguration("sim")),
     )
 
