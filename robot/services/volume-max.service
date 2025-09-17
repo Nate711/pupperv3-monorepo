@@ -1,0 +1,17 @@
+[Unit]
+Description=Set volume to 100%
+After=sound.target multi-user.target
+Wants=sound.target
+
+[Service]
+Type=oneshot
+User=pi
+Group=audio
+ExecStart=/usr/bin/amixer sset 'Master' 100%
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+SupplementaryGroups=audio
+
+[Install]
+WantedBy=multi-user.target

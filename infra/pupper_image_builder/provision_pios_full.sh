@@ -164,5 +164,9 @@ bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_battery_monitor.s
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_robot_auto_start_service.sh
 sudo systemctl enable systemd-time-wait-sync.service
 
+# Install volume-max service to set volume to 100% on boot
+cd /home/$DEFAULT_USER/pupperv3-monorepo/robot/services/
+bash install_volume_max_service.sh
+
 # Try chowning again 
 chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER
