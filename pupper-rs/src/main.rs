@@ -77,8 +77,9 @@ impl ImageApp {
                 let rect = ui.max_rect();
                 let painter = ui.painter();
 
-                // Update eye tracker
-                self.eye_tracker.update(ctx, rect);
+                // Update eye tracker with latest person detections
+                let people = self.detection_receiver.get_people_locations();
+                self.eye_tracker.update(ctx, rect, people);
 
                 let center = rect.center();
                 // Horizontal spacing between eyes
