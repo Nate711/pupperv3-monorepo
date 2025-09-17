@@ -55,12 +55,29 @@ retry_command() {
     return 0
 }
 
+############################## Basic setup ###############################################
+
 export DEBIAN_FRONTEND=noninteractive
 
 
 DEFAULT_USER=pi
 mkdir -p /home/$DEFAULT_USER
-chown -R $DEFAULT_USER /home/$DEFAULT_USER
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER
+
+
+############################ Prepare monorepo ###############################################
+
+# Prepare monorepo
+apt install git-lfs -y
+cd /home/$DEFAULT_USER
+git clone https://github.com/Nate711/pupperv3-monorepo.git --recurse-submodules
+cd /home/$DEFAULT_USER/pupperv3-monorepo/
+git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
+git lfs install
+git lfs pull
+chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo
+
+############################### Install dev dependencies ###############################################
 
 export APT_LISTCHANGES_FRONTEND=none
 # (Optional) avoid services trying to start in chroot
@@ -108,17 +125,7 @@ sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 pip install "livekit-agents[cartesia,google,openai]~=1.2"
 pip install "python-dotenv"
 
-############################ Prepare monorepo ###############################################
 
-# Prepare monorepo
-apt install git-lfs -y
-cd /home/$DEFAULT_USER
-retry_command "git clone https://github.com/Nate711/pupperv3-monorepo.git --recurse-submodules"
-cd /home/$DEFAULT_USER/pupperv3-monorepo/
-git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo
-git lfs install
-git lfs pull
-chown -R $DEFAULT_USER:$DEFAULT_USER /home/$DEFAULT_USER/pupperv3-monorepo
 
 ############################## Install ros2 deps from source ##################################
 
