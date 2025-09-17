@@ -95,9 +95,11 @@ class AnimationControllerPy(Node):
         )
 
         # Subscriber for joint states
-        self.joint_states_subscriber = self.create_subscription(
-            JointState, "/joint_states", self.joint_states_callback, 10
-        )
+        # Used in future to detect which animations to perform based on current pose
+        # Subscribing to this topic (250hz) adds 25% CPU usage!
+        # self.joint_states_subscriber = self.create_subscription(
+        #     JointState, "/joint_states", self.joint_states_callback, 10
+        # )
 
         # Service client for controller switching
         self.controller_switch_client = self.create_client(SwitchController, "/controller_manager/switch_controller")
