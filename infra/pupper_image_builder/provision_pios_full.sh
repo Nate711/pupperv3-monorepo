@@ -97,7 +97,7 @@ rm -f /usr/sbin/policy-rc.d
 apt-get install -y vim
 
 rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install wandb sounddevice openai[realtime] pydub pyaudio black supervision opencv-python loguru
+pip install wandb sounddevice openai[realtime] pydub pyaudio black supervision opencv-python loguru pandas
 
 # Install hailo
 yes N | DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
