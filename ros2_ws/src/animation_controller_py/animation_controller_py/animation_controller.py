@@ -97,9 +97,9 @@ class AnimationControllerPy(Node):
         # Subscriber for joint states
         # Used in future to detect which animations to perform based on current pose
         # Subscribing to this topic (250hz) adds 25% CPU usage!
-        # self.joint_states_subscriber = self.create_subscription(
-        #     JointState, "/joint_states", self.joint_states_callback, 10
-        # )
+        self.joint_states_subscriber = self.create_subscription(
+            JointState, "/joint_states", self.joint_states_callback, 10
+        )
 
         # Service client for controller switching
         self.controller_switch_client = self.create_client(SwitchController, "/controller_manager/switch_controller")
@@ -262,9 +262,8 @@ class AnimationControllerPy(Node):
                 f"Using current joint positions as initial positions for animation '{animation_name}'"
             )
         else:
-            # Fallback: use first frame as init position
-            self.init_positions = self.animations[animation_name][0].copy()
-            self.get_logger().warn("No joint_states available, using first animation frame as initial position")
+            self.init_positions = None
+            self.get_logger().warn("No joint_states available, will not play animation")
 
     def interpolate_keyframes(self, alpha: float, frame_a: int, frame_b: int) -> np.ndarray:
         """Interpolate between two keyframes."""
