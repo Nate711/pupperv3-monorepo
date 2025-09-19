@@ -261,6 +261,16 @@ def generate_launch_description():
         output="both",
     )
 
+    # Provides a throttled version of /joint_states to reduce CPU usage in animation_controller_py
+    joint_state_throttler = Node(
+        package="topic_tools",
+        executable="throttle",
+        name="joint_state_throttler",
+        parameters=[node_parameters],
+        arguments=["messages"],
+        output="both",
+    )
+
     #
     # 7. Put them all together
     #
@@ -286,6 +296,7 @@ def generate_launch_description():
         bag_recorder_node,
         imu_to_tf_node,
         animation_controller_py_node,
+        joint_state_throttler,
     ]
 
     #

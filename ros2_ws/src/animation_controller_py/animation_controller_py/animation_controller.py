@@ -94,11 +94,10 @@ class AnimationControllerPy(Node):
             String, "~/animation_select", self.animation_select_callback, 10
         )
 
-        # Subscriber for joint states
+        # Subscriber for throttled (eg 10hz not 250hz) joint states
         # Used in future to detect which animations to perform based on current pose
-        # Subscribing to this topic (250hz) adds 25% CPU usage!
         self.joint_states_subscriber = self.create_subscription(
-            JointState, "/joint_states", self.joint_states_callback, 10
+            JointState, "/joint_states_throttled", self.joint_states_callback, 10
         )
 
         # Service client for controller switching

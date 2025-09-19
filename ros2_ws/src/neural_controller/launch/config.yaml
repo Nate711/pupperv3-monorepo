@@ -261,6 +261,12 @@ animation_controller_py:
     frame_rate: 40.0 # 1.33x the normal 30fps
     init_duration: 1.0 # seconds given to reach initial keyframe
 
+joint_state_throttler:
+  ros__parameters:
+    input_topic: "/joint_states"
+    output_topic: "/joint_states_throttled"
+    msgs_per_sec: 10.0
+
 camera:
   ros__parameters:
     FrameDurationLimits: [100000, 100000] # 10fps
