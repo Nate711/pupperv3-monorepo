@@ -97,7 +97,7 @@ rm -f /usr/sbin/policy-rc.d
 apt-get install -y vim
 
 rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install wandb sounddevice openai[realtime] pydub pyaudio black supervision opencv-python loguru pandas
+pip install wandb sounddevice pydub pyaudio black supervision opencv-python loguru pandas
 
 # Install hailo
 yes N | DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
@@ -106,13 +106,6 @@ apt-get install -y hailo-all
 
 # Source ros2
 source /opt/ros/jazzy/setup.bash
-
-
-############################### Install LLM deps ###########################
-sudo rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install "livekit-agents[cartesia,google,openai]~=1.2"
-pip install "python-dotenv"
-
 
 
 ############################## Install ros2 deps from source ##################################
@@ -144,6 +137,9 @@ repos=(
 for repo in "${repos[@]}"; do
     retry_command "git clone $repo --recurse-submodules"
 done
+
+# Clone topic_tools with jazzy branch
+retry_command "git clone https://github.com/ros-tooling/topic_tools.git --branch jazzy --recurse-submodules"
 
 if [ "$GITHUB_TOKEN_CONFIGURED" = true ]; then
     cleanup_github_credentials
