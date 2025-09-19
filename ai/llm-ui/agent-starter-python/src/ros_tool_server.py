@@ -354,7 +354,7 @@ class RosToolServer(ToolServer):
                 except queue.Empty:
                     pass
             self.latest_image_queue.put_nowait(msg)
-            logging.info("Enqueued latest image")
+            # logging.info("Enqueued latest image")
         except Exception as e:
             logger.warning(f"Failed to enqueue latest image: {e}")
 
