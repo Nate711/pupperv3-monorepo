@@ -261,10 +261,16 @@ animation_controller_py:
     frame_rate: 40.0 # 1.33x the normal 30fps
     init_duration: 1.0 # seconds given to reach initial keyframe
 
-
 camera:
   ros__parameters:
     FrameDurationLimits: [100000, 100000] # 10fps
     format: "RGB888"
     width: 1400
     height: 1050
+
+bag_recorder:
+  ros__parameters:
+    record_start_button: 4 # L1 button
+    record_stop_button: 5 # R1 button
+    bag_output_dir: "~/bags"
+    start_button_hold_duration: 1.0 # 1 second
