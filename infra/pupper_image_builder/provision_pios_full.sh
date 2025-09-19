@@ -157,7 +157,9 @@ bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
 
 ############### AUTOMATICALLY SOURCE ROS2 WORKSPACE IN BASHRC ################################
 echo "source /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/install/setup.bash" >> /home/$DEFAULT_USER/.bashrc
-echo 'export RCUTILS_COLORIZED_OUTPUT=1' >> /home/$DEFAULT_USER/.bashrc
+echo "export RCUTILS_COLORIZED_OUTPUT=1" >> /home/$DEFAULT_USER/.bashrc
+echo "export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST" >> /home/$DEFAULT_USER/.bashrc
+echo "export ROS_LOCALHOST_ONLY=1" >> /home/$DEFAULT_USER/.bashrc
 
 # Install utils
 bash /home/$DEFAULT_USER/pupperv3-monorepo/robot/utils/install_battery_monitor.sh
