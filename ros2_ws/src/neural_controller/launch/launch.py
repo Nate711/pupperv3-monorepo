@@ -243,14 +243,7 @@ def generate_launch_description():
         executable="bag_recorder_node",
         name="bag_recorder",
         output="both",
-        parameters=[
-            {
-                "record_start_button": 4,  # L1 button
-                "record_stop_button": 5,  # R1 button
-                "bag_output_dir": "~/bags",
-                "start_button_hold_duration": 5.0,  # 5 seconds
-            }
-        ],
+        parameters=[node_parameters],
         condition=IfCondition(LaunchConfiguration("bag_recorder")),
     )
 
