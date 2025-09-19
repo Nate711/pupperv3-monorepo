@@ -6,3 +6,4 @@ random
 
 .env.local
 .env.local.*
+*.zip
