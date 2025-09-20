@@ -27,12 +27,15 @@ set -x
 
 load_env_if_present ".env.local"
 
-# Check if the image exists
-if [ ! -f "pupOS_pios_base.img" ]; then
-  echo "Image not found. Running make_pios_base_image.sh..."
+# Get shortened git commit hash
+GIT_COMMIT_SHORT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+# Check if the base image exists (either as symlink or actual file)
+if [ ! -e "pupOS_pios_base.img" ]; then
+  echo "Base image not found. Running make_pios_base_image.sh..."
   ./make_pios_base_image.sh
 else
-  echo "Image found. Skipping base image creation."
+  echo "Base image found. Skipping base image creation."
 fi
 
 docker pull mkaczanowski/packer-builder-arm:latest
@@ -44,3 +47,12 @@ if [ -n "${GITHUB_TOKEN:-}" ]; then
 fi
 
 run_packer_container build "${PACKER_BUILD_ARGS[@]}" pios_full_arm64.pkr.hcl
+
+# Rename the output image to include git commit hash and create symlink
+if [ -f "pupOS_pios_full.img" ]; then
+  mv -f "pupOS_pios_full.img" "pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
+  echo "Image saved as pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
+  # Create symlink for next build step
+  ln -sf "pupOS_pios_full_${GIT_COMMIT_SHORT}.img" "pupOS_pios_full.img"
+  echo "Created symlink pupOS_pios_full.img -> pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
+fi

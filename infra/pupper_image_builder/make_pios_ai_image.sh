@@ -31,6 +31,9 @@ cleanup_sanitized_env_file() {
 
 set -x
 
+# Get shortened git commit hash
+GIT_COMMIT_SHORT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
 #### Parse command line arguments
 INCLUDE_KEYS=false
 for arg in "$@"; do
@@ -44,12 +47,12 @@ done
 
 load_env_if_present ".env.local"
 
-# Check if the image exists
-if [ ! -f "pupOS_pios_full.img" ]; then
-  echo "Image not found. Running make_pios_full_image.sh..."
+# Check if the full image exists (either as symlink or actual file)
+if [ ! -e "pupOS_pios_full.img" ]; then
+  echo "Full image not found. Running make_pios_full_image.sh..."
   ./make_pios_full_image.sh
 else
-  echo "Image found. Skipping full image creation."
+  echo "Full image found. Skipping full image creation."
 fi
 
 #### Select which build to run
@@ -76,8 +79,13 @@ docker pull mkaczanowski/packer-builder-arm:latest
 run_packer_container init pios_ai_arm64.pkr.hcl
 run_packer_container build -only="$PACKER_ONLY" "${PACKER_BUILD_ARGS[@]}" pios_ai_arm64.pkr.hcl
 
-# If including keys, rename the resulting image with _WITH_SECRETS suffix
-if [ "$INCLUDE_KEYS" = true ] && [ -f "pupOS_pios_ai.img" ]; then
-  mv -f pupOS_pios_ai.img pupOS_pios_ai_WITH_SECRETS.img
-  echo "Renamed image to pupOS_pios_ai_WITH_SECRETS.img because --include-keys was used"
+# Rename the output image to include git commit hash
+if [ -f "pupOS_pios_ai.img" ]; then
+  if [ "$INCLUDE_KEYS" = true ]; then
+    mv -f "pupOS_pios_ai.img" "pupOS_pios_ai_WITH_SECRETS_${GIT_COMMIT_SHORT}.img"
+    echo "Image saved as pupOS_pios_ai_WITH_SECRETS_${GIT_COMMIT_SHORT}.img because --include-keys was used"
+  else
+    mv -f "pupOS_pios_ai.img" "pupOS_pios_ai_${GIT_COMMIT_SHORT}.img"
+    echo "Image saved as pupOS_pios_ai_${GIT_COMMIT_SHORT}.img"
+  fi
 fi
