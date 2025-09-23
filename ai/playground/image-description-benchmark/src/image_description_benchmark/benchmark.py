@@ -1,6 +1,5 @@
 """Core benchmarking functionality."""
 
-import asyncio
 import base64
 import time
 import os
@@ -13,7 +12,6 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import pandas as pd
 
-from .realtime_benchmark import RealtimeBenchmark
 
 
 class ImageDescriptionBenchmark:
@@ -58,7 +56,7 @@ class ImageDescriptionBenchmark:
                         "role": "user",
                         "content": [
                             {"type": "input_text", "text": prompt},
-                            {"type": "input_image", "image_url": f"data:image/png;base64,{base64_image}"},
+                            {"type": "input_image", "image_url": f"data:image/jpeg;base64,{base64_image}"},
                         ],
                     }
                 ],
@@ -109,7 +107,7 @@ class ImageDescriptionBenchmark:
                 "error": str(e),
             }
 
-    def run(self, models: list[str], image_paths: list[Path], prompt: str, delay: float = 0.5, include_realtime: bool = False):
+    def run(self, models: list[str], image_paths: list[Path], prompt: str, delay: float = 0.5):
         """
         Run benchmarks across all models and images.
 
@@ -118,27 +116,18 @@ class ImageDescriptionBenchmark:
             image_paths: List of image paths to test
             prompt: Prompt to use for image description
             delay: Delay between tests to avoid rate limiting
-            include_realtime: Whether to include gpt-4o-realtime model (uses WebSockets)
         """
         self.results = []
 
-        # Handle regular models vs realtime models
-        regular_models = [m for m in models if m != "gpt-realtime"]
-        realtime_models = [m for m in models if m == "gpt-realtime"]
-
-        # Check if user explicitly added realtime model or wants it included
-        if include_realtime and "gpt-realtime" not in models:
-            realtime_models.append("gpt-realtime")
-
-        total_tests = (len(regular_models) + len(realtime_models)) * len(image_paths)
+        total_tests = len(models) * len(image_paths)
         current_test = 0
 
-        print(f"Starting benchmark with {len(regular_models)} standard models and {len(realtime_models)} realtime models")
+        print(f"Starting benchmark with {len(models)} models")
         print(f"Images to test: {len(image_paths)}")
         print(f"Total tests to run: {total_tests}\n")
 
-        # Test regular models
-        for model in regular_models:
+        # Test all models
+        for model in models:
             for image_path in image_paths:
                 current_test += 1
                 print(f"[{current_test}/{total_tests}] Testing {model} on {image_path.name}...")
@@ -152,20 +141,6 @@ class ImageDescriptionBenchmark:
                     print(f"  ✗ Failed: {result['error']}")
 
                 time.sleep(delay)
-
-        # Test realtime models with WebSockets
-        if realtime_models:
-            print("\nTesting Realtime API models (WebSocket)...")
-            api_key = os.getenv("OPENAI_API_KEY")
-            realtime_benchmark = RealtimeBenchmark(api_key)
-
-            # Run async benchmark
-            realtime_results = asyncio.run(
-                realtime_benchmark.run_benchmarks(image_paths, prompt, delay)
-            )
-
-            self.results.extend(realtime_results)
-            current_test += len(realtime_results)
 
         return self.results
 

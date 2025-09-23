@@ -6,3 +6,5 @@ ros2_ws/install/
 *.DS_Store
 *.pem
 *.pyc
+
+untracked_bags
