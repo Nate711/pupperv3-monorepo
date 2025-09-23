@@ -13,6 +13,10 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 url = "wss://api.openai.com/v1/realtime?model=gpt-realtime"
 headers = ["Authorization: Bearer " + OPENAI_API_KEY]
 
+# Global timing tracking
+current_image_start_time = None
+current_image_name = None
+
 
 def load_image(image_path):
     with open(image_path, "rb") as f:
@@ -60,7 +64,10 @@ def on_open(ws):
 
     # walk the image_dir
     for image_path in image_dir.glob("*.jpg"):
+        global current_image_start_time, current_image_name
+
         print(f"Sending image {image_path} at {time.time() - start_time:.2f}s")
+        current_image_name = image_path.name
         img64 = load_image(image_path)
         event = {
             "type": "conversation.item.create",
@@ -82,12 +89,15 @@ def on_open(ws):
 
         event = {"type": "response.create", "response": {"output_modalities": ["text"]}}
         send_start = time.time()
+        current_image_start_time = time.time()  # Start timing for response
         ws.send(json.dumps(event))
         print(f"response.create send took {time.time() - send_start:.4f}s")
-        break
+        # break
 
 
 def on_message(ws, message):
+    global current_image_start_time, current_image_name
+
     data = json.loads(message)
     if data.get("type") == "response.output_text.delta":
         return
@@ -96,8 +106,13 @@ def on_message(ws, message):
     if data.get("type") == "error":
         print("Error from server:", data.get("message"))
     if data.get("type") == "response.done":
-        print("Final response", json.dumps(data, indent=2))
-        print("\n\n\n")
+        # Calculate response time for current image
+        if current_image_start_time and current_image_name:
+            response_time = time.time() - current_image_start_time
+            print(f"Image {current_image_name} response took {response_time:.2f}s")
+
+        # print("Final response", json.dumps(data, indent=2))
+        # print("\n\n\n")
 
 
 ws = websocket.WebSocketApp(
