@@ -29,11 +29,191 @@ results = []  # Store results for summary
 IMG_WIDTH = 1400
 IMG_HEIGHT = 1050
 
+# Configuration
+USE_HELPER_GRID = True  # Set to True to overlay helper grid on images
+
+REPEAT = 2
+
+
+def create_helper_grid(image_path):
+    """Create an image with helper grid overlay showing coordinate proportions."""
+    img = Image.open(image_path)
+    draw = ImageDraw.Draw(img)
+
+    # Try to get a font, fallback to default if not available
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
+        small_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
+    except:
+        font = ImageFont.load_default()
+        small_font = font
+
+    # Draw vertical grid lines and labels (x-axis: 0.0 to 1.0)
+    for i in range(11):  # 0.0, 0.1, 0.2, ..., 1.0
+        x_prop = i / 10.0
+        x_pixel = int(x_prop * IMG_WIDTH)
+
+        # Draw vertical line
+        draw.line([(x_pixel, 0), (x_pixel, IMG_HEIGHT)], fill="red", width=1)
+
+        # Draw label at top and bottom
+        label = f"{x_prop:.1f}"
+        # Top label with background
+        text_bbox = draw.textbbox((0, 0), label, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        label_x = x_pixel - text_width // 2
+        # Top label
+        draw.rectangle([label_x - 2, 5, label_x + text_width + 2, 5 + text_height + 4], fill="white", outline="black")
+        draw.text((label_x, 7), label, fill="red", font=font)
+
+        # Bottom label
+        label_y = IMG_HEIGHT - text_height - 10
+        draw.rectangle(
+            [label_x - 2, label_y - 2, label_x + text_width + 2, label_y + text_height + 2],
+            fill="white",
+            outline="black",
+        )
+        draw.text((label_x, label_y), label, fill="red", font=font)
+
+    # Draw horizontal grid lines and labels (y-axis: 0.0 to 1.0)
+    for i in range(11):  # 0.0, 0.1, 0.2, ..., 1.0
+        y_prop = i / 10.0
+        y_pixel = int(y_prop * IMG_HEIGHT)
+
+        # Draw horizontal line
+        draw.line([(0, y_pixel), (IMG_WIDTH, y_pixel)], fill="blue", width=1)
+
+        # Draw label at left and right
+        label = f"{y_prop:.1f}"
+        text_bbox = draw.textbbox((0, 0), label, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        label_y = y_pixel - text_height // 2
+        # Left label
+        draw.rectangle([5, label_y - 2, 5 + text_width + 4, label_y + text_height + 2], fill="white", outline="black")
+        draw.text((7, label_y), label, fill="blue", font=font)
+
+        # Right label
+        label_x = IMG_WIDTH - text_width - 10
+        draw.rectangle(
+            [label_x - 2, label_y - 2, label_x + text_width + 2, label_y + text_height + 2],
+            fill="white",
+            outline="black",
+        )
+        draw.text((label_x, label_y), label, fill="blue", font=font)
+
+    # Add coordinate system explanation in corner
+    explanation = ["Coordinate Grid:", "X (red): 0.0 (left) → 1.0 (right)", "Y (blue): 0.0 (top) → 1.0 (bottom)"]
+
+    # Calculate explanation box size
+    max_text_width = 0
+    total_text_height = 0
+    for line in explanation:
+        text_bbox = draw.textbbox((0, 0), line, font=small_font)
+        line_width = text_bbox[2] - text_bbox[0]
+        line_height = text_bbox[3] - text_bbox[1]
+        max_text_width = max(max_text_width, line_width)
+        total_text_height += line_height + 2
+
+    # Draw explanation background (top-right corner)
+    explanation_x = IMG_WIDTH - max_text_width - 20
+    explanation_y = 50
+    draw.rectangle(
+        [
+            explanation_x - 5,
+            explanation_y - 5,
+            explanation_x + max_text_width + 5,
+            explanation_y + total_text_height + 5,
+        ],
+        fill="white",
+        outline="black",
+        width=2,
+    )
+
+    # Draw explanation text
+    current_y = explanation_y
+    for line in explanation:
+        draw.text((explanation_x, current_y), line, fill="black", font=small_font)
+        text_bbox = draw.textbbox((0, 0), line, font=small_font)
+        current_y += text_bbox[3] - text_bbox[1] + 2
+
+    # Add coordinate labels at grid intersections
+    try:
+        tiny_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 8)
+    except:
+        tiny_font = small_font
+
+    # Add (x,y) labels at every intersection
+    for i in range(11):  # 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (every 0.1)
+        for j in range(11):  # 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 (every 0.1)
+            x_prop = i / 10.0
+            y_prop = j / 10.0
+            x_pixel = int(x_prop * IMG_WIDTH)
+            y_pixel = int(y_prop * IMG_HEIGHT)
+
+            # Create coordinate label
+            coord_label = f"({x_prop:.1f},{y_prop:.1f})"
+
+            # Get text dimensions
+            text_bbox = draw.textbbox((0, 0), coord_label, font=tiny_font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+
+            # Position label slightly offset from intersection
+            label_x = x_pixel + 3
+            label_y = y_pixel + 3
+
+            # Ensure label stays within image bounds
+            if label_x + text_width > IMG_WIDTH:
+                label_x = x_pixel - text_width - 3
+            if label_y + text_height > IMG_HEIGHT:
+                label_y = y_pixel - text_height - 3
+
+            # Draw background for readability
+            draw.rectangle(
+                [label_x - 1, label_y - 1, label_x + text_width + 1, label_y + text_height + 1],
+                fill="yellow",
+                outline="black",
+            )
+
+            # Draw coordinate label
+            draw.text((label_x, label_y), coord_label, fill="black", font=tiny_font)
+
+    return img
+
 
 def load_image(image_path):
-    with open(image_path, "rb") as f:
-        image_base64 = base64.b64encode(f.read()).decode("utf-8")
+    """Load image, optionally with helper grid overlay."""
+    if USE_HELPER_GRID:
+        # Create image with grid overlay
+        img_with_grid = create_helper_grid(image_path)
+
+        # Save the gridded image for visualization
+        image_dir = Path(__file__).parent / "images"
+        gridded_dir = image_dir / "gridded"
+        gridded_dir.mkdir(exist_ok=True)
+
+        grid_filename = f"grid_{Path(image_path).name}"
+        grid_path = gridded_dir / grid_filename
+        img_with_grid.save(grid_path)
+        print(f"  Saved gridded image: gridded/{grid_filename}")
+
+        # Convert to base64
+        import io
+
+        img_buffer = io.BytesIO()
+        img_with_grid.save(img_buffer, format="JPEG")
+        img_buffer.seek(0)
+        image_base64 = base64.b64encode(img_buffer.read()).decode("utf-8")
         return image_base64
+    else:
+        # Load original image without grid
+        with open(image_path, "rb") as f:
+            image_base64 = base64.b64encode(f.read()).decode("utf-8")
+            return image_base64
 
 
 def create_annotated_images():
@@ -43,10 +223,12 @@ def create_annotated_images():
     # Group results by image name
     image_stats = defaultdict(list)
     for result in results:
-        if 'error_x_pixels' in result:  # Only valid results
+        if "error_x_pixels" in result:  # Only valid results
             image_stats[result["image"]].append(result)
 
     image_dir = Path(__file__).parent / "images"
+    labeled_dir = image_dir / "labeled"
+    labeled_dir.mkdir(exist_ok=True)
 
     for image_name, runs in image_stats.items():
         if not runs:
@@ -60,8 +242,8 @@ def create_annotated_images():
         # Get ground truth for this image
         gt = ground_truth.get(image_name, {})
         if gt:
-            gt_x_px = int(gt['x'] * IMG_WIDTH)
-            gt_y_px = int(gt['y'] * IMG_HEIGHT)
+            gt_x_px = int(gt["x"] * IMG_WIDTH)
+            gt_y_px = int(gt["y"] * IMG_HEIGHT)
 
             # Draw ground truth as a green cross
             cross_size = 20
@@ -70,22 +252,25 @@ def create_annotated_images():
 
             # Draw a circle around the ground truth
             radius = 15
-            draw.ellipse([gt_x_px - radius, gt_y_px - radius, gt_x_px + radius, gt_y_px + radius],
-                        outline="green", width=2)
+            draw.ellipse(
+                [gt_x_px - radius, gt_y_px - radius, gt_x_px + radius, gt_y_px + radius], outline="green", width=2
+            )
 
         # Draw LLM estimates for each run
         colors = ["red", "blue", "yellow", "magenta", "cyan"]
         for i, run in enumerate(runs[:5]):  # Max 5 runs
-            llm_x_px = int(run['llm_x'] * IMG_WIDTH)
-            llm_y_px = int(run['llm_y'] * IMG_HEIGHT)
+            llm_x_px = int(run["llm_x"] * IMG_WIDTH)
+            llm_y_px = int(run["llm_y"] * IMG_HEIGHT)
             color = colors[i % len(colors)]
 
             # Draw LLM estimate as a colored X
             x_size = 15
-            draw.line([(llm_x_px - x_size, llm_y_px - x_size), (llm_x_px + x_size, llm_y_px + x_size)],
-                     fill=color, width=2)
-            draw.line([(llm_x_px - x_size, llm_y_px + x_size), (llm_x_px + x_size, llm_y_px - x_size)],
-                     fill=color, width=2)
+            draw.line(
+                [(llm_x_px - x_size, llm_y_px - x_size), (llm_x_px + x_size, llm_y_px + x_size)], fill=color, width=2
+            )
+            draw.line(
+                [(llm_x_px - x_size, llm_y_px + x_size), (llm_x_px + x_size, llm_y_px - x_size)], fill=color, width=2
+            )
 
             # Draw run number next to the X
             try:
@@ -102,8 +287,12 @@ def create_annotated_images():
 
         # Draw legend background
         legend_height = 30 + len(runs[:5]) * 25 + 30
-        draw.rectangle([legend_x - 10, legend_y - 10, legend_x + 250, legend_y + legend_height],
-                      fill="white", outline="black", width=2)
+        draw.rectangle(
+            [legend_x - 10, legend_y - 10, legend_x + 250, legend_y + legend_height],
+            fill="white",
+            outline="black",
+            width=2,
+        )
 
         # Legend items
         draw.text((legend_x, legend_y), "Ground Truth (Green +)", fill="green", font=font)
@@ -111,14 +300,14 @@ def create_annotated_images():
 
         for i, run in enumerate(runs[:5]):
             color = colors[i % len(colors)]
-            error_px = run['euclidean_pixels']
+            error_px = run["euclidean_pixels"]
             draw.text((legend_x, legend_y), f"Run {i+1} ({color}) - Error: {error_px:.1f}px", fill=color, font=font)
             legend_y += 25
 
         # Save the annotated image
-        output_path = image_dir / f"annotated_{image_name}"
+        output_path = labeled_dir / f"labeled_{image_name}"
         img.save(output_path)
-        print(f"Saved annotated image: {output_path.name}")
+        print(f"Saved labeled image: labeled/{output_path.name}")
 
 
 def print_summary_table():
@@ -294,7 +483,7 @@ def on_open(ws):
     # Load all image paths into the queue and repeat them
     image_dir = (Path(__file__).parent / "images").resolve()
     images = sorted(list(image_dir.glob("*.jpg")))
-    image_queue = images * 5  # Repeat the list 5 times
+    image_queue = images * REPEAT  # Repeat the list 5 times
     print(f"Found {len(images)} unique images, will process each 5 times ({len(image_queue)} total)")
 
     # Send the first image
