@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 
+import numpy as np
 import supervision as sv
 from PIL import Image
 from rfdetr import RFDETRBase
@@ -18,6 +19,7 @@ from ultralytics import YOLO
 @dataclass
 class DetectionResult:
     """Results from object detection on a single image."""
+
     image_name: str
     total_detections: int
     person_detections: int
@@ -74,6 +76,7 @@ class RFDETRDetector(ModelDetector):
 
     def load_model(self):
         self.model = RFDETRBase()
+        self.model.optimize_for_inference()
 
     def detect(self, image: Image.Image, threshold: float) -> DetectionResult:
         detections = self.model.predict(image, threshold=threshold)
@@ -94,7 +97,7 @@ class RFDETRDetector(ModelDetector):
             person_detections=person_detections,
             has_person=person_detections > 0,
             class_names=class_names,
-            confidences=confidences
+            confidences=confidences,
         )
 
     def annotate_image(self, image: Image.Image, result: DetectionResult) -> Image.Image:
@@ -114,9 +117,9 @@ class YOLODetector(ModelDetector):
 
     def load_model(self):
         if self.model_version == "v8":
-            self.model = YOLO("yolov8n.pt")
+            self.model = YOLO("yolov8m.pt")
         elif self.model_version == "v11":
-            self.model = YOLO("yolo11n.pt")
+            self.model = YOLO("yolo11m.pt")
         else:
             raise ValueError(f"Unsupported YOLO version: {self.model_version}")
 
@@ -150,7 +153,7 @@ class YOLODetector(ModelDetector):
             person_detections=person_detections,
             has_person=person_detections > 0,
             class_names=class_names,
-            confidences=confidences
+            confidences=confidences,
         )
 
     def annotate_image(self, image: Image.Image, result: DetectionResult) -> Image.Image:
@@ -160,7 +163,9 @@ class YOLODetector(ModelDetector):
         return image.copy()
 
 
-def process_image_with_model(detector: ModelDetector, image_path: Path, output_dir: Path, threshold: float) -> DetectionResult:
+def process_image_with_model(
+    detector: ModelDetector, image_path: Path, output_dir: Path, threshold: float
+) -> DetectionResult:
     """Process a single image with a detection model."""
     # Load and process image
     image = Image.open(image_path)
@@ -169,6 +174,10 @@ def process_image_with_model(detector: ModelDetector, image_path: Path, output_d
 
     # Create annotated image
     annotated_image = detector.annotate_image(image, result)
+
+    # Convert numpy array to PIL Image if needed
+    if isinstance(annotated_image, np.ndarray):
+        annotated_image = Image.fromarray(annotated_image)
 
     # Save to main directory (all images)
     output_path = output_dir / f"{detector.model_name}_{image_path.name}"
@@ -204,32 +213,173 @@ def save_comparison_csv(results_by_model: Dict[str, List[DetectionResult]], outp
         for result in model_results:
             all_images.add(result.image_name)
 
-    with open(csv_path, 'w', newline='') as csvfile:
-        fieldnames = ['image_name']
+    with open(csv_path, "w", newline="") as csvfile:
+        fieldnames = ["image_name"]
         for model_name in results_by_model.keys():
-            fieldnames.extend([f'{model_name}_total_detections', f'{model_name}_person_detections', f'{model_name}_has_person'])
+            fieldnames.extend(
+                [f"{model_name}_total_detections", f"{model_name}_person_detections", f"{model_name}_has_person"]
+            )
 
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
         for image_name in sorted(all_images):
-            row = {'image_name': image_name}
+            row = {"image_name": image_name}
 
             for model_name, model_results in results_by_model.items():
                 # Find result for this image
                 result = next((r for r in model_results if r.image_name == image_name), None)
                 if result:
-                    row[f'{model_name}_total_detections'] = result.total_detections
-                    row[f'{model_name}_person_detections'] = result.person_detections
-                    row[f'{model_name}_has_person'] = result.has_person
+                    row[f"{model_name}_total_detections"] = result.total_detections
+                    row[f"{model_name}_person_detections"] = result.person_detections
+                    row[f"{model_name}_has_person"] = result.has_person
                 else:
-                    row[f'{model_name}_total_detections'] = 0
-                    row[f'{model_name}_person_detections'] = 0
-                    row[f'{model_name}_has_person'] = False
+                    row[f"{model_name}_total_detections"] = 0
+                    row[f"{model_name}_person_detections"] = 0
+                    row[f"{model_name}_has_person"] = False
 
             writer.writerow(row)
 
     print(f"Comparison CSV saved to: {csv_path}")
+
+
+def find_disagreeing_images(csv_path: Path) -> List[Dict]:
+    """Find images where models disagree on person detection."""
+    disagreeing_images = []
+
+    with open(csv_path, 'r') as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for row in reader:
+            # Extract has_person values for each model
+            rfdetr_has_person = row['rfdetr_has_person'] == 'True'
+            yolov8_has_person = row['yolov8_has_person'] == 'True'
+            yolov11_has_person = row['yolov11_has_person'] == 'True'
+
+            # Check if not all models agree
+            person_detections = [rfdetr_has_person, yolov8_has_person, yolov11_has_person]
+            if not all(person_detections) and any(person_detections):
+                disagreeing_images.append({
+                    'image_name': row['image_name'],
+                    'rfdetr_has_person': rfdetr_has_person,
+                    'yolov8_has_person': yolov8_has_person,
+                    'yolov11_has_person': yolov11_has_person
+                })
+
+    return disagreeing_images
+
+
+def create_composite_image(image_path: Path, models_results: Dict[str, bool], output_path: Path):
+    """Create a composite image showing all three model results side by side."""
+    # Load original image
+    original_image = Image.open(image_path)
+
+    # Calculate dimensions for composite
+    img_width, img_height = original_image.size
+    composite_width = img_width * 3 + 40  # 3 images + spacing
+    composite_height = img_height + 80  # extra space for labels
+
+    # Create composite image
+    composite = Image.new('RGB', (composite_width, composite_height), 'white')
+
+    # Model names and their detection paths
+    models = ['rfdetr', 'yolov8', 'yolov11']
+    detection_dir = image_path.parent.parent / "detection_results"
+
+    for i, model in enumerate(models):
+        x_offset = i * (img_width + 20)
+
+        # Try to load annotated image, fallback to original
+        annotated_path = detection_dir / model / f"{model}_{image_path.name}"
+        if annotated_path.exists():
+            model_image = Image.open(annotated_path)
+        else:
+            model_image = original_image.copy()
+
+        # Resize if needed
+        if model_image.size != (img_width, img_height):
+            model_image = model_image.resize((img_width, img_height))
+
+        # Paste image
+        composite.paste(model_image, (x_offset, 60))
+
+        # Add label
+        try:
+            from PIL import ImageDraw, ImageFont
+            draw = ImageDraw.Draw(composite)
+
+            # Model name
+            model_text = model.upper()
+            # Person detection status
+            has_person = models_results.get(f'{model}_has_person', False)
+            status_text = "PERSON DETECTED" if has_person else "NO PERSON"
+
+            # Try to use a default font, fallback to basic if not available
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
+            except:
+                font = ImageFont.load_default()
+
+            # Draw model name
+            draw.text((x_offset + 10, 10), model_text, fill='black', font=font)
+            # Draw detection status with color coding
+            status_color = 'green' if has_person else 'red'
+            draw.text((x_offset + 10, 30), status_text, fill=status_color, font=font)
+
+        except ImportError:
+            # PIL ImageDraw/ImageFont not available, skip labels
+            pass
+
+    # Save composite image
+    composite.save(output_path)
+
+
+def run_composite_mode(csv_path: Path):
+    """Run composite comparison mode."""
+    if not csv_path.exists():
+        print(f"Error: CSV file not found: {csv_path}")
+        return 1
+
+    # Find disagreeing images
+    disagreeing_images = find_disagreeing_images(csv_path)
+
+    if not disagreeing_images:
+        print("No disagreeing images found. All models agree on person detection.")
+        return 0
+
+    print(f"Found {len(disagreeing_images)} images where models disagree:")
+
+    # Create output directory for composites
+    composite_dir = csv_path.parent / "composite_comparisons"
+    composite_dir.mkdir(exist_ok=True)
+
+    # Source images are in extracted_images directory
+    images_dir = csv_path.parent.parent / "extracted_images"
+
+    if not images_dir.exists():
+        print(f"Error: Source image directory not found: {images_dir}")
+        return 1
+
+    for disagreement in disagreeing_images:
+        image_name = disagreement['image_name']
+        print(f"  {image_name}: RFDETR={disagreement['rfdetr_has_person']}, "
+              f"YOLOv8={disagreement['yolov8_has_person']}, "
+              f"YOLOv11={disagreement['yolov11_has_person']}")
+
+        # Get source image path
+        source_path = images_dir / image_name
+
+        if not source_path.exists():
+            print(f"    Warning: Source image not found: {source_path}")
+            continue
+
+        # Create composite
+        output_path = composite_dir / f"composite_{image_name}"
+        create_composite_image(source_path, disagreement, output_path)
+        print(f"    Composite saved: {output_path}")
+
+    print(f"\nComposite images saved to: {composite_dir}")
+    return 0
 
 
 def main():
@@ -259,8 +409,19 @@ def main():
         default=100,
         help="Print progress every N images for large datasets (default: 100)",
     )
+    parser.add_argument(
+        "--composite",
+        type=str,
+        metavar="CSV_FILE",
+        help="Create composite comparison images from CSV file for images where models disagree",
+    )
 
     args = parser.parse_args()
+
+    # Handle composite mode
+    if args.composite:
+        csv_path = Path(args.composite)
+        return run_composite_mode(csv_path)
 
     # Expand "all" models
     if "all" in args.models:
@@ -338,21 +499,17 @@ def main():
             if show_details:
                 print(f"\n[{i}/{len(image_paths)}] Processing {image_path.name} with {model_name}...")
 
-            try:
-                # Process image
-                result = process_image_with_model(detector, image_path, model_output_dir, args.threshold)
-                model_results.append(result)
+            # Process image
+            result = process_image_with_model(detector, image_path, model_output_dir, args.threshold)
+            model_results.append(result)
 
-                total_detections += result.total_detections
-                person_detections += result.person_detections
+            total_detections += result.total_detections
+            person_detections += result.person_detections
 
-                # Print detailed summary if requested
-                if show_details:
-                    print_detection_summary(result)
-                    print(f"  Saved: {model_output_dir.name}/{model_name}_{image_path.name}")
-
-            except Exception as e:
-                print(f"  Error processing {image_path.name} with {model_name}: {e}")
+            # Print detailed summary if requested
+            if show_details:
+                print_detection_summary(result)
+                print(f"  Saved: {model_output_dir.name}/{model_name}_{image_path.name}")
 
         results_by_model[model_name] = model_results
 
