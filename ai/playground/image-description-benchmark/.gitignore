@@ -1,0 +1,4 @@
+*.env.local
+*.json
+*.csv
+*.egg-info

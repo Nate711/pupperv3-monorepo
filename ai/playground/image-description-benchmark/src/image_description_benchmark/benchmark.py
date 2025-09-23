@@ -1,0 +1,228 @@
+"""Core benchmarking functionality."""
+
+import asyncio
+import base64
+import time
+import os
+from pathlib import Path
+from typing import Dict
+import json
+from datetime import datetime
+
+from dotenv import load_dotenv
+from openai import OpenAI
+import pandas as pd
+
+from .realtime_benchmark import RealtimeBenchmark
+
+
+class ImageDescriptionBenchmark:
+    """Benchmark OpenAI models on image description tasks."""
+
+    def __init__(self, client: OpenAI = None):
+        """Initialize benchmark with OpenAI client."""
+        if not client:
+            # Load .env.local file from current working directory
+            load_dotenv(".env.local", override=True)
+
+            # Get API key from loaded environment
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY not found in .env.local file in current directory")
+
+            self.client = OpenAI(api_key=api_key)
+        else:
+            self.client = client
+
+        self.results = []
+
+    def encode_image(self, image_path: Path) -> str:
+        """Encode image to base64 string."""
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode("utf-8")
+
+    def benchmark_model(self, model: str, image_path: Path, prompt: str) -> Dict:
+        """
+        Benchmark a single model on a single image.
+        Returns timing and response information.
+        """
+        base64_image = self.encode_image(image_path)
+
+        start_time = time.perf_counter()
+
+        try:
+            response = self.client.responses.create(
+                model=model,
+                input=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "input_text", "text": prompt},
+                            {"type": "input_image", "image_url": f"data:image/png;base64,{base64_image}"},
+                        ],
+                    }
+                ],
+            )
+
+            end_time = time.perf_counter()
+            latency = end_time - start_time
+
+            # Extract response text from output array
+            response_text = None
+            for item in response.output:
+                # Look for ResponseOutputMessage type which contains the text
+                if hasattr(item, 'content') and item.content:
+                    for content_item in item.content:
+                        if hasattr(content_item, 'text'):
+                            response_text = content_item.text
+                            break
+                    if response_text:
+                        break
+
+            if not response_text:
+                raise ValueError(f"No text response found in API output for {model}")
+
+            # Extract token usage
+            tokens_used = response.usage.total_tokens if response.usage else None
+
+            return {
+                "model": model,
+                "image": image_path.name,
+                "latency": latency,
+                "response": response_text,
+                "tokens_used": tokens_used,
+                "success": True,
+                "error": None,
+            }
+
+        except Exception as e:
+            end_time = time.perf_counter()
+            latency = end_time - start_time
+
+            return {
+                "model": model,
+                "image": image_path.name,
+                "latency": latency,
+                "response": None,
+                "tokens_used": None,
+                "success": False,
+                "error": str(e),
+            }
+
+    def run(self, models: list[str], image_paths: list[Path], prompt: str, delay: float = 0.5, include_realtime: bool = False):
+        """
+        Run benchmarks across all models and images.
+
+        Args:
+            models: List of model names to test
+            image_paths: List of image paths to test
+            prompt: Prompt to use for image description
+            delay: Delay between tests to avoid rate limiting
+            include_realtime: Whether to include gpt-4o-realtime model (uses WebSockets)
+        """
+        self.results = []
+
+        # Handle regular models vs realtime models
+        regular_models = [m for m in models if m != "gpt-realtime"]
+        realtime_models = [m for m in models if m == "gpt-realtime"]
+
+        # Check if user explicitly added realtime model or wants it included
+        if include_realtime and "gpt-realtime" not in models:
+            realtime_models.append("gpt-realtime")
+
+        total_tests = (len(regular_models) + len(realtime_models)) * len(image_paths)
+        current_test = 0
+
+        print(f"Starting benchmark with {len(regular_models)} standard models and {len(realtime_models)} realtime models")
+        print(f"Images to test: {len(image_paths)}")
+        print(f"Total tests to run: {total_tests}\n")
+
+        # Test regular models
+        for model in regular_models:
+            for image_path in image_paths:
+                current_test += 1
+                print(f"[{current_test}/{total_tests}] Testing {model} on {image_path.name}...")
+
+                result = self.benchmark_model(model, image_path, prompt)
+                self.results.append(result)
+
+                if result["success"]:
+                    print(f"  ✓ Completed in {result['latency']:.2f}s")
+                else:
+                    print(f"  ✗ Failed: {result['error']}")
+
+                time.sleep(delay)
+
+        # Test realtime models with WebSockets
+        if realtime_models:
+            print("\nTesting Realtime API models (WebSocket)...")
+            api_key = os.getenv("OPENAI_API_KEY")
+            realtime_benchmark = RealtimeBenchmark(api_key)
+
+            # Run async benchmark
+            realtime_results = asyncio.run(
+                realtime_benchmark.run_benchmarks(image_paths, prompt, delay)
+            )
+
+            self.results.extend(realtime_results)
+            current_test += len(realtime_results)
+
+        return self.results
+
+    def print_summary(self):
+        """Print summary statistics of the benchmark."""
+        if not self.results:
+            print("No results to summarize")
+            return
+
+        df = pd.DataFrame(self.results)
+
+        print("\n" + "=" * 60)
+        print("BENCHMARK RESULTS")
+        print("=" * 60)
+
+        # Group by model and calculate statistics
+        successful_results = df[df["success"]]
+        if not successful_results.empty:
+            model_stats = successful_results.groupby("model")["latency"].agg(["count", "mean", "std", "min", "max"])
+
+            print("\nLatency Statistics by Model (seconds):")
+            print(model_stats.to_string())
+
+            # Average latency per image
+            image_stats = successful_results.groupby("image")["latency"].mean().sort_values()
+            print("\nAverage Latency by Image (seconds):")
+            for image, latency in image_stats.items():
+                print(f"  {image}: {latency:.2f}s")
+
+            # Overall statistics
+            print(f"\nOverall Statistics:")
+            print(f"  Total successful tests: {len(successful_results)}")
+            print(f"  Total failed tests: {len(df) - len(successful_results)}")
+            print(f"  Average latency: {successful_results['latency'].mean():.2f}s")
+            print(f"  Median latency: {successful_results['latency'].median():.2f}s")
+        else:
+            print("No successful results to analyze")
+
+    def save_results(self, output_dir: Path = None):
+        """Save results to JSON and CSV files."""
+        if not self.results:
+            print("No results to save")
+            return
+
+        output_dir = output_dir or Path.cwd()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Save JSON
+        json_file = output_dir / f"benchmark_results_{timestamp}.json"
+        with open(json_file, "w") as f:
+            json.dump(self.results, f, indent=2)
+        print(f"\nDetailed results saved to: {json_file}")
+
+        # Save CSV
+        df = pd.DataFrame(self.results)
+        csv_file = output_dir / f"benchmark_results_{timestamp}.csv"
+        df.to_csv(csv_file, index=False)
+        print(f"CSV results saved to: {csv_file}")
+
+        return json_file, csv_file
