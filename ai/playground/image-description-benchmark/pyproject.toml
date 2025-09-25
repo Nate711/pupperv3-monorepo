@@ -5,6 +5,7 @@ description = "Benchmark OpenAI LLMs on image description tasks"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "black>=25.9.0",
     "google-genai>=1.38.0",
     "openai>=1.108.1",
     "pandas>=2.3.2",

@@ -1,67 +1,121 @@
 #!/usr/bin/env python3
 """Main entry point for the image description benchmark."""
 
+import argparse
+import sys
 from pathlib import Path
-from image_description_benchmark.benchmark import ImageDescriptionBenchmark, GeminiImageBenchmark
+
+from image_description_benchmark.runner import BenchmarkRunner
+
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Run image description benchmarks on OpenAI and Gemini models")
+
+    parser.add_argument(
+        "--image-dir",
+        type=Path,
+        help="Directory containing test images (defaults to package images folder)",
+    )
+
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        help="Custom prompt for image description",
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Directory to save results (defaults to current directory)",
+    )
+
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=0.5,
+        help="Delay between API calls in seconds (default: 0.5)",
+    )
+
+    parser.add_argument(
+        "--openai-only",
+        action="store_true",
+        help="Run only OpenAI benchmarks",
+    )
+
+    parser.add_argument(
+        "--gemini-only",
+        action="store_true",
+        help="Run only Gemini benchmarks",
+    )
+
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        help="Specific models to test (overrides defaults)",
+    )
+
+    return parser.parse_args()
 
 
 def main():
-    """Run the image description benchmark with default settings."""
-    # Configuration for OpenAI models
-    openai_models = [
-        "gpt-5",
-        "gpt-5-mini",
-        "gpt-4o",
-        # "gpt-realtime",  # Uses WebSocket API
-    ]
+    """Run the image description benchmark with command line arguments."""
+    args = parse_arguments()
 
-    # Configuration for Gemini models
-    gemini_models = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
-
-    # Get images from local images folder
-    image_dir = Path(__file__).parent / "images"
-
-    if not image_dir.exists():
-        print(f"Error: Image directory not found at {image_dir}")
-        print("Please ensure the images folder exists in the package directory")
+    # Handle mutual exclusivity
+    if args.openai_only and args.gemini_only:
+        print("Error: Cannot specify both --openai-only and --gemini-only")
         return 1
 
-    image_paths = list(image_dir.glob("*.jpg"))
+    # Configure models based on arguments
+    openai_models = None
+    gemini_models = None
 
-    if not image_paths:
-        print(f"No JPG images found in {image_dir}")
+    if args.openai_only:
+        gemini_models = []
+    elif args.gemini_only:
+        openai_models = []
+
+    # Override with specific models if provided
+    if args.models:
+        if args.openai_only:
+            openai_models = args.models
+        elif args.gemini_only:
+            gemini_models = args.models
+        else:
+            # If no specific provider is specified, try to determine from model names
+            openai_models = [m for m in args.models if "gpt" in m.lower()]
+            gemini_models = [m for m in args.models if "gemini" in m.lower()]
+
+    try:
+        # Initialize and run benchmark runner
+        runner = BenchmarkRunner(
+            image_dir=args.image_dir,
+            openai_models=openai_models,
+            gemini_models=gemini_models,
+        )
+
+        runner.run_all(
+            prompt=args.prompt,
+            delay=args.delay,
+            output_dir=args.output_dir,
+        )
+
+        return 0
+
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
         return 1
-
-    print(f"Found {len(image_paths)} images to benchmark")
-    print(f"Testing OpenAI models: {', '.join(openai_models)}")
-    print(f"Testing Gemini models: {', '.join(gemini_models)}")
-    print("Note: gpt-realtime uses WebSocket API and is primarily designed for audio/voice")
-    print()
-
-    prompt = "Detect the location of the person in the image in x and y coordinates (both normalized to 0 to 1000)"
-
-    # Run OpenAI benchmark
-    print("=" * 60)
-    print("RUNNING OPENAI BENCHMARKS")
-    print("=" * 60)
-    openai_benchmark = ImageDescriptionBenchmark()
-    openai_benchmark.run(models=openai_models, image_paths=image_paths, prompt=prompt, delay=0.5)
-    openai_benchmark.print_summary()
-    openai_benchmark.save_results(Path.cwd())
-
-    print("\n" * 2)
-
-    # Run Gemini benchmark
-    print("=" * 60)
-    print("RUNNING GEMINI BENCHMARKS")
-    print("=" * 60)
-    gemini_benchmark = GeminiImageBenchmark()
-    gemini_benchmark.run(models=gemini_models, image_paths=image_paths, prompt=prompt, delay=0.5)
-    gemini_benchmark.print_summary()
-    gemini_benchmark.save_results(Path.cwd())
-
-    return 0
+    except ValueError as e:
+        print(f"Error: {e}")
+        return 1
+    except KeyboardInterrupt:
+        print("\nBenchmark interrupted by user")
+        return 130
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return 1
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

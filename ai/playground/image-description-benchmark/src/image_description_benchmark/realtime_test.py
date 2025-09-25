@@ -65,13 +65,22 @@ def create_helper_grid(image_path):
 
         label_x = x_pixel - text_width // 2
         # Top label
-        draw.rectangle([label_x - 2, 5, label_x + text_width + 2, 5 + text_height + 4], fill="white", outline="black")
+        draw.rectangle(
+            [label_x - 2, 5, label_x + text_width + 2, 5 + text_height + 4],
+            fill="white",
+            outline="black",
+        )
         draw.text((label_x, 7), label, fill="red", font=font)
 
         # Bottom label
         label_y = IMG_HEIGHT - text_height - 10
         draw.rectangle(
-            [label_x - 2, label_y - 2, label_x + text_width + 2, label_y + text_height + 2],
+            [
+                label_x - 2,
+                label_y - 2,
+                label_x + text_width + 2,
+                label_y + text_height + 2,
+            ],
             fill="white",
             outline="black",
         )
@@ -93,20 +102,33 @@ def create_helper_grid(image_path):
 
         label_y = y_pixel - text_height // 2
         # Left label
-        draw.rectangle([5, label_y - 2, 5 + text_width + 4, label_y + text_height + 2], fill="white", outline="black")
+        draw.rectangle(
+            [5, label_y - 2, 5 + text_width + 4, label_y + text_height + 2],
+            fill="white",
+            outline="black",
+        )
         draw.text((7, label_y), label, fill="blue", font=font)
 
         # Right label
         label_x = IMG_WIDTH - text_width - 10
         draw.rectangle(
-            [label_x - 2, label_y - 2, label_x + text_width + 2, label_y + text_height + 2],
+            [
+                label_x - 2,
+                label_y - 2,
+                label_x + text_width + 2,
+                label_y + text_height + 2,
+            ],
             fill="white",
             outline="black",
         )
         draw.text((label_x, label_y), label, fill="blue", font=font)
 
     # Add coordinate system explanation in corner
-    explanation = ["Coordinate Grid:", "X (red): 0.0 (left) → 1.0 (right)", "Y (blue): 0.0 (top) → 1.0 (bottom)"]
+    explanation = [
+        "Coordinate Grid:",
+        "X (red): 0.0 (left) → 1.0 (right)",
+        "Y (blue): 0.0 (top) → 1.0 (bottom)",
+    ]
 
     # Calculate explanation box size
     max_text_width = 0
@@ -174,7 +196,12 @@ def create_helper_grid(image_path):
 
             # Draw background for readability
             draw.rectangle(
-                [label_x - 1, label_y - 1, label_x + text_width + 1, label_y + text_height + 1],
+                [
+                    label_x - 1,
+                    label_y - 1,
+                    label_x + text_width + 1,
+                    label_y + text_height + 1,
+                ],
                 fill="yellow",
                 outline="black",
             )
@@ -247,13 +274,28 @@ def create_annotated_images():
 
             # Draw ground truth as a green cross
             cross_size = 20
-            draw.line([(gt_x_px - cross_size, gt_y_px), (gt_x_px + cross_size, gt_y_px)], fill="green", width=3)
-            draw.line([(gt_x_px, gt_y_px - cross_size), (gt_x_px, gt_y_px + cross_size)], fill="green", width=3)
+            draw.line(
+                [(gt_x_px - cross_size, gt_y_px), (gt_x_px + cross_size, gt_y_px)],
+                fill="green",
+                width=3,
+            )
+            draw.line(
+                [(gt_x_px, gt_y_px - cross_size), (gt_x_px, gt_y_px + cross_size)],
+                fill="green",
+                width=3,
+            )
 
             # Draw a circle around the ground truth
             radius = 15
             draw.ellipse(
-                [gt_x_px - radius, gt_y_px - radius, gt_x_px + radius, gt_y_px + radius], outline="green", width=2
+                [
+                    gt_x_px - radius,
+                    gt_y_px - radius,
+                    gt_x_px + radius,
+                    gt_y_px + radius,
+                ],
+                outline="green",
+                width=2,
             )
 
         # Draw LLM estimates for each run
@@ -266,10 +308,20 @@ def create_annotated_images():
             # Draw LLM estimate as a colored X
             x_size = 15
             draw.line(
-                [(llm_x_px - x_size, llm_y_px - x_size), (llm_x_px + x_size, llm_y_px + x_size)], fill=color, width=2
+                [
+                    (llm_x_px - x_size, llm_y_px - x_size),
+                    (llm_x_px + x_size, llm_y_px + x_size),
+                ],
+                fill=color,
+                width=2,
             )
             draw.line(
-                [(llm_x_px - x_size, llm_y_px + x_size), (llm_x_px + x_size, llm_y_px - x_size)], fill=color, width=2
+                [
+                    (llm_x_px - x_size, llm_y_px + x_size),
+                    (llm_x_px + x_size, llm_y_px - x_size),
+                ],
+                fill=color,
+                width=2,
             )
 
             # Draw run number next to the X
@@ -301,7 +353,12 @@ def create_annotated_images():
         for i, run in enumerate(runs[:5]):
             color = colors[i % len(colors)]
             error_px = run["euclidean_pixels"]
-            draw.text((legend_x, legend_y), f"Run {i+1} ({color}) - Error: {error_px:.1f}px", fill=color, font=font)
+            draw.text(
+                (legend_x, legend_y),
+                f"Run {i+1} ({color}) - Error: {error_px:.1f}px",
+                fill=color,
+                font=font,
+            )
             legend_y += 25
 
         # Save the annotated image

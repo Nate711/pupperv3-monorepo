@@ -18,6 +18,7 @@ from ultralytics import YOLO
 @dataclass
 class DetectionResult:
     """Results from object detection on a single image."""
+
     image_name: str
     total_detections: int
     person_detections: int
@@ -94,7 +95,7 @@ class RFDETRDetector(ModelDetector):
             person_detections=person_detections,
             has_person=person_detections > 0,
             class_names=class_names,
-            confidences=confidences
+            confidences=confidences,
         )
 
     def annotate_image(self, image: Image.Image, result: DetectionResult) -> Image.Image:
@@ -150,7 +151,7 @@ class YOLODetector(ModelDetector):
             person_detections=person_detections,
             has_person=person_detections > 0,
             class_names=class_names,
-            confidences=confidences
+            confidences=confidences,
         )
 
     def annotate_image(self, image: Image.Image, result: DetectionResult) -> Image.Image:
@@ -160,7 +161,9 @@ class YOLODetector(ModelDetector):
         return image.copy()
 
 
-def process_image_with_model(detector: ModelDetector, image_path: Path, output_dir: Path, threshold: float) -> DetectionResult:
+def process_image_with_model(
+    detector: ModelDetector, image_path: Path, output_dir: Path, threshold: float
+) -> DetectionResult:
     """Process a single image with a detection model."""
     # Load and process image
     image = Image.open(image_path)
@@ -204,28 +207,34 @@ def save_comparison_csv(results_by_model: Dict[str, List[DetectionResult]], outp
         for result in model_results:
             all_images.add(result.image_name)
 
-    with open(csv_path, 'w', newline='') as csvfile:
-        fieldnames = ['image_name']
+    with open(csv_path, "w", newline="") as csvfile:
+        fieldnames = ["image_name"]
         for model_name in results_by_model.keys():
-            fieldnames.extend([f'{model_name}_total_detections', f'{model_name}_person_detections', f'{model_name}_has_person'])
+            fieldnames.extend(
+                [
+                    f"{model_name}_total_detections",
+                    f"{model_name}_person_detections",
+                    f"{model_name}_has_person",
+                ]
+            )
 
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
         for image_name in sorted(all_images):
-            row = {'image_name': image_name}
+            row = {"image_name": image_name}
 
             for model_name, model_results in results_by_model.items():
                 # Find result for this image
                 result = next((r for r in model_results if r.image_name == image_name), None)
                 if result:
-                    row[f'{model_name}_total_detections'] = result.total_detections
-                    row[f'{model_name}_person_detections'] = result.person_detections
-                    row[f'{model_name}_has_person'] = result.has_person
+                    row[f"{model_name}_total_detections"] = result.total_detections
+                    row[f"{model_name}_person_detections"] = result.person_detections
+                    row[f"{model_name}_has_person"] = result.has_person
                 else:
-                    row[f'{model_name}_total_detections'] = 0
-                    row[f'{model_name}_person_detections'] = 0
-                    row[f'{model_name}_has_person'] = False
+                    row[f"{model_name}_total_detections"] = 0
+                    row[f"{model_name}_person_detections"] = 0
+                    row[f"{model_name}_has_person"] = False
 
             writer.writerow(row)
 
