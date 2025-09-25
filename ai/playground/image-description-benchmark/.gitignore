@@ -2,3 +2,6 @@
 *.json
 *.csv
 *.egg-info
+src/image_description_benchmark/images/gridded
+src/image_description_benchmark/images/labeled
+src/image_description_benchmark/images/rfdetr
