@@ -42,10 +42,10 @@ class ToolServer(ABC):
     @abstractmethod
     async def queue_animation(self, animation_name: str) -> Tuple[bool, str]:
         """Queue an animation sequence.
-        
+
         Args:
             animation_name: Name of the animation to play (e.g., 'twerk', 'sit', 'lie_down')
-            
+
         Returns:
             Tuple of (success, message) indicating if the animation was queued successfully
         """
@@ -59,4 +59,14 @@ class ToolServer(ABC):
     @abstractmethod
     async def immediate_stop(self) -> Tuple[bool, str]:
         """Stop execution, clear the queue, and ensure robot is stopped."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
+        """Analyze the current camera image and return a description or status.
+
+        Args:
+            prompt: A textual prompt to guide the analysis
+            context: Additional context or metadata for analysis
+        """
         raise NotImplementedError

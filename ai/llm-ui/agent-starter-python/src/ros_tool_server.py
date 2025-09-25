@@ -17,6 +17,7 @@ from std_msgs.msg import String
 import asyncio
 from abc import ABC, abstractmethod
 import time
+import gemini_interface
 
 logger = logging.getLogger("ros_tool_server")
 AVAILABLE_CONTROLLERS = {
@@ -100,7 +101,7 @@ class MoveCommand(Command):
         server.twist_pub.publish(twist)
 
         message = f"Robot moving with velocities vx={vx}, vy={vy}, wz={wz}"
-        logger.info(f"Executing MoveCommand - vx: {vx}, vy: {vy}, wz: {wz}")
+        server.node.get_logger().info(f"Executing MoveCommand - vx: {vx}, vy: {vy}, wz: {wz}")
         return True, message
 
 
@@ -116,7 +117,7 @@ class StopCommand(Command):
 
         server.twist_pub.publish(twist)
 
-        logger.info("Executed StopCommand")
+        server.node.get_logger().info("Executed StopCommand")
         return True, "Robot stopped successfully"
 
 
@@ -127,7 +128,7 @@ class WaitCommand(Command):
 
     async def execute(self, server: "RosToolServer") -> Tuple[bool, str]:
         await asyncio.sleep(self.duration)
-        logger.info(f"Executed WaitCommand for {self.duration} seconds")
+        server.node.get_logger().info(f"Executed WaitCommand for {self.duration} seconds")
         return True, f"Waited for {self.duration} seconds"
 
 
@@ -192,19 +193,19 @@ class ActivateWalkingCommand(Command):
         # Activate the walking controller
         req = SwitchController.Request()
         req.activate_controllers = [controller_name]
-        logger.info(f"Activating controller: {controller_name}")
+        server.node.get_logger().info(f"Activating controller: {controller_name}")
         req.deactivate_controllers = list(AVAILABLE_CONTROLLERS - {controller_name})
-        logger.info(f"Deactivating controllers: {list(AVAILABLE_CONTROLLERS - {controller_name})}")
+        server.node.get_logger().info(f"Deactivating controllers: {list(AVAILABLE_CONTROLLERS - {controller_name})}")
         req.strictness = 1
 
         future = server.switch_controller_client.call_async(req)
         rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
 
         if future.done() and future.result().ok:
-            logger.info("🤖 Walking mode ACTIVATED")
+            server.node.get_logger().info("🤖 Walking mode ACTIVATED")
             return True, f"Walking mode activated successfully with {controller_name}"
         else:
-            logger.error("❌ Failed to activate walking mode")
+            server.node.get_logger().error("❌ Failed to activate walking mode")
             return False, "Failed to activate walking mode - controller switch failed"
 
 
@@ -222,10 +223,10 @@ class DeactivateCommand(Command):
         rclpy.spin_until_future_complete(server.node, future, timeout_sec=2.0)
 
         if future.done() and future.result().ok:
-            logger.info("🤖 Robot DEACTIVATED")
+            server.node.get_logger().info("🤖 Robot DEACTIVATED")
             return True, "Robot deactivated successfully"
         else:
-            logger.error("❌ Failed to deactivate robot")
+            server.node.get_logger().error("❌ Failed to deactivate robot")
             return False, "Failed to deactivate robot - controller switch failed"
 
 
@@ -249,11 +250,11 @@ class AnimationCommand(Command):
             msg.data = self.animation_csv_name
             server.animation_publishers[topic_name].publish(msg)
 
-            logger.info(f"🎭 Animation '{self.animation_csv_name}' requested")
+            server.node.get_logger().info(f"🎭 Animation '{self.animation_csv_name}' requested")
             return True, f"Animation '{self.animation_csv_name}' started successfully"
 
         except Exception as e:
-            logger.error(f"❌ Failed to start animation '{self.animation_csv_name}': {e}")
+            server.node.get_logger().error(f"❌ Failed to start animation '{self.animation_csv_name}': {e}")
             return False, f"Failed to start animation '{self.animation_csv_name}': {e}"
 
 
@@ -300,7 +301,7 @@ class RosToolServer(ToolServer):
 
         self.start_queue_processor()
 
-        logger.info("ROS Tool Server has been started.")
+        self.node.get_logger().info("ROS Tool Server has been started.")
 
     async def get_camera_image(self, context: Any) -> Dict[str, Any]:
         from livekit.agents.llm import ImageContent
@@ -312,10 +313,10 @@ class RosToolServer(ToolServer):
             role="user",
             content=[ImageContent(image=f"data:image/jpeg;base64,{b64}")],
         )
-        logger.info(f"Adding image to conversation, size: {len(b64)} bytes.....")
+        self.node.get_logger().info(f"Adding image to conversation, size: {len(b64)} bytes.....")
         await context.session.current_agent.update_chat_ctx(ctx)
         # log image number of bytes
-        logger.info(f"Added image to conversation, size: {len(b64)} bytes")
+        self.node.get_logger().info(f"Added image to conversation, size: {len(b64)} bytes")
         return True, "Image added to conversation"
 
     # TODO: LLM might want to start the queue processor explicitly so it can control when commands start executing.
@@ -327,21 +328,21 @@ class RosToolServer(ToolServer):
         if not self.queue_running:
             self.queue_running = True
             self.queue_task = asyncio.create_task(self._process_command_queue())
-            logger.info("Command queue processor started")
+            self.node.get_logger().info("Command queue processor started")
 
     async def stop_queue_processor(self):
         """Stop the command queue processor"""
         self.queue_running = False
         if self.queue_task:
             await self.queue_task
-            logger.info("Command queue processor stopped")
+            self.node.get_logger().info("Command queue processor stopped")
 
     def _spin_executor(self):
         """Spin the ROS executor in a dedicated thread."""
         try:
             self.executor.spin()
         except Exception as e:
-            logger.error(f"ROS executor stopped with error: {e}")
+            self.node.get_logger().error(f"ROS executor stopped with error: {e}")
             raise e
 
     def _on_image(self, msg: CompressedImage):
@@ -356,7 +357,7 @@ class RosToolServer(ToolServer):
             self.latest_image_queue.put_nowait(msg)
             # logging.info("Enqueued latest image")
         except Exception as e:
-            logger.warning(f"Failed to enqueue latest image: {e}")
+            self.node.get_logger().warning(f"Failed to enqueue latest image: {e}")
 
     async def _process_command_queue(self):
         """Background task that processes commands from the queue sequentially"""
@@ -364,7 +365,7 @@ class RosToolServer(ToolServer):
             try:
                 # Wait for a command with timeout to allow checking queue_running
                 command = await asyncio.wait_for(self.command_queue.get(), timeout=0.1)
-                logger.info(f"Executing command: {command.name}")
+                self.node.get_logger().info(f"Executing command: {command.name}")
 
                 # Create a cancellable task for the command execution
                 self.current_command_task = asyncio.create_task(command.execute(self))
@@ -372,21 +373,21 @@ class RosToolServer(ToolServer):
                 try:
                     success, message = await self.current_command_task
                     if success:
-                        logger.info(f"Command {command.name} succeeded: {message}")
+                        self.node.get_logger().info(f"Command {command.name} succeeded: {message}")
                     else:
-                        logger.error(f"Command {command.name} failed: {message}")
+                        self.node.get_logger().error(f"Command {command.name} failed: {message}")
 
                 ################## Handle cancellation ##################
                 except asyncio.CancelledError:
-                    logger.info(f"Command {command.name} was cancelled")
+                    self.node.get_logger().info(f"Command {command.name} was cancelled")
                     # Ensure robot is stopped after cancellation
                     stop_cmd = StopCommand()
                     await stop_cmd.execute(self)
-                    logger.info("Robot stopped after command cancellation")
+                    self.node.get_logger().info("Robot stopped after command cancellation")
 
                 ################### Handle other exceptions ###################
                 except Exception as e:
-                    logger.error(f"Error executing command {command.name}: {e}")
+                    self.node.get_logger().error(f"Error executing command {command.name}: {e}")
                 finally:
                     self.current_command_task = None
 
@@ -394,19 +395,19 @@ class RosToolServer(ToolServer):
                 # Timeout is expected, continue loop to check queue_running
                 # Log every 10 seconds if the queue is empty
                 if random.random() < 0.01:
-                    logger.info("Command queue processor waiting for commands...")
+                    self.node.get_logger().info("Command queue processor waiting for commands...")
                 continue
             except Exception as e:
-                logger.error(f"Unexpected error in command queue processor: {e}")
+                self.node.get_logger().error(f"Unexpected error in command queue processor: {e}")
 
     async def add_command(self, command: Command) -> None:
         """Add a command to the queue"""
         await self.command_queue.put(command)
-        logger.debug(f"Added command {command.name} to queue")
+        self.node.get_logger().debug(f"Added command {command.name} to queue")
 
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
         """Queue a move_for_time operation as a single command"""
-        logger.info(f"Queueing move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
+        self.node.get_logger().info(f"Queueing move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
 
         # Ensure walking controller is active before moving
         await self.queue_activate_walking()
@@ -414,7 +415,7 @@ class RosToolServer(ToolServer):
         try:
             move_for_time_cmd = MoveForTimeCommand(vx, vy, wz, duration, self)
         except ValueError as e:
-            logger.warning(f"Invalid parameters for move_for_time: {e}")
+            self.node.get_logger().warning(f"Invalid parameters for move_for_time: {e}")
             return False, str(e)
         await self.add_command(move_for_time_cmd)
         return True, f"Queued move_for_time: vx={vx}, vy={vy}, wz={wz} for {duration}s"
@@ -425,12 +426,12 @@ class RosToolServer(ToolServer):
         # Check if walking controller is active, if not queue activation and wait
         do_wait = False
         if not is_controller_active(self, self.current_walking_controller):
-            logger.info(
+            self.node.get_logger().info(
                 f"Walking controller {self.current_walking_controller} not active, will wait for activation to finish"
             )
             do_wait = True
 
-        logger.info("Queueing activate walking command")
+        self.node.get_logger().info("Queueing activate walking command")
         await self.add_command(ActivateWalkingCommand())
         if do_wait:
             await self.add_command(WaitCommand(2.5))  # wait 2.5 seconds for controller to activate
@@ -438,40 +439,40 @@ class RosToolServer(ToolServer):
 
     async def queue_deactivate(self):
         """Queue a deactivate command"""
-        logger.info("Queueing deactivate command")
+        self.node.get_logger().info("Queueing deactivate command")
         await self.add_command(DeactivateCommand())
         return True, "Deactivate command queued"
 
     async def queue_stop(self):
         """Queue a stop command"""
-        logger.info("Queueing stop command")
+        self.node.get_logger().info("Queueing stop command")
         await self.add_command(StopCommand())
         return True, "Stop command queued"
 
     async def queue_wait(self, duration: float):
         """Queue a wait command"""
-        logger.info(f"Queueing wait command for {duration} seconds")
+        self.node.get_logger().info(f"Queueing wait command for {duration} seconds")
         await self.add_command(WaitCommand(duration))
         return True, f"Wait command for {duration} seconds queued"
 
     async def queue_animation(self, animation_name: str):
         """Queue an animation command"""
-        logger.info(f"Queueing animation command: {animation_name}")
+        self.node.get_logger().info(f"Queueing animation command: {animation_name}")
         try:
             animation_cmd = AnimationCommand(animation_name)
             await self.add_command(animation_cmd)
             return True, f"Animation '{animation_name}' queued"
         except ValueError as e:
-            logger.warning(f"Invalid animation name: {e}")
+            self.node.get_logger().warning(f"Invalid animation name: {e}")
             return False, str(e)
 
     async def _interrupt_and_stop(self) -> Tuple[bool, str]:
         """Interrupt current command and immediately stop the robot"""
-        logger.info("Interrupting current command and stopping robot")
+        self.node.get_logger().info("Interrupting current command and stopping robot")
 
         # Cancel the currently executing command if any
         if self.current_command_task and not self.current_command_task.done():
-            logger.info(f"Cancelling current command task")
+            self.node.get_logger().info(f"Cancelling current command task")
             self.current_command_task.cancel()
             # The cancellation handler in _process_command_queue will stop the robot
 
@@ -497,12 +498,12 @@ class RosToolServer(ToolServer):
             except asyncio.QueueEmpty:
                 break
 
-        logger.info(f"Cleared {count} commands from queue")
+        self.node.get_logger().info(f"Cleared {count} commands from queue")
         return True, f"Cleared {count} pending commands from queue"
 
     async def immediate_stop(self) -> Tuple[bool, str]:
         """Immediate stop: interrupt current command, stop robot, and clear queue"""
-        logger.warning("IMMEDIATE STOP initiated")
+        self.node.get_logger().warning("IMMEDIATE STOP initiated")
 
         # Then clear the queue
         await self.clear_queue()
@@ -510,5 +511,9 @@ class RosToolServer(ToolServer):
         # First interrupt and stop
         await self._interrupt_and_stop()
 
-        logger.warning("IMMEDIATE STOP completed")
+        self.node.get_logger().warning("IMMEDIATE STOP completed")
         return True, "Immediate stop completed: robot stopped and queue cleared"
+
+    async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
+        text = gemini_interface.analyze_camera_image(prompt, context)
+        return True, text

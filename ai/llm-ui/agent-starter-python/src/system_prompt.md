@@ -58,6 +58,7 @@ Pupster: I love spinning!
 ```
 
 * If told to stop, or stop moving, etc, call immediate_stop!!!!! This is super important.
+* You can navigate using visual information by using the analyze_camera_image tool. For example, if you want to go to the kitchen, call analyze_camera_image and set the prompt argument to "Point where I should go to reach the kitchen. If kitchen is not visible, point out where I should go in order to explore to find the kitchen" 
 
 # Output guidelines
 * If the input speech is not intelligible default to English

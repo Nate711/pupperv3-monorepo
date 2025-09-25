@@ -237,7 +237,6 @@ class PupsterAgent(Agent):
     # all functions annotated with @function_tool will be passed to the LLM when this
     # agent is active
 
-
     @function_tool
     async def queue_activate_walking(self, context: RunContext):
         """Use this tool to activate your walking mode (you have 12 motors on your body, 3 per leg). This supports both 4-legged and 3-legged walking gaits."""
@@ -278,7 +277,7 @@ class PupsterAgent(Agent):
     @function_tool
     async def queue_stop(self, context: RunContext):
         """Use this tool to queue a Stop command (vx=0, vy=0, wz=0) at the end of the command queue."""
-        logging.info("FUNCTION CALL: queue_stop()")
+        logger.info("FUNCTION CALL: queue_stop()")
         return await self.tool_impl.queue_stop()
 
     @function_tool
@@ -340,3 +339,20 @@ Example:
         logger.info(f"FUNCTION CALL: immediate_stop()")
 
         return await self.tool_impl.immediate_stop()
+
+    @function_tool
+    async def analyze_camera_image(self, prompt: str, context: RunContext):
+        """Analyze the current camera image and return a description or status.
+
+        You can navigate using visual information by using the analyze_camera_image tool.
+        For example, if you want to go to the kitchen, call analyze_camera_image and
+        set the prompt argument to "Point where I should go to reach the kitchen.
+        If kitchen is not visible, point out where I should go in order to
+        explore to find the kitchen"
+
+        Args:
+            prompt (str): A textual prompt to guide the analysis.
+        """
+        logger.info(f"FUNCTION CALL: analyze_camera_image(prompt={prompt})")
+
+        return await self.tool_impl.analyze_camera_image(prompt, context)
