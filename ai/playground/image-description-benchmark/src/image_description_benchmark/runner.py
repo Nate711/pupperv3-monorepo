@@ -71,7 +71,7 @@ class BenchmarkRunner:
 
         # Run OpenAI benchmarks if models are configured
         if self.openai_models:
-            openai_data = self.run_openai_benchmark(image_paths, prompt, delay, output_dir)
+            openai_data = self.run_openai_benchmark(image_paths, prompt, delay)
             results["openai"] = openai_data
             all_results.extend(openai_data["results"])
 
@@ -81,7 +81,7 @@ class BenchmarkRunner:
 
         # Run Gemini benchmarks if models are configured
         if self.gemini_models:
-            gemini_data = self.run_gemini_benchmark(image_paths, prompt, delay, output_dir)
+            gemini_data = self.run_gemini_benchmark(image_paths, prompt, delay)
             results["gemini"] = gemini_data
             all_results.extend(gemini_data["results"])
 
@@ -97,13 +97,10 @@ class BenchmarkRunner:
             # Print bounding box analysis
             processor.print_bounding_box_summary()
 
-            # Generate visualizations
-            viz_paths = processor.generate_visualizations(output_dir)
+            # Generate visualizations in dedicated folder
+            viz_dir = output_dir / "visualizations"
+            viz_paths = processor.generate_visualizations(viz_dir)
             results["visualizations"] = viz_paths
-
-            # Export detailed analysis
-            analysis_path = processor.export_detailed_results(output_dir)
-            results["analysis_file"] = analysis_path
 
         return results
 
@@ -112,7 +109,6 @@ class BenchmarkRunner:
         image_paths: List[Path],
         prompt: str,
         delay: float,
-        output_dir: Path,
     ) -> dict:
         """
         Run OpenAI benchmark.
@@ -121,7 +117,6 @@ class BenchmarkRunner:
             image_paths: List of image paths to test
             prompt: Prompt to use
             delay: Delay between API calls
-            output_dir: Directory to save results
 
         Returns:
             Dictionary with benchmark results
@@ -141,11 +136,9 @@ class BenchmarkRunner:
         )
 
         benchmark.print_summary("OPENAI BENCHMARK RESULTS")
-        files = benchmark.save_results(output_dir, "openai")
 
         return {
             "results": results,
-            "files": files,
         }
 
     def run_gemini_benchmark(
@@ -153,7 +146,6 @@ class BenchmarkRunner:
         image_paths: List[Path],
         prompt: str,
         delay: float,
-        output_dir: Path,
     ) -> dict:
         """
         Run Gemini benchmark.
@@ -162,7 +154,6 @@ class BenchmarkRunner:
             image_paths: List of image paths to test
             prompt: Prompt to use
             delay: Delay between API calls
-            output_dir: Directory to save results
 
         Returns:
             Dictionary with benchmark results
@@ -182,9 +173,7 @@ class BenchmarkRunner:
         )
 
         benchmark.print_summary("GEMINI BENCHMARK RESULTS")
-        files = benchmark.save_results(output_dir, "gemini")
 
         return {
             "results": results,
-            "files": files,
         }

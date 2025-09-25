@@ -10,6 +10,6 @@ Explore the repository files to understand context. There aren't that many files
 
 ## Coding guidelines
 
-Never write fallbacks. Instead warn the user about potential failure modes. 
+Never write fallbacks. Instead warn the user about potential failure modes. This means avoid most try excepts.
 
 Use uv to manage packages. Never modify the PATH manually in files.

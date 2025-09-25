@@ -10,10 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 def transform_coordinates(
-    box_coords: List[int],
-    image_width: int,
-    image_height: int,
-    input_range: int = 1000
+    box_coords: List[int], image_width: int, image_height: int, input_range: int = 1000
 ) -> List[int]:
     """
     Transform normalized coordinates to image pixel coordinates.
@@ -60,62 +57,28 @@ def parse_bounding_boxes(response_text: str) -> List[Dict]:
     if not response_text:
         return []
 
-    try:
-        # Clean up the response text
-        cleaned_text = response_text.strip()
+    # Clean up the response text
+    cleaned_text = response_text.strip()
 
-        # Remove markdown code blocks if present
-        if "```json" in cleaned_text:
-            cleaned_text = re.sub(r'```json\s*', '', cleaned_text)
-            cleaned_text = re.sub(r'\s*```', '', cleaned_text)
+    # Remove markdown code blocks if present
+    if "```json" in cleaned_text:
+        cleaned_text = re.sub(r"```json\s*", "", cleaned_text)
+        cleaned_text = re.sub(r"\s*```", "", cleaned_text)
 
-        # Look for JSON array pattern with more flexible regex
-        json_match = re.search(r'\[\s*\{.*?\}\s*\]', cleaned_text, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
+    # Look for JSON array pattern
+    json_match = re.search(r"\[\s*\{.*?\}\s*\]", cleaned_text, re.DOTALL)
+    if json_match:
+        json_str = json_match.group(0)
+        boxes = json.loads(json_str)
 
-            # Fix common JSON formatting issues
-            # Replace single quotes with double quotes
-            json_str = re.sub(r"'([^']*)':", r'"\1":', json_str)
-            json_str = re.sub(r":\s*'([^']*)'", r': "\1"', json_str)
+        # Validate structure
+        validated_boxes = []
+        for box in boxes:
+            if isinstance(box, dict) and "box_2d" in box and "label" in box:
+                if isinstance(box["box_2d"], list) and len(box["box_2d"]) == 4:
+                    validated_boxes.append(box)
 
-            # Try to parse
-            boxes = json.loads(json_str)
-
-            # Validate structure
-            validated_boxes = []
-            for box in boxes:
-                if isinstance(box, dict) and 'box_2d' in box and 'label' in box:
-                    if isinstance(box['box_2d'], list) and len(box['box_2d']) == 4:
-                        validated_boxes.append(box)
-
-            return validated_boxes
-
-    except (json.JSONDecodeError, AttributeError) as e:
-        # Try alternative parsing for cases where the format might be different
-        try:
-            # Look for individual box patterns like {"box_2d": [x,y,x,y], "label": "text"}
-            box_pattern = r'\{"box_2d":\s*\[([^\]]+)\],\s*"label":\s*"([^"]+)"\}'
-            matches = re.findall(box_pattern, response_text)
-
-            validated_boxes = []
-            for coords_str, label in matches:
-                coords = [int(x.strip()) for x in coords_str.split(',')]
-                if len(coords) == 4:
-                    validated_boxes.append({
-                        'box_2d': coords,
-                        'label': label
-                    })
-
-            if validated_boxes:
-                return validated_boxes
-
-        except Exception:
-            pass
-
-        print(f"Failed to parse JSON from response: {e}")
-        # Debug: print first 200 chars of response
-        print(f"Response preview: {response_text[:200]}...")
+        return validated_boxes
 
     return []
 
@@ -157,18 +120,16 @@ def draw_bounding_boxes(
 
     # Draw each bounding box
     for box_info in boxes:
-        if 'box_2d' not in box_info or 'label' not in box_info:
+        if "box_2d" not in box_info or "label" not in box_info:
             continue
 
-        coords = box_info['box_2d']
-        label = box_info['label']
+        coords = box_info["box_2d"]
+        label = box_info["label"]
 
         # Ensure coordinates are in correct format [x1, y1, x2, y2]
         if len(coords) == 4:
             # Transform normalized coordinates to pixel coordinates
-            pixel_coords = transform_coordinates(
-                coords, img_width, img_height, input_coordinate_range
-            )
+            pixel_coords = transform_coordinates(coords, img_width, img_height, input_coordinate_range)
             x1, y1, x2, y2 = pixel_coords
 
             # Draw rectangle
@@ -211,7 +172,7 @@ def create_comparison_grid(
         PIL Image containing the comparison grid
     """
     # Filter successful results
-    successful_results = [r for r in results if r.get('success', False)]
+    successful_results = [r for r in results if r.get("success", False)]
 
     if not successful_results:
         print("No successful results to visualize")
@@ -232,7 +193,7 @@ def create_comparison_grid(
     grid_width = n_cols * img_width + (n_cols + 1) * padding
     grid_height = n_rows * (img_height + label_height) + (n_rows + 1) * padding
 
-    grid_img = Image.new('RGB', (grid_width, grid_height), color=(240, 240, 240))
+    grid_img = Image.new("RGB", (grid_width, grid_height), color=(240, 240, 240))
     draw = ImageDraw.Draw(grid_img)
 
     # Try to load font
@@ -248,7 +209,6 @@ def create_comparison_grid(
 
     # Draw label for original
     label = "Original"
-    label_bbox = draw.textbbox((x_offset, y_offset), label, font=font)
     draw.text((x_offset, y_offset), label, fill=(0, 0, 0), font=font)
 
     # Process each model result
@@ -257,17 +217,11 @@ def create_comparison_grid(
 
     for idx, result in enumerate(successful_results):
         # Parse bounding boxes from response
-        boxes = parse_bounding_boxes(result.get('response', ''))
+        boxes = parse_bounding_boxes(result.get("response", ""))
 
         # Create annotated image
         color = colors[idx % len(colors)]
-        annotated_img = draw_bounding_boxes(
-            image_path,
-            boxes,
-            color=color,
-            width=3,
-            input_coordinate_range=1000
-        )
+        annotated_img = draw_bounding_boxes(image_path, boxes, color=color, width=3, input_coordinate_range=1000)
 
         # Calculate position in grid
         row = position // n_cols
@@ -279,7 +233,7 @@ def create_comparison_grid(
         grid_img.paste(annotated_img, (x_offset, y_offset + label_height))
 
         # Draw model label
-        model_name = result.get('model', 'Unknown')
+        model_name = result.get("model", "Unknown")
         n_boxes = len(boxes)
         label = f"{model_name} ({n_boxes} boxes)"
         draw.text((x_offset, y_offset), label, fill=(0, 0, 0), font=font)
@@ -316,14 +270,14 @@ def save_individual_predictions(
     colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 128, 0), (128, 0, 255)]
 
     for idx, result in enumerate(results):
-        if not result.get('success', False):
+        if not result.get("success", False):
             continue
 
-        model_name = result.get('model', 'unknown')
+        model_name = result.get("model", "unknown")
         image_name = image_path.stem
 
         # Parse bounding boxes
-        boxes = parse_bounding_boxes(result.get('response', ''))
+        boxes = parse_bounding_boxes(result.get("response", ""))
 
         if boxes:
             # Create output filename
@@ -332,13 +286,7 @@ def save_individual_predictions(
 
             # Draw and save
             color = colors[idx % len(colors)]
-            draw_bounding_boxes(
-                image_path,
-                boxes,
-                output_path,
-                color=color,
-                input_coordinate_range=1000
-            )
+            draw_bounding_boxes(image_path, boxes, output_path, color=color, input_coordinate_range=1000)
             saved_paths.append(output_path)
 
             print(f"Saved {model_name} prediction to: {output_path}")

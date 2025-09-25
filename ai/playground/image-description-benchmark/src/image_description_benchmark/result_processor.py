@@ -76,7 +76,7 @@ class ResultProcessor:
 
         output_dir = Path(output_dir)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        viz_dir = output_dir / f"visualizations_{timestamp}"
+        viz_dir = output_dir / f"run_{timestamp}"
         viz_dir.mkdir(parents=True, exist_ok=True)
 
         output_paths = {
