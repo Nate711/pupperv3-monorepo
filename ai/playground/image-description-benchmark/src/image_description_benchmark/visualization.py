@@ -123,7 +123,10 @@ def draw_bounding_boxes(
         if "box_2d" not in box_info or "label" not in box_info:
             continue
 
-        coords = box_info["box_2d"]
+        y1x1y2x2_coords = box_info["box_2d"]
+
+        # x1, y1, x2, y2
+        coords = [y1x1y2x2_coords[1], y1x1y2x2_coords[0], y1x1y2x2_coords[3], y1x1y2x2_coords[2]]
         label = box_info["label"]
 
         # Ensure coordinates are in correct format [x1, y1, x2, y2]
