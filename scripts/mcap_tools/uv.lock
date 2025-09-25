@@ -1,0 +1,26 @@
+version = 1
+revision = 2
+requires-python = ">=3.12"
+
+[[package]]
+name = "mcap"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "mcap-ros2-support" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "mcap-ros2-support", specifier = ">=0.5.5" }]
+
+[[package]]
+name = "mcap-ros2-support"
+version = "0.5.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mcap" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/50/7b/579794b5ace83beb46d051ad954e42f65f33bc587bff89f6c4ef5a41e5ff/mcap_ros2_support-0.5.5.tar.gz", hash = "sha256:cd0bf92fee3f5cbff1dcd129f8e890d5ea0d036e2257ceb1f0518bce68e64de4", size = 23027, upload-time = "2024-10-10T16:54:00.819Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/88/c2a7828d7f5f30a2fbfd1c67ca451df5c175fd19c2015b6a6657ee5ead28/mcap_ros2_support-0.5.5-py3-none-any.whl", hash = "sha256:79141d29d6b8e3b5494178333b260ef27ddcb3c61588bca388ee52993ab80443", size = 21983, upload-time = "2024-10-10T16:53:59.846Z" },
+]
