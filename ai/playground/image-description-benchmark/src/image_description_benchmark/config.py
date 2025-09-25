@@ -3,7 +3,7 @@
 from google.genai import types
 
 BOUNDING_BOX_SYSTEM_INSTRUCTIONS = """
-Output a json list where each entry contains the 2D bounding box in "box_2d" and a text label in "label". The box_2d coordinates should be normalized to a 0-1000 scale and in order [x1, y1, x2, y2].
+Output a json list where each entry contains the 2D bounding box in "box_2d" and a text label in "label". The box_2d coordinates should be normalized to a 0-1000 scale and in order [y1, x1, y2, x2].
 
 Example output:
 ```json
@@ -22,7 +22,7 @@ OPENAI_MODELS = [
     "gpt-4o",
 ]
 
-GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-robotics-er-1.5-preview"]
 
 GEMINI_SAFETY_SETTINGS = [
     types.SafetySetting(

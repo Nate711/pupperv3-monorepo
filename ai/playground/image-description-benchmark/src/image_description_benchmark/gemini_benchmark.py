@@ -55,7 +55,8 @@ class GeminiBenchmark(BaseBenchmark):
                         mime_type="image/jpeg",
                     ),
                     # prompt,
-                    "Detect persons with no more than 20 items. Output a json list where each entry contains the 2D bounding box in 'box_2d' and a text label in 'label'. ",
+                    "Detect persons in the image. Output a json list where each entry contains the 2D bounding box in 'box_2d' and a text label in 'label'. Do not output point detections or box_3d detections",
+                    # "Point out 5 points on the torso of each person in the image. Output a json list where each entry contains a point in 'point' and a text label in 'label'. Do not output box_2d or box_3d.",
                 ],
                 config=types.GenerateContentConfig(
                     # system_instruction=BOUNDING_BOX_SYSTEM_INSTRUCTIONS,

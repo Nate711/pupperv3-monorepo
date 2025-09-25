@@ -6,8 +6,9 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Import our visualization functions
-from visualization import parse_bounding_boxes, draw_bounding_boxes
+# Import our visualization functions and types
+from image_description_benchmark.bbox_types import BoundingBox, transform_to_pixels
+from image_description_benchmark.visualization import parse_bounding_boxes, draw_bounding_boxes
 
 load_dotenv(".env.local", override=True)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -42,10 +43,12 @@ print(response.text)
 print("\n" + "=" * 50)
 
 # Parse bounding boxes from response
+# Check config to determine coordinate format
+# For now, assuming xyxy format
 boxes = parse_bounding_boxes(response.text)
 print(f"\nParsed {len(boxes)} bounding boxes:")
-for i, box in enumerate(boxes):
-    print(f"  Box {i+1}: {box['box_2d']} - {box['label']}")
+for i, bbox in enumerate(boxes):
+    print(f"  Box {i+1}: {bbox}")
 
 # Draw bounding boxes on image
 if boxes:
@@ -57,10 +60,8 @@ if boxes:
     print("Image dimensions:", im.size)
 
     # Print coordinate transformation info
-    for i, box in enumerate(boxes):
-        from visualization import transform_coordinates
-
-        pixel_coords = transform_coordinates(box["box_2d"], im.size[0], im.size[1], 1000)
-        print(f"Box {i+1} transformed: {box['box_2d']} -> {pixel_coords}")
+    for i, bbox in enumerate(boxes):
+        pixel_bbox = transform_to_pixels(bbox, im.size[0], im.size[1], 1000)
+        print(f"Box {i+1} transformed: {bbox} -> {pixel_bbox}")
 else:
     print("\nNo bounding boxes found to draw.")

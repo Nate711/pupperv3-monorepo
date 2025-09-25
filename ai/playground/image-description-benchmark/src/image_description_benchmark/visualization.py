@@ -8,6 +8,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from .bbox_types import BoundingBox, PixelBoundingBox, transform_to_pixels
+
 
 def transform_coordinates(
     box_coords: List[int], image_width: int, image_height: int, input_range: int = 1000
@@ -44,15 +46,16 @@ def transform_coordinates(
     return [pixel_x1, pixel_y1, pixel_x2, pixel_y2]
 
 
-def parse_bounding_boxes(response_text: str) -> List[Dict]:
+def parse_bounding_boxes(response_text: str) -> List[BoundingBox]:
     """
     Parse bounding boxes from model response text.
+    Assumes LLMs always output in [y1,x1,y2,x2] format.
 
     Args:
         response_text: Model response containing JSON with bounding boxes
 
     Returns:
-        List of dictionaries with box_2d coordinates and labels
+        List of BoundingBox objects
     """
     if not response_text:
         return []
@@ -71,12 +74,23 @@ def parse_bounding_boxes(response_text: str) -> List[Dict]:
         json_str = json_match.group(0)
         boxes = json.loads(json_str)
 
-        # Validate structure
+        # Parse into BoundingBox objects
         validated_boxes = []
-        for box in boxes:
-            if isinstance(box, dict) and "box_2d" in box and "label" in box:
-                if isinstance(box["box_2d"], list) and len(box["box_2d"]) == 4:
-                    validated_boxes.append(box)
+        for box_dict in boxes:
+
+            if isinstance(box_dict, dict) and "point" in box_dict and "label" in box_dict:
+                coords = box_dict["point"]
+                if isinstance(coords, list) and len(coords) == 2:
+                    y, x = coords
+                    bbox = BoundingBox(x1=x - 5, y1=y - 5, x2=x + 5, y2=y + 5, label=box_dict["label"])
+                    validated_boxes.append(bbox)
+            if isinstance(box_dict, dict) and "box_2d" in box_dict and "label" in box_dict:
+                coords = box_dict["box_2d"]
+                if isinstance(coords, list) and len(coords) == 4:
+                    # LLMs always output [y1,x1,y2,x2], convert to x1,y1,x2,y2
+                    y1, x1, y2, x2 = coords
+                    bbox = BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=box_dict["label"])
+                    validated_boxes.append(bbox)
 
         return validated_boxes
 
@@ -85,7 +99,7 @@ def parse_bounding_boxes(response_text: str) -> List[Dict]:
 
 def draw_bounding_boxes(
     image_path: Path,
-    boxes: List[Dict],
+    boxes: List[BoundingBox],
     output_path: Optional[Path] = None,
     color: Tuple[int, int, int] = (255, 0, 0),
     width: int = 3,
@@ -97,7 +111,7 @@ def draw_bounding_boxes(
 
     Args:
         image_path: Path to input image
-        boxes: List of bounding box dictionaries with 'box_2d' and 'label' keys
+        boxes: List of BoundingBox objects
         output_path: Optional path to save the annotated image
         color: RGB color for boxes (default: red)
         width: Line width for boxes
@@ -119,35 +133,23 @@ def draw_bounding_boxes(
         font = ImageFont.load_default()
 
     # Draw each bounding box
-    for box_info in boxes:
-        if "box_2d" not in box_info or "label" not in box_info:
-            continue
+    for bbox in boxes:
+        # Transform normalized BoundingBox to pixel coordinates
+        pixel_bbox = transform_to_pixels(bbox, img_width, img_height, input_coordinate_range)
 
-        y1x1y2x2_coords = box_info["box_2d"]
+        # Draw rectangle
+        draw.rectangle([pixel_bbox.x1, pixel_bbox.y1, pixel_bbox.x2, pixel_bbox.y2], outline=color, width=width)
 
-        # x1, y1, x2, y2
-        coords = [y1x1y2x2_coords[1], y1x1y2x2_coords[0], y1x1y2x2_coords[3], y1x1y2x2_coords[2]]
-        label = box_info["label"]
-
-        # Ensure coordinates are in correct format [x1, y1, x2, y2]
-        if len(coords) == 4:
-            # Transform normalized coordinates to pixel coordinates
-            pixel_coords = transform_coordinates(coords, img_width, img_height, input_coordinate_range)
-            x1, y1, x2, y2 = pixel_coords
-
-            # Draw rectangle
-            draw.rectangle([x1, y1, x2, y2], outline=color, width=width)
-
-            # Draw label background - make sure label fits within image
-            label_y = max(y1 - 25, 0)  # Don't go above image
-            try:
-                label_bbox = draw.textbbox((x1, label_y), label, font=font)
-                draw.rectangle(label_bbox, fill=color)
-                # Draw label text
-                draw.text((x1, label_y), label, fill=(255, 255, 255), font=font)
-            except:
-                # Fallback if textbbox is not available (older PIL versions)
-                draw.text((x1, label_y), label, fill=color, font=font)
+        # Draw label background - make sure label fits within image
+        label_y = max(pixel_bbox.y1 - 25, 0)  # Don't go above image
+        try:
+            label_bbox = draw.textbbox((pixel_bbox.x1, label_y), pixel_bbox.label, font=font)
+            draw.rectangle(label_bbox, fill=color)
+            # Draw label text
+            draw.text((pixel_bbox.x1, label_y), pixel_bbox.label, fill=(255, 255, 255), font=font)
+        except:
+            # Fallback if textbbox is not available (older PIL versions)
+            draw.text((pixel_bbox.x1, label_y), pixel_bbox.label, fill=color, font=font)
 
     # Save if output path provided
     if output_path:

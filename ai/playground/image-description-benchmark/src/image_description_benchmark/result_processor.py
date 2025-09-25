@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+from .bbox_types import BoundingBox
 from .visualization import (
     create_comparison_grid,
     parse_bounding_boxes,

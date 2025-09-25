@@ -1,6 +1,7 @@
 """Image description benchmark package."""
 
 from .base_benchmark import BaseBenchmark
+from .bbox_types import BoundingBox, PixelBoundingBox, transform_to_pixels
 from .config import (
     BENCHMARK_DELAY,
     BOUNDING_BOX_SYSTEM_INSTRUCTIONS,
@@ -38,6 +39,10 @@ __all__ = [
     "GeminiBenchmark",
     "BenchmarkRunner",
     "ResultProcessor",
+    # Types
+    "BoundingBox",
+    "PixelBoundingBox",
+    "transform_to_pixels",
     # Config constants
     "OPENAI_MODELS",
     "GEMINI_MODELS",
