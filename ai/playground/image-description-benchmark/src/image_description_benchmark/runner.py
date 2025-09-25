@@ -11,6 +11,7 @@ from .config import (
 )
 from .gemini_benchmark import GeminiBenchmark
 from .openai_benchmark import OpenAIBenchmark
+from .result_processor import ResultProcessor
 from .utils import get_image_paths
 
 
@@ -31,8 +32,8 @@ class BenchmarkRunner:
             openai_models: List of OpenAI models to test (defaults to config)
             gemini_models: List of Gemini models to test (defaults to config)
         """
-        self.openai_models = openai_models or OPENAI_MODELS
-        self.gemini_models = gemini_models or GEMINI_MODELS
+        self.openai_models = openai_models if openai_models is not None else OPENAI_MODELS
+        self.gemini_models = gemini_models if gemini_models is not None else GEMINI_MODELS
 
         # Set default image directory
         if image_dir is None:
@@ -44,6 +45,7 @@ class BenchmarkRunner:
         prompt: Optional[str] = None,
         delay: float = BENCHMARK_DELAY,
         output_dir: Optional[Path] = None,
+        generate_visualizations: bool = True,
     ):
         """
         Run all configured benchmarks.
@@ -52,6 +54,7 @@ class BenchmarkRunner:
             prompt: Prompt to use for image description (defaults to config)
             delay: Delay between API calls
             output_dir: Directory to save results
+            generate_visualizations: Whether to generate visualization outputs
 
         Returns:
             Dictionary containing results from all benchmarks
@@ -64,10 +67,13 @@ class BenchmarkRunner:
         print(f"Found {len(image_paths)} images to benchmark")
 
         results = {}
+        all_results = []
 
         # Run OpenAI benchmarks if models are configured
         if self.openai_models:
-            results["openai"] = self.run_openai_benchmark(image_paths, prompt, delay, output_dir)
+            openai_data = self.run_openai_benchmark(image_paths, prompt, delay, output_dir)
+            results["openai"] = openai_data
+            all_results.extend(openai_data["results"])
 
         # Add spacing between benchmarks
         if self.openai_models and self.gemini_models:
@@ -75,7 +81,29 @@ class BenchmarkRunner:
 
         # Run Gemini benchmarks if models are configured
         if self.gemini_models:
-            results["gemini"] = self.run_gemini_benchmark(image_paths, prompt, delay, output_dir)
+            gemini_data = self.run_gemini_benchmark(image_paths, prompt, delay, output_dir)
+            results["gemini"] = gemini_data
+            all_results.extend(gemini_data["results"])
+
+        # Process results and generate visualizations
+        if all_results and generate_visualizations:
+            print("\n" * 2)
+            print("=" * 60)
+            print("PROCESSING RESULTS AND GENERATING VISUALIZATIONS")
+            print("=" * 60)
+
+            processor = ResultProcessor(all_results, self.image_dir)
+
+            # Print bounding box analysis
+            processor.print_bounding_box_summary()
+
+            # Generate visualizations
+            viz_paths = processor.generate_visualizations(output_dir)
+            results["visualizations"] = viz_paths
+
+            # Export detailed analysis
+            analysis_path = processor.export_detailed_results(output_dir)
+            results["analysis_file"] = analysis_path
 
         return results
 

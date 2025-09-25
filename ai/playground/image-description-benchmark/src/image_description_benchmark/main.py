@@ -55,6 +55,12 @@ def parse_arguments():
         help="Specific models to test (overrides defaults)",
     )
 
+    parser.add_argument(
+        "--no-viz",
+        action="store_true",
+        help="Skip visualization generation",
+    )
+
     return parser.parse_args()
 
 
@@ -73,15 +79,19 @@ def main():
 
     if args.openai_only:
         gemini_models = []
+        # Keep openai_models as None to use defaults, unless specific models provided
     elif args.gemini_only:
         openai_models = []
+        # Keep gemini_models as None to use defaults, unless specific models provided
 
     # Override with specific models if provided
     if args.models:
         if args.openai_only:
             openai_models = args.models
+            gemini_models = []  # Ensure gemini is disabled
         elif args.gemini_only:
             gemini_models = args.models
+            openai_models = []  # Ensure openai is disabled
         else:
             # If no specific provider is specified, try to determine from model names
             openai_models = [m for m in args.models if "gpt" in m.lower()]
@@ -99,6 +109,7 @@ def main():
             prompt=args.prompt,
             delay=args.delay,
             output_dir=args.output_dir,
+            generate_visualizations=not args.no_viz,
         )
 
         return 0

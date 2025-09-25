@@ -54,12 +54,13 @@ class GeminiBenchmark(BaseBenchmark):
                         data=image_bytes,
                         mime_type="image/jpeg",
                     ),
-                    prompt,
+                    # prompt,
+                    "Detect persons with no more than 20 items. Output a json list where each entry contains the 2D bounding box in 'box_2d' and a text label in 'label'. ",
                 ],
                 config=types.GenerateContentConfig(
-                    system_instruction=BOUNDING_BOX_SYSTEM_INSTRUCTIONS,
+                    # system_instruction=BOUNDING_BOX_SYSTEM_INSTRUCTIONS,
                     temperature=0.5,
-                    safety_settings=GEMINI_SAFETY_SETTINGS,
+                    # safety_settings=GEMINI_SAFETY_SETTINGS,
                     thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )

@@ -1,11 +1,9 @@
 """Configuration module for image description benchmarks."""
 
-from typing import List
 from google.genai import types
 
 BOUNDING_BOX_SYSTEM_INSTRUCTIONS = """
-Return bounding boxes as a JSON array with labels. Never return masks or code fencing. Limit to 25 objects.
-If an object is present multiple times, name them according to their unique characteristic (colors, size, position, unique characteristics, etc..).
+Output a json list where each entry contains the 2D bounding box in "box_2d" and a text label in "label". The box_2d coordinates should be normalized to a 0-1000 scale and in order [x1, y1, x2, y2].
 
 Example output:
 ```json
@@ -16,7 +14,7 @@ Example output:
 ```
 """
 
-DEFAULT_PROMPT = "Detect the location of the person in the image in x and y coordinates (both normalized to 0 to 1000)"
+DEFAULT_PROMPT = "Detect the location of the person in the image."
 
 OPENAI_MODELS = [
     "gpt-5",

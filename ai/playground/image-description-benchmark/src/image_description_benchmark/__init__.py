@@ -11,6 +11,7 @@ from .config import (
 )
 from .gemini_benchmark import GeminiBenchmark
 from .openai_benchmark import OpenAIBenchmark
+from .result_processor import ResultProcessor
 from .runner import BenchmarkRunner
 from .utils import (
     encode_image_base64,
@@ -19,6 +20,13 @@ from .utils import (
     load_image_bytes,
     print_benchmark_statistics,
     save_results_to_files,
+)
+from .visualization import (
+    create_comparison_grid,
+    draw_bounding_boxes,
+    parse_bounding_boxes,
+    save_individual_predictions,
+    transform_coordinates,
 )
 
 __version__ = "0.1.0"
@@ -29,6 +37,7 @@ __all__ = [
     "OpenAIBenchmark",
     "GeminiBenchmark",
     "BenchmarkRunner",
+    "ResultProcessor",
     # Config constants
     "OPENAI_MODELS",
     "GEMINI_MODELS",
@@ -43,4 +52,10 @@ __all__ = [
     "get_image_paths",
     "save_results_to_files",
     "print_benchmark_statistics",
+    # Visualization functions
+    "parse_bounding_boxes",
+    "draw_bounding_boxes",
+    "create_comparison_grid",
+    "save_individual_predictions",
+    "transform_coordinates",
 ]
