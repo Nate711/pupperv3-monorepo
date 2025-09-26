@@ -18,6 +18,10 @@ import asyncio
 from abc import ABC, abstractmethod
 import time
 import gemini_interface
+from PIL import Image
+import io
+import gemini_utils
+import ros_image_utils
 
 logger = logging.getLogger("ros_tool_server")
 AVAILABLE_CONTROLLERS = {
@@ -291,6 +295,8 @@ class RosToolServer(ToolServer):
             1,
         )
 
+        self.gemini_annotated_image_publisher = self.node.create_publisher(CompressedImage, "/gemini/annotated_image", 10)
+
         # Start ROS executor in a background thread
         self.executor = SingleThreadedExecutor()
         # Only add the image node to this executor so control node remains
@@ -515,5 +521,14 @@ class RosToolServer(ToolServer):
         return True, "Immediate stop completed: robot stopped and queue cleared"
 
     async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
-        text = gemini_interface.analyze_camera_image(prompt, context)
+        self.node.get_logger().info("Analyzing camera image with Gemini")
+        image_msg = self.latest_image_queue.get_nowait()
+        image = Image.open(io.BytesIO(image_msg.data)).convert("RGB")
+        text = gemini_interface.analyze_camera_image(prompt, image)
+        boxes = gemini_utils.parse_bounding_boxes(text)
+        annotated_img = gemini_utils.draw_bounding_boxes(image, boxes)
+
+        annotated_img_msg = ros_image_utils.pil_to_compressed_msg(annotated_img)
+        self.gemini_annotated_image_publisher.publish(annotated_img_msg)
+        self.node.get_logger().info(f"Published annotated image with {len(boxes)} bounding boxes. Raw response: {text}")
         return True, text

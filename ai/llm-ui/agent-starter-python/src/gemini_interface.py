@@ -15,15 +15,28 @@ SYSTEM_INSTRUCTIONS = """
 Return points of interest as a JSON array with labels. Never return masks or code fencing. Limit to 25 objects.
 If an object is present multiple times, name them according to their unique characteristic (colors, size, position, unique characteristics, etc..).
 
-Example output:
+Example 1:
+Prompt: "Locate the yellow lamp"
+Output:
 ```json
 [
-  {"point": [527, 508], "label": "reachable position on the ground to find the bathroom"}
+  {"point": [527, 508], "label": "yellow lamp"}
+]
+```
+
+Example 2:
+Prompt: "Locate the open door that could lead to the kitchen"
+Output:
+```json
+[
+  {"point": [527, 508], "label": "open door that could lead to kitchen"}
 ]
 ```
 """
 
 MODEL_NAME = "gemini-robotics-er-1.5-preview"
+THINKING_BUDGET = 0
+
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
 
@@ -34,7 +47,7 @@ def analyze_camera_image(prompt: str, image: Image) -> tuple[bool, str]:
         config=types.GenerateContentConfig(
             temperature=0.5,
             system_instruction=SYSTEM_INSTRUCTIONS,
-            # thinking_config=types.ThinkingConfig(thinking_budget=1024),
+            thinking_config=types.ThinkingConfig(thinking_budget=THINKING_BUDGET),
         ),
     )
     return response.text
