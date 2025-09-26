@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 import yaml
+from PIL import Image
+import os
+from typing import Tuple, List, Dict, Any
 
 
 class CameraModel:
@@ -176,6 +179,32 @@ def equirectangular_pixel_to_ray(u, v, width, height, h_fov_deg=220.0):
     return x, y, z
 
 
+def equirectangular_pixel_to_latlon(u, v, width, height, h_fov_deg=220.0):
+    """Convert equirectangular image pixel to latitude/longitude in degrees
+
+    Args:
+        u: pixel x coordinate (or array)
+        v: pixel y coordinate (or array)
+        width: image width
+        height: image height
+        h_fov_deg: horizontal field of view in degrees
+
+    Returns:
+        lat_deg, lon_deg: latitude and longitude in degrees
+    """
+    h_fov_rad = np.deg2rad(h_fov_deg)
+
+    # Convert pixel coordinates to longitude/latitude in radians
+    lon_rad = (u / (width - 1)) * h_fov_rad - (h_fov_rad / 2)
+    lat_rad = (v / (height - 1)) * np.pi - (np.pi / 2)
+
+    # Convert to degrees
+    lat_deg = np.rad2deg(lat_rad)
+    lon_deg = np.rad2deg(lon_rad)
+
+    return lat_deg, lon_deg
+
+
 def bounding_box_to_rays(box_corners, equirect_width, equirect_height, h_fov_deg=220.0):
     """Convert bounding box corners from equirectangular image to 3D rays
 
@@ -193,3 +222,98 @@ def bounding_box_to_rays(box_corners, equirect_width, equirect_height, h_fov_deg
         x, y, z = equirectangular_pixel_to_ray(u, v, equirect_width, equirect_height, h_fov_deg)
         rays.append((x, y, z))
     return rays
+
+
+def fisheye_to_equirectangular(
+    image: Image.Image, camera_params_path: str = None
+) -> Tuple[Image.Image, int, int, float]:
+    """Convert fisheye image to equirectangular projection.
+
+    Args:
+        image: PIL Image in fisheye projection
+        camera_params_path: Path to camera parameters YAML file. If None, uses default location.
+
+    Returns:
+        Tuple of (equirect_image, width, height, h_fov_deg)
+    """
+    img_array = np.array(image)
+    h, w = img_array.shape[:2]
+
+    # Use default path if not provided
+    if camera_params_path is None:
+        camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
+
+    # Load camera parameters and create fisheye model
+    fisheye_model = create_fisheye_model_from_params(camera_params_path, w, h)
+
+    # Project to equirectangular
+    equirect_width = w
+    equirect_height = int(w * (180.0 / 200.0))  # Maintain aspect ratio for 200° horizontal FOV
+    h_fov_deg = 200.0
+
+    equirect_array = project_to_equirectangular(img_array, fisheye_model, equirect_width, equirect_height, h_fov_deg)
+    equirect_image = Image.fromarray(equirect_array.astype(np.uint8))
+
+    return equirect_image, equirect_width, equirect_height, h_fov_deg
+
+
+def convert_boxes_to_rays(
+    boxes: List[Any], equirect_width: int, equirect_height: int, h_fov_deg: float
+) -> List[Dict[str, Any]]:
+    """Convert bounding boxes to 3D ray directions.
+
+    Args:
+        boxes: List of bounding box objects with xmin, ymin, xmax, ymax, label, confidence
+        equirect_width: Width of equirectangular image
+        equirect_height: Height of equirectangular image
+        h_fov_deg: Horizontal field of view in degrees
+
+    Returns:
+        List of dictionaries containing label, confidence, corners, and rays
+    """
+    rays_list = []
+    for box in boxes:
+        corners = [
+            (box.xmin, box.ymin),  # top-left
+            (box.xmax, box.ymin),  # top-right
+            (box.xmax, box.ymax),  # bottom-right
+            (box.xmin, box.ymax),  # bottom-left
+        ]
+        rays = bounding_box_to_rays(corners, equirect_width, equirect_height, h_fov_deg)
+        rays_list.append({"label": box.label, "confidence": box.confidence, "corners": corners, "rays": rays})
+    return rays_list
+
+
+def convert_boxes_to_latlon(
+    boxes: List[Any], equirect_width: int, equirect_height: int, h_fov_deg: float
+) -> List[Dict[str, Any]]:
+    """Convert bounding box centroids to latitude/longitude coordinates.
+
+    Args:
+        boxes: List of bounding box objects with xmin, ymin, xmax, ymax, label, confidence
+        equirect_width: Width of equirectangular image
+        equirect_height: Height of equirectangular image
+        h_fov_deg: Horizontal field of view in degrees
+
+    Returns:
+        List of dictionaries containing label, confidence, centroid, lat_deg, lon_deg
+    """
+    objects_list = []
+    for box in boxes:
+        # Calculate centroid
+        centroid_u = (box.xmin + box.xmax) / 2.0
+        centroid_v = (box.ymin + box.ymax) / 2.0
+
+        # Convert to lat/lon
+        lat_deg, lon_deg = equirectangular_pixel_to_latlon(
+            centroid_u, centroid_v, equirect_width, equirect_height, h_fov_deg
+        )
+
+        objects_list.append({
+            "label": box.label,
+            "confidence": box.confidence,
+            "centroid": (centroid_u, centroid_v),
+            "lat_deg": lat_deg,
+            "lon_deg": lon_deg
+        })
+    return objects_list

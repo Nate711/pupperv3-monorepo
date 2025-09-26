@@ -23,7 +23,6 @@ import io
 import gemini_utils
 import ros_image_utils
 import fisheye_utils
-import numpy as np
 import os
 
 logger = logging.getLogger("ros_tool_server")
@@ -525,59 +524,43 @@ class RosToolServer(ToolServer):
 
     async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
         self.node.get_logger().info("Analyzing camera image with Gemini")
+
+        # Get image from queue
         image_msg = self.latest_image_queue.get_nowait()
         image = Image.open(io.BytesIO(image_msg.data)).convert("RGB")
 
         # Convert fisheye to equirectangular
-        img_array = np.array(image)
-        h, w = img_array.shape[:2]
-
-        # Load camera parameters and create fisheye model
         camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
-        fisheye_model = fisheye_utils.create_fisheye_model_from_params(camera_params_path, w, h)
+        equirect_image, equirect_width, equirect_height, h_fov_deg = fisheye_utils.fisheye_to_equirectangular(image, camera_params_path)
 
-        # Project to equirectangular (use same width as input, height will be auto-calculated)
-        equirect_width = w
-        equirect_height = int(w * (180.0 / 220.0))  # Maintain aspect ratio for 220° horizontal FOV
-        h_fov_deg = 220.0
-
-        equirect_array = fisheye_utils.project_to_equirectangular(
-            img_array, fisheye_model, equirect_width, equirect_height, h_fov_deg
-        )
-        equirect_image = Image.fromarray(equirect_array.astype(np.uint8))
-
-        # Send equirectangular image to Gemini
+        # Analyze with Gemini
         text = gemini_interface.analyze_camera_image(prompt, equirect_image)
         boxes = gemini_utils.parse_bounding_boxes(text)
 
-        # Convert bounding boxes to 3D rays
-        rays_list = []
-        for box in boxes:
-            # Get corners of bounding box
-            corners = [
-                (box.xmin, box.ymin),  # top-left
-                (box.xmax, box.ymin),  # top-right
-                (box.xmax, box.ymax),  # bottom-right
-                (box.xmin, box.ymax),  # bottom-left
-            ]
-            rays = fisheye_utils.bounding_box_to_rays(corners, equirect_width, equirect_height, h_fov_deg)
-            rays_list.append({
-                "label": box.label,
-                "confidence": box.confidence,
-                "corners": corners,
-                "rays": rays
-            })
+        # Convert bounding box centroids to lat/lon coordinates
+        objects_with_latlon = fisheye_utils.convert_boxes_to_latlon(boxes, equirect_width, equirect_height, h_fov_deg)
 
-        # Log the 3D rays
-        for ray_info in rays_list:
-            self.node.get_logger().info(f"Object: {ray_info['label']} (conf: {ray_info['confidence']:.2f})")
-            for i, (x, y, z) in enumerate(ray_info['rays']):
-                self.node.get_logger().info(f"  Corner {i} ray: ({x:.3f}, {y:.3f}, {z:.3f})")
+        # Log object positions
+        for obj in objects_with_latlon:
+            self.node.get_logger().info(
+                f"Object: {obj['label']} (conf: {obj['confidence']:.2f}) - "
+                f"Lat: {obj['lat_deg']:.2f}°, Lon: {obj['lon_deg']:.2f}°"
+            )
 
-        # Draw boxes on equirectangular image for visualization
+        # Publish annotated image
         annotated_img = gemini_utils.draw_bounding_boxes(equirect_image, boxes)
-
         annotated_img_msg = ros_image_utils.pil_to_compressed_msg(annotated_img)
         self.gemini_annotated_image_publisher.publish(annotated_img_msg)
-        self.node.get_logger().info(f"Published annotated equirectangular image with {len(boxes)} bounding boxes. Raw response: {text}")
-        return True, text
+
+        # Create response with lat/lon information
+        response_parts = [text]
+        if objects_with_latlon:
+            response_parts.append("\n\nObject positions (lat/lon):")
+            for obj in objects_with_latlon:
+                response_parts.append(
+                    f"- {obj['label']}: lat={obj['lat_deg']:.2f}°, lon={obj['lon_deg']:.2f}°"
+                )
+
+        response = "\n".join(response_parts)
+        self.node.get_logger().info(f"Published annotated equirectangular image with {len(boxes)} bounding boxes")
+        return True, response
