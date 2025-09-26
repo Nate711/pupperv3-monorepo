@@ -229,10 +229,10 @@ class PupsterAgent(Agent):
 
     # Waiting on openai and livekit to support images for realtime models
     # Would work for cascade models
-    @function_tool
-    async def get_camera_image(self, context: RunContext):
-        """Use this tool to take a picture with Pupster's camera and add it to the conversation."""
-        return await self.tool_impl.get_camera_image(context)
+    # @function_tool
+    # async def get_camera_image(self, context: RunContext):
+    #     """Use this tool to take a picture with Pupster's camera and add it to the conversation."""
+    #     return await self.tool_impl.get_camera_image(context)
 
     # all functions annotated with @function_tool will be passed to the LLM when this
     # agent is active
@@ -265,6 +265,8 @@ class PupsterAgent(Agent):
 
         Example:
             To spin 180 degreees to the right, you could can call: queue_move(vx=0.0, vy=0.0, wz=-90.0, duration=2.0)
+            To walk forwards and to the right, you could call: queue_move(vx=0.5, vy=-0.3, wz=0.0, duration=1.0)
+            To strafe left, you could call: queue_move(vx=0.0, vy=0.4, wz=0.0, duration=1.0)
             To turn 360 degrees to the left while moving forward, you could call: queue_move(vx=0.5, vy=0.0, wz=90.0, duration=4.0)
 
         Invalid commands:
@@ -352,6 +354,20 @@ Example:
 
         Args:
             prompt (str): A textual prompt to guide the analysis.
+
+        Returns:
+            Either a text description or a JSON string of identified objects e.g.
+            ```json
+[
+  {"point": [540, 248], "label": "black box on the wall"},
+  {"point": [603, 303], "label": "path to reach black box on the wall"}
+]
+
+In the above example. The x coordinate of the black box on the wall is 248 and the y coordinate is 540. This means
+the black box on the wall is significantly to the left of the image since the center is 500.
+```
+
+        The coordinates for points are in [y, x] format.
         """
         logger.info(f"FUNCTION CALL: analyze_camera_image(prompt={prompt})")
 
