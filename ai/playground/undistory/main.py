@@ -205,6 +205,148 @@ def project_to_pinhole(img, source_model, target_model, out_width, out_height):
     return projected
 
 
+def create_cube_face_model(face_size, direction):
+    """Create a pinhole model for a cube face with 90° FOV"""
+    # 90° FOV with given face size
+    focal_length = face_size / (2 * np.tan(np.deg2rad(90) / 2))
+    cx = cy = face_size / 2
+
+    # Create rotation matrix for the face direction
+    if direction == "front":
+        # Looking forward (+Z direction)
+        rotation = np.eye(3)
+    elif direction == "up":
+        # Looking up (+Y direction) - rotate around X axis by -90°
+        rotation = np.array([
+            [1, 0, 0],
+            [0, 0, -1],
+            [0, 1, 0]
+        ])
+    elif direction == "right":
+        # Looking right (+X direction) - rotate around Y axis by +90°
+        rotation = np.array([
+            [0, 0, 1],
+            [0, 1, 0],
+            [-1, 0, 0]
+        ])
+    elif direction == "down":
+        # Looking down (-Y direction) - rotate around X axis by +90°
+        rotation = np.array([
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, -1, 0]
+        ])
+    elif direction == "left":
+        # Looking left (-X direction) - rotate around Y axis by -90°
+        rotation = np.array([
+            [0, 0, -1],
+            [0, 1, 0],
+            [1, 0, 0]
+        ])
+
+    return PinholeModel(cx, cy, focal_length, focal_length, face_size, face_size), rotation
+
+
+def project_cube_face(img, source_model, face_size, direction):
+    """Project a single cube face"""
+    target_model, rotation = create_cube_face_model(face_size, direction)
+
+    # Create pixel grid for the face
+    u_grid, v_grid = np.meshgrid(
+        np.arange(face_size, dtype=np.float32),
+        np.arange(face_size, dtype=np.float32)
+    )
+
+    # Unproject pixels to rays in cube face coordinate system
+    x_face, y_face, z_face = target_model.unproject(u_grid, v_grid)
+
+    # Apply rotation to get world coordinates
+    rays = np.stack([x_face, y_face, z_face], axis=-1)  # [H, W, 3]
+    rays_world = np.dot(rays, rotation.T)  # Rotate rays
+
+    x_world = rays_world[..., 0]
+    y_world = rays_world[..., 1]
+    z_world = rays_world[..., 2]
+
+    # Project using source camera model
+    u_src, v_src, valid = source_model.project(x_world, y_world, z_world)
+
+    map_x = u_src.astype(np.float32)
+    map_y = v_src.astype(np.float32)
+
+    # Sample from source image
+    face_img = cv2.remap(
+        img, map_x, map_y,
+        interpolation=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(0, 0, 0)
+    )
+
+    # Mask invalid pixels
+    if face_img.ndim == 3:
+        face_img[~valid] = (0, 0, 0)
+    else:
+        face_img[~valid] = 0
+
+    return face_img
+
+
+def create_cube_projection(img, source_model, face_size):
+    """Create a cube projection with 5 faces arranged in a cross pattern"""
+    # Generate the 5 cube faces
+    faces = {}
+    directions = ["front", "up", "right", "down", "left"]
+
+    print("Generating cube faces...")
+    for direction in directions:
+        print(f"  Processing {direction} face...")
+        faces[direction] = project_cube_face(img, source_model, face_size, direction)
+
+    # Arrange faces in cross pattern:
+    #     [up]
+    # [left][front][right]
+    #     [down]
+
+    cross_width = face_size * 3
+    cross_height = face_size * 3
+
+    if img.ndim == 3:
+        cross_img = np.zeros((cross_height, cross_width, 3), dtype=np.uint8)
+    else:
+        cross_img = np.zeros((cross_height, cross_width), dtype=np.uint8)
+
+    # Place faces in cross pattern
+    # Up face (top center)
+    cross_img[0:face_size, face_size:2*face_size] = faces["up"]
+
+    # Left face (middle left)
+    cross_img[face_size:2*face_size, 0:face_size] = faces["left"]
+
+    # Front face (middle center)
+    cross_img[face_size:2*face_size, face_size:2*face_size] = faces["front"]
+
+    # Right face (middle right)
+    cross_img[face_size:2*face_size, 2*face_size:3*face_size] = faces["right"]
+
+    # Down face (bottom center)
+    cross_img[2*face_size:3*face_size, face_size:2*face_size] = faces["down"]
+
+    # Add labels to identify each face
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.7
+    color = (255, 255, 255) if img.ndim == 3 else 255
+    thickness = 2
+
+    # Add text labels
+    cv2.putText(cross_img, "UP", (face_size + 10, 30), font, font_scale, color, thickness)
+    cv2.putText(cross_img, "LEFT", (10, face_size + 30), font, font_scale, color, thickness)
+    cv2.putText(cross_img, "FRONT", (face_size + 10, face_size + 30), font, font_scale, color, thickness)
+    cv2.putText(cross_img, "RIGHT", (2*face_size + 10, face_size + 30), font, font_scale, color, thickness)
+    cv2.putText(cross_img, "DOWN", (face_size + 10, 2*face_size + 30), font, font_scale, color, thickness)
+
+    return cross_img
+
+
 def select_image(directory):
     images = []
     for ext in ["*.jpg", "*.jpeg", "*.png", "*.bmp"]:
@@ -281,9 +423,9 @@ def main():
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["equirect", "pinhole"],
+        choices=["equirect", "pinhole", "cube"],
         default="equirect",
-        help="Output mode: equirect (equirectangular) or pinhole",
+        help="Output mode: equirect (equirectangular), pinhole, or cube (5-face cube projection)",
     )
     parser.add_argument("--width", "-w", type=int, default=4096, help="Output width")
     parser.add_argument("--height", type=int, help="Output height (default: width/2 for equirect)")
@@ -389,7 +531,7 @@ def main():
         output = project_to_equirectangular(
             img, source_model, args.width, out_height, add_grid=args.grid, h_fov_deg=args.h_fov
         )
-    else:
+    elif args.mode == "pinhole":
         out_height = args.height if args.height else args.width
 
         target_fx = args.width / (2 * np.tan(np.deg2rad(args.target_fov) / 2))
@@ -400,6 +542,13 @@ def main():
 
         print(f"Projecting to pinhole: {args.width}x{out_height}, FOV={args.target_fov}°")
         output = project_to_pinhole(img, source_model, target_model, args.width, out_height)
+    else:  # cube mode
+        # For cube mode, width represents the face size
+        face_size = args.width // 3  # Each face is 1/3 of the total output width
+        print(f"Projecting to cube: {face_size}x{face_size} faces, 90° FOV per face")
+        print(f"Output size: {face_size*3}x{face_size*3} (3x3 cross pattern)")
+
+        output = create_cube_projection(img, source_model, face_size)
 
     cv2.imwrite(args.output, output)
     print(f"Saved: {args.output}")
