@@ -16,7 +16,12 @@ print(f"API Key loaded: {'Yes' if GOOGLE_API_KEY else 'No'}")
 
 # prompt = "Output a set of 10 points in JSON ([y, x] normalized between 0 to 1000) to reach the kitchen or explore towards it. Make the label the waypoint number."
 prompt = "From this point of view as a mobile robot, point out a reachable position on the ground where you should go to try to find the bathroom. "
-
+# prompt = """give me a bounding box for the open doorway. put the distance in meters to the doorway in the label. e.g. ```json
+# [
+#   {"box_2d": [133, 484, 567, 630], "label": "potato: 6m"}
+# ]
+# ```
+# """
 # prompt = """
 # Detect objects that would be obstacles to a vacuum robot.
 # Output bounding boxes in JSON format [y1, x1, y2, x2] with a box_2d and label field.
@@ -25,23 +30,28 @@ prompt = "From this point of view as a mobile robot, point out a reachable posit
 # Label the points with waypoint number.
 # """
 
+# prompt = """
+# Point out the yoga mat in the image.
+# """
+
 SYSTEM_INSTRUCTIONS = """
 Return bounding boxes or points as a JSON array with labels. Never return masks or code fencing. Limit to 25 objects.
-If an object is present multiple times, name them according to their unique characteristic (colors, size, position, unique characteristics, etc..).
 """
 
 image_path = Path(
     #     "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/camera_image_raw_compressed-1755118546-420444431.jpg"
     # "/Users/nathankau/pupperv3-monorepo/untracked_bags/tracking_me_rosbag2_2025_08_13-13_55_08/extracted_images/image_01755118597171220979.jpg"
     # "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/609abd4bfd29a369ec80dd82_RoomSketcher-Kitchen-Layout-Ideas-3D-Floor-Plan.jpeg"
-    "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/IMG_5907 Medium.jpeg"
+    # "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/IMG_5907 Medium.jpeg"
+    # "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/equirect_ds.jpg"
+    "/Users/nathankau/pupperv3-monorepo/ai/playground/undistory/output.jpg"
 )
 
 # Load image
 im = Image.open(image_path)
 
-# model_name = "gemini-robotics-er-1.5-preview"
-model_name = "gemini-2.5-flash"
+model_name = "gemini-robotics-er-1.5-preview"
+# model_name = "gemini-2.5-flash"
 
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
