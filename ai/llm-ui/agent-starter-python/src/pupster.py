@@ -249,6 +249,28 @@ class PupsterAgent(Agent):
         return await self.tool_impl.queue_deactivate()
 
     @function_tool
+    async def queue_move_in_direction(self, context: RunContext, heading: float, speed: float, duration: float):
+        """Use this tool to queue up a move command which makes the robot walk in a certain direction (heading) at a certain speed for a certain amount of time.
+
+        This function first queues a turn to the specified heading, then moves forward at the specified speed for the given duration.
+
+        Examples:
+            To move at a NW heading for 1 meter, call queue_move_in_direction(heading=45, speed=0.5, duration=2)
+            To move at a SE heading for 0.5 meters, call queue_move_in_direction(heading=-135, speed=0.25, duration=2)
+
+        Args:
+            heading (float): The direction in which the robot should move, in degrees. 0 degrees is forward, 90 is left, -90 is right, and 180/-180 is backward.
+            speed (float): The speed at which the robot should move, in meters per second. Should be between 0.3 and 0.75.
+            duration (float): The duration for which to apply the movement, in seconds.
+        """
+        logger.info(f"FUNCTION CALL: queue_move_in_direction(heading={heading}, speed={speed}, duration={duration})")
+        turn_velocity = 90.0
+        wz = turn_velocity * (1 if heading > 0 else -1)
+        duration = abs(heading / turn_velocity)
+        await self.queue_move(vx=0.0, vy=0.0, wz=wz, duration=duration)
+        await self.queue_move(vx=speed, vy=0.0, wz=0.0, duration=duration)
+
+    @function_tool
     async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
         """Use this tool to queue up a move command which makes the robot walk with a certain body velocity for a certain amount of time.
         This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
@@ -346,28 +368,28 @@ Example:
     async def analyze_camera_image(self, prompt: str, context: RunContext):
         """Analyze the current camera image and return a description or status.
 
-        You can navigate using visual information by using the analyze_camera_image tool.
-        For example, if you want to go to the kitchen, call analyze_camera_image and
-        set the prompt argument to "Point where I should go to reach the kitchen.
-        If kitchen is not visible, point out where I should go in order to
-        explore to find the kitchen"
+                You can navigate using visual information by using the analyze_camera_image tool.
+                For example, if you want to go to the kitchen, call analyze_camera_image and
+                set the prompt argument to "Point where I should go to reach the kitchen.
+                If kitchen is not visible, point out where I should go in order to
+                explore to find the kitchen"
 
-        Args:
-            prompt (str): A textual prompt to guide the analysis.
+                Args:
+                    prompt (str): A textual prompt to guide the analysis.
 
-        Returns:
-            Either a text description or a JSON string of identified objects e.g.
-            ```json
-[
-  {"point": [540, 248], "label": "black box on the wall"},
-  {"point": [603, 303], "label": "path to reach black box on the wall"}
-]
+                Returns:
+                    Either a text description or a JSON string of identified objects e.g.
+                    ```json
+        [
+          {"point": [540, 248], "label": "black box on the wall"},
+          {"point": [603, 303], "label": "path to reach black box on the wall"}
+        ]
 
-In the above example. The x coordinate of the black box on the wall is 248 and the y coordinate is 540. This means
-the black box on the wall is significantly to the left of the image since the center is 500.
-```
+        In the above example. The x coordinate of the black box on the wall is 248 and the y coordinate is 540. This means
+        the black box on the wall is significantly to the left of the image since the center is 500.
+        ```
 
-        The coordinates for points are in [y, x] format.
+                The coordinates for points are in [y, x] format.
         """
         logger.info(f"FUNCTION CALL: analyze_camera_image(prompt={prompt})")
 
