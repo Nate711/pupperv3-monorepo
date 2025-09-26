@@ -82,8 +82,12 @@ class PinholeModel(CameraModel):
         return x / norm, y / norm, z / norm
 
 
-def create_equirectangular_rays(width, height):
-    lon = (np.linspace(0, width - 1, width) / (width - 1)) * 2 * np.pi - np.pi
+def create_equirectangular_rays(width, height, h_fov_deg=220.0):
+    # Convert FOV to radians
+    h_fov_rad = np.deg2rad(h_fov_deg)
+
+    # Longitude range centered around 0, limited by h_fov
+    lon = (np.linspace(0, width - 1, width) / (width - 1)) * h_fov_rad - (h_fov_rad / 2)
     lat = (np.linspace(0, height - 1, height) / (height - 1)) * np.pi - (np.pi / 2)
     lon_grid, lat_grid = np.meshgrid(lon, lat)
 
@@ -94,11 +98,69 @@ def create_equirectangular_rays(width, height):
     return x, y, z
 
 
-def project_to_equirectangular(img, model, out_width, out_height=None):
+def add_longitude_lines(img, h_fov_deg=220.0, num_lines=12, line_color=(0, 255, 0), text_color=(255, 255, 255)):
+    """Add longitude lines and labels to an equirectangular image"""
+    h, w = img.shape[:2]
+    result = img.copy()
+
+    # Calculate longitude range based on FOV
+    lon_start = -h_fov_deg / 2
+    lon_end = h_fov_deg / 2
+
+    # Draw longitude lines and labels
+    for i in range(num_lines):
+        # Calculate longitude in degrees within the FOV range
+        lon_deg = lon_start + (h_fov_deg * i / (num_lines - 1))
+
+        # Skip if outside reasonable range
+        if abs(lon_deg) > 180:
+            continue
+
+        # Calculate x position in image
+        x = int(w * i / (num_lines - 1))
+
+        # Draw vertical line
+        cv2.line(result, (x, 0), (x, h - 1), line_color, 1)
+
+        # Add text label at top and middle of image
+        text = f"{lon_deg:+.0f}°"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.5
+        thickness = 1
+
+        # Get text size for centering
+        (text_width, text_height), _ = cv2.getTextSize(text, font, font_scale, thickness)
+
+        # Draw text with background for visibility
+        # Top position
+        text_x = max(2, min(x - text_width // 2, w - text_width - 2))
+        cv2.rectangle(result, (text_x - 2, 5), (text_x + text_width + 2, 5 + text_height + 4), (0, 0, 0), -1)
+        cv2.putText(result, text, (text_x, 5 + text_height), font, font_scale, text_color, thickness)
+
+        # Middle position
+        mid_y = h // 2
+        cv2.rectangle(
+            result, (text_x - 2, mid_y - text_height - 2), (text_x + text_width + 2, mid_y + 2), (0, 0, 0), -1
+        )
+        cv2.putText(result, text, (text_x, mid_y), font, font_scale, text_color, thickness)
+
+    # Add latitude lines (optional - equator and tropics)
+    # Equator
+    cv2.line(result, (0, h // 2), (w - 1, h // 2), (255, 0, 0), 1)
+
+    # Tropic of Cancer/Capricorn (±23.5°)
+    tropic_offset = int(h * 23.5 / 180)
+    cv2.line(result, (0, h // 2 - tropic_offset), (w - 1, h // 2 - tropic_offset), (255, 0, 0), 1, cv2.LINE_AA)
+    cv2.line(result, (0, h // 2 + tropic_offset), (w - 1, h // 2 + tropic_offset), (255, 0, 0), 1, cv2.LINE_AA)
+
+    return result
+
+
+def project_to_equirectangular(img, model, out_width, out_height=None, add_grid=False, h_fov_deg=220.0):
     if out_height is None:
         out_height = out_width // 2
 
-    x, y, z = create_equirectangular_rays(out_width, out_height)
+    x, y, z = create_equirectangular_rays(out_width, out_height, h_fov_deg)
 
     u, v, valid = model.project(x, y, z)
 
@@ -113,6 +175,10 @@ def project_to_equirectangular(img, model, out_width, out_height=None):
         pano[~valid] = (0, 0, 0)
     else:
         pano[~valid] = 0
+
+    # Add longitude lines if requested
+    if add_grid:
+        pano = add_longitude_lines(pano, h_fov_deg)
 
     return pano
 
@@ -227,7 +293,15 @@ def main():
     parser.add_argument("--config", "-c", help="Path to YAML config file with camera params")
 
     # Target pinhole parameters
-    parser.add_argument("--target-fov", type=float, default=150.0, help="Target FOV for pinhole output (degrees)")
+    parser.add_argument("--target-fov", type=float, default=90.0, help="Target FOV for pinhole output (degrees)")
+
+    # Grid options
+    parser.add_argument(
+        "--grid", action="store_true", help="Add longitude/latitude grid lines to equirectangular output"
+    )
+    parser.add_argument(
+        "--h-fov", type=float, default=220.0, help="Horizontal FOV for equirectangular output (degrees)"
+    )
 
     args = parser.parse_args()
 
@@ -300,10 +374,21 @@ def main():
         )
 
     if args.mode == "equirect":
-        out_height = args.height if args.height else args.width // 2
-        print(f"Projecting to equirectangular: {args.width}x{out_height}")
+        # For square aspect ratio: height = width * (vertical_fov / horizontal_fov)
+        # Vertical FOV is typically 180° (full sphere), horizontal FOV is customizable
+        v_fov_deg = 180.0
+        if args.height:
+            out_height = args.height
+        else:
+            # Square aspect ratio: height proportional to vertical FOV coverage
+            out_height = int(args.width * (v_fov_deg / args.h_fov))
 
-        output = project_to_equirectangular(img, source_model, args.width, out_height)
+        grid_text = " with grid overlay" if args.grid else ""
+        print(f"Projecting to equirectangular: {args.width}x{out_height} (square aspect), {args.h_fov}° FOV{grid_text}")
+
+        output = project_to_equirectangular(
+            img, source_model, args.width, out_height, add_grid=args.grid, h_fov_deg=args.h_fov
+        )
     else:
         out_height = args.height if args.height else args.width
 

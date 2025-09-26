@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double Sphere Fisheye Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        .control-group {
+            margin: 5px 0;
+        }
+        label {
+            display: inline-block;
+            width: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        Double Sphere Fisheye Viewer<br>
+        Left click + drag to rotate<br>
+        Scroll to zoom
+    </div>
+    <div id="controls">
+        <div class="control-group">
+            <label>FOV:</label>
+            <input type="range" id="fov" min="30" max="120" value="75">
+            <span id="fovValue">75</span>°
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Parse camera parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const cameraParams = {
+            fx: parseFloat(urlParams.get('fx')) || 228.81030,
+            fy: parseFloat(urlParams.get('fy')) || 228.81030,
+            cx: parseFloat(urlParams.get('cx')) || 680.0,
+            cy: parseFloat(urlParams.get('cy')) || 479.0,
+            xi: parseFloat(urlParams.get('xi')) || -0.00092,
+            alpha: parseFloat(urlParams.get('alpha')) || 0.62007,
+            imageWidth: parseInt(urlParams.get('width')) || 1400,
+            imageHeight: parseInt(urlParams.get('height')) || 1050
+        };
+
+        const imagePath = urlParams.get('image') || 'fisheye.png';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Camera position
+        camera.position.set(0, 0, 0.1);
+        camera.lookAt(0, 0, 0);
+
+        // Vertex shader - standard sphere vertices
+        const vertexShader = `
+            varying vec3 vWorldPosition;
+            varying vec2 vUv;
+
+            void main() {
+                vUv = uv;
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        // Fragment shader - implements double sphere projection
+        const fragmentShader = `
+            uniform sampler2D fisheyeTexture;
+            uniform float fx;
+            uniform float fy;
+            uniform float cx;
+            uniform float cy;
+            uniform float xi;
+            uniform float alpha;
+            uniform float imageWidth;
+            uniform float imageHeight;
+
+            varying vec3 vWorldPosition;
+            varying vec2 vUv;
+
+            void main() {
+                // Get the ray direction from sphere center to surface point
+                vec3 ray = normalize(vWorldPosition);
+
+                // Double sphere projection
+                float x = ray.x;
+                float y = ray.y;
+                float z = ray.z;
+
+                // Check if ray points backward (behind the camera)
+                if (z < -0.999) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                    return;
+                }
+
+                float r2 = x * x + y * y;
+                float d1 = sqrt(r2 + z * z);
+                float k2 = xi * d1 + z;
+                float d2 = sqrt(r2 + k2 * k2);
+                float denom = alpha * d2 + (1.0 - alpha) * k2;
+
+                // Check validity
+                if (denom <= 0.0) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                    return;
+                }
+
+                // Project to normalized image coordinates
+                float mx = x / denom;
+                float my = y / denom;
+
+                // Convert to pixel coordinates
+                float u = fx * mx + cx;
+                float v = fy * my + cy;
+
+                // Convert to UV coordinates (0-1 range)
+                float texU = u / imageWidth;
+                float texV = v / imageHeight;
+
+                // Check if within image bounds
+                if (texU < 0.0 || texU > 1.0 || texV < 0.0 || texV > 1.0) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                    return;
+                }
+
+                // Sample the fisheye texture
+                vec4 color = texture2D(fisheyeTexture, vec2(texU, texV));
+                gl_FragColor = color;
+            }
+        `;
+
+        // Create sphere geometry
+        const geometry = new THREE.SphereGeometry(5, 128, 64);
+
+        // Load fisheye texture
+        const textureLoader = new THREE.TextureLoader();
+        const fisheyeTexture = textureLoader.load(imagePath, (texture) => {
+            console.log('Texture loaded:', texture);
+
+            // Update image dimensions if texture is loaded
+            if (texture.image) {
+                cameraParams.imageWidth = texture.image.width;
+                cameraParams.imageHeight = texture.image.height;
+                sphereMaterial.uniforms.imageWidth.value = texture.image.width;
+                sphereMaterial.uniforms.imageHeight.value = texture.image.height;
+                console.log(`Image dimensions: ${texture.image.width}x${texture.image.height}`);
+            }
+        }, undefined, (error) => {
+            console.error('Error loading texture:', error);
+        });
+
+        // Create material with custom shaders
+        const sphereMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                fisheyeTexture: { value: fisheyeTexture },
+                fx: { value: cameraParams.fx },
+                fy: { value: cameraParams.fy },
+                cx: { value: cameraParams.cx },
+                cy: { value: cameraParams.cy },
+                xi: { value: cameraParams.xi },
+                alpha: { value: cameraParams.alpha },
+                imageWidth: { value: cameraParams.imageWidth },
+                imageHeight: { value: cameraParams.imageHeight }
+            },
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            side: THREE.BackSide // Render inside of sphere
+        });
+
+        // Create mesh
+        const sphere = new THREE.Mesh(geometry, sphereMaterial);
+        scene.add(sphere);
+
+        // Add orbit controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 0.1;
+        controls.maxDistance = 10;
+        controls.target.set(0, 0, 0);
+
+        // FOV control
+        const fovSlider = document.getElementById('fov');
+        const fovValue = document.getElementById('fovValue');
+        fovSlider.addEventListener('input', (e) => {
+            camera.fov = parseFloat(e.target.value);
+            fovValue.textContent = e.target.value;
+            camera.updateProjectionMatrix();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Log parameters for debugging
+        console.log('Camera parameters:', cameraParams);
+        console.log('Image path:', imagePath);
+    </script>
+</body>
+</html>
