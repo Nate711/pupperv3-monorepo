@@ -267,8 +267,8 @@ class PupsterAgent(Agent):
         turn_velocity = 90.0
         wz = turn_velocity * (1 if heading > 0 else -1)
         duration = abs(heading / turn_velocity)
-        await self.queue_move(vx=0.0, vy=0.0, wz=wz, duration=duration)
-        await self.queue_move(vx=speed, vy=0.0, wz=0.0, duration=duration)
+        await self.tool_impl.queue_move_for_time(vx=0.0, vy=0.0, wz=wz, duration=duration)
+        await self.tool_impl.queue_move_for_time(vx=speed, vy=0.0, wz=0.0, duration=duration)
 
     @function_tool
     async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
