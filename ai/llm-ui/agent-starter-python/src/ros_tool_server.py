@@ -313,6 +313,7 @@ class RosToolServer(ToolServer):
 
     async def get_camera_image(self, context: Any) -> Dict[str, Any]:
         from livekit.agents.llm import ImageContent
+        self.node.get_logger().info("FUNCTION CALL: get_camera_image")
 
         latest_ros_compressed_img_msg = self.latest_image_queue.get_nowait()
         b64 = base64.b64encode(latest_ros_compressed_img_msg.data).decode("utf-8")
@@ -411,11 +412,11 @@ class RosToolServer(ToolServer):
     async def add_command(self, command: Command) -> None:
         """Add a command to the queue"""
         await self.command_queue.put(command)
-        self.node.get_logger().debug(f"Added command {command.name} to queue")
+        self.node.get_logger().info(f"Added command {command.name} to queue")
 
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
         """Queue a move_for_time operation as a single command"""
-        self.node.get_logger().info(f"Queueing move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
+        self.node.get_logger().info(f"FUNCTION CALL:  queue_move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
 
         # Ensure walking controller is active before moving
         await self.queue_activate_walking()
@@ -430,6 +431,7 @@ class RosToolServer(ToolServer):
 
     async def queue_activate_walking(self):
         """Queue an activate walking command"""
+        self.node.get_logger().info("FUNCTION CALL: queue_activate_walking")
 
         # Check if walking controller is active, if not queue activation and wait
         do_wait = False
@@ -447,25 +449,25 @@ class RosToolServer(ToolServer):
 
     async def queue_deactivate(self):
         """Queue a deactivate command"""
-        self.node.get_logger().info("Queueing deactivate command")
+        self.node.get_logger().info("FUNCTION CALL: queue_deactivate")
         await self.add_command(DeactivateCommand())
         return True, "Deactivate command queued"
 
     async def queue_stop(self):
         """Queue a stop command"""
-        self.node.get_logger().info("Queueing stop command")
+        self.node.get_logger().info("FUNCTION CALL: queue_stop")
         await self.add_command(StopCommand())
         return True, "Stop command queued"
 
     async def queue_wait(self, duration: float):
         """Queue a wait command"""
-        self.node.get_logger().info(f"Queueing wait command for {duration} seconds")
+        self.node.get_logger().info(f"FUNCTION CALL: queue_wait with duration {duration}")
         await self.add_command(WaitCommand(duration))
         return True, f"Wait command for {duration} seconds queued"
 
     async def queue_animation(self, animation_name: str):
         """Queue an animation command"""
-        self.node.get_logger().info(f"Queueing animation command: {animation_name}")
+        self.node.get_logger().info(f"FUNCTION CALL: queue_animation with animation_name {animation_name}")
         try:
             animation_cmd = AnimationCommand(animation_name)
             await self.add_command(animation_cmd)
@@ -476,7 +478,7 @@ class RosToolServer(ToolServer):
 
     async def _interrupt_and_stop(self) -> Tuple[bool, str]:
         """Interrupt current command and immediately stop the robot"""
-        self.node.get_logger().info("Interrupting current command and stopping robot")
+        self.node.get_logger().info("_interrupt_and_stop: Interrupting current command and stopping robot")
 
         # Cancel the currently executing command if any
         if self.current_command_task and not self.current_command_task.done():
@@ -498,6 +500,7 @@ class RosToolServer(ToolServer):
 
     async def clear_queue(self) -> Tuple[bool, str]:
         """Clear all pending commands from the queue"""
+        self.node.get_logger().info("clear_queue")
         count = 0
         while not self.command_queue.empty():
             try:
@@ -523,7 +526,7 @@ class RosToolServer(ToolServer):
         return True, "Immediate stop completed: robot stopped and queue cleared"
 
     async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
-        self.node.get_logger().info(f"FUNCTION CALLED `analyze_camera_image(prompt={prompt})`")
+        self.node.get_logger().info(f"FUNCTION CALLED: analyze_camera_image(prompt={prompt})")
 
         # Get image from queue
         image_msg = self.latest_image_queue.get_nowait()
