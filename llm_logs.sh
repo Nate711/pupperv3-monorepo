@@ -1,0 +1,1 @@
+sudo journalctl -u llm-agent -f
