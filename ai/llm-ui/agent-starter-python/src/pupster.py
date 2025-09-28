@@ -255,52 +255,85 @@ class PupsterAgent(Agent):
         This function first queues a turn to the specified heading, then moves forward at the specified speed for the given duration.
 
         Examples:
-            To move at a NW heading for 1 meter, call queue_move_in_direction(heading=45, speed=0.5, duration=2)
-            To move at a SE heading for 0.5 meters, call queue_move_in_direction(heading=-135, speed=0.25, duration=2)
+            To move at a NW heading for 1 meter, call queue_move_in_direction(heading=-45, speed=0.5, duration=2)
+            To move at a SE heading for 0.5 meters, call queue_move_in_direction(heading=135, speed=0.25, duration=2)
 
         Args:
-            heading (float): The direction in which the robot should move, in degrees. 0 degrees is forward, 90 is left, -90 is right, and 180/-180 is backward.
+            heading (float): The direction in which the robot should move, in degrees. 0 degrees is forward, 90 is right, -90 is left, and 180/-180 is backward.
             speed (float): The speed at which the robot should move, in meters per second. Should be between 0.3 and 0.75.
             duration (float): The duration for which to apply the movement, in seconds.
         """
         logger.info(f"FUNCTION CALL: queue_move_in_direction(heading={heading}, speed={speed}, duration={duration})")
         turn_velocity = 90.0
-        wz = turn_velocity * (1 if heading > 0 else -1)
-        duration = abs(heading / turn_velocity)
-        await self.tool_impl.queue_move_for_time(vx=0.0, vy=0.0, wz=wz, duration=duration)
+        wz = - turn_velocity * (1 if heading > 0 else -1)
+        turn_duration = abs(heading / turn_velocity)
+        await self.tool_impl.queue_move_for_time(vx=0.0, vy=0.0, wz=wz, duration=turn_duration)
         await self.tool_impl.queue_move_for_time(vx=speed, vy=0.0, wz=0.0, duration=duration)
 
     @function_tool
-    async def queue_move(self, context: RunContext, vx: float, vy: float, wz: float, duration: float):
+    async def queue_move(self, context: RunContext, forward_backward_velocity: float, right_left_velocity: float, turning_velocity: float, duration: float):
         """Use this tool to queue up a move command which makes the robot walk with a certain body velocity for a certain amount of time.
         This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
         You can queue up multiple moves to accomplish complex movement like a dance.
 
-        If the user specifies a certain angle (e.g. 180 degrees), you will need 1) come up with a reasonable duration (eg 3 seconds) and
-        2) divide the target angle by the duration to get the angular velocity (wz = 60 degrees per second).
+        If the user specifies a certain angle (e.g. turn 180 degrees to the right), you will need 1) come up with a reasonable duration (eg 3 seconds) and
+        2) divide the target angle by the duration to get the angular velocity (turning_velocity = 60 degrees per second).
 
         Args:
-            vx (float): The velocity in the x direction [meters per second]. Should be 0 or 0.4 < |vx| < 0.75. Positive values move forward, negative backward.
-            vy (float): The velocity in the y direction [meters per second]. Should be 0 or 0.4 < |vy| < 0.5. Positive values move to the left, negative to the right.
-            wz (float): The angular velocity around the z axis [degrees per second]. Should be 0 or 30 < |wz| < 120. Positive values turn left, negative turn right.
+            forward_backward_velocity (float): The velocity in the forward/backward direction [meters per second]. Should be 0 or 0.4 < |forward_backward_velocity| < 0.75. Positive values move forward, negative backward.
+            right_left_velocity (float): The velocity in the right/left direction [meters per second]. Should be 0 or 0.4 < |right_left_velocity| < 0.5. Positive values move to the right, negative to the left.
+            turning_velocity (float): The angular velocity around the z axis [degrees per second]. Should be 0 or 30 < |turning_velocity| < 120. Positive values turn right, negative turn left.
             duration (float): The duration for which to apply the movement, in seconds.
 
         Example:
-            To spin 180 degreees to the right, you could can call: queue_move(vx=0.0, vy=0.0, wz=-90.0, duration=2.0)
-            To walk forwards and to the right, you could call: queue_move(vx=0.5, vy=-0.3, wz=0.0, duration=1.0)
-            To strafe left, you could call: queue_move(vx=0.0, vy=0.4, wz=0.0, duration=1.0)
-            To turn 360 degrees to the left while moving forward, you could call: queue_move(vx=0.5, vy=0.0, wz=90.0, duration=4.0)
+            To spin 90 degrees to the right, you could call: queue_move(forward_backward_velocity=0.0, right_left_velocity=0.0, turning_velocity=90.0, duration=1.0)
+            To walk forwards and to the right, you could call: queue_move(forward_backward_velocity=0.5, right_left_velocity=0.3, turning_velocity=0.0, duration=1.0)
+            To strafe left, you could call: queue_move(forward_backward_velocity=0.0, right_left_velocity=-0.4, turning_velocity=0.0, duration=1.0)
+            To turn 360 degrees to the left while moving forward, you could call: queue_move(forward_backward_velocity=0.5, right_left_velocity=0.0, turning_velocity=-90.0, duration=4.0)
+
+            ```
+            User: "Can you do a dance?"
+            Pupster: "Of course! I love to dance."
+            Pupster calls functions:
+            immediate_stop()
+            queue_move(forward_backward_velocity=0, right_left_velocity=0.5, turning_velocity=0, duration=2)
+            queue_move(forward_backward_velocity=0, right_left_velocity=-0.5, turning_velocity=0, duration=2)
+            queue_move(forward_backward_velocity=0, right_left_velocity=0, turning_velocity=90, duration=2)
+            queue_move(forward_backward_velocity=0, right_left_velocity=0, turning_velocity=-90, duration=2)
+            ```
+
+            * More examples of how to use queue_move
+            ```
+            User: "Can you go left for 1 meter and then right for 1 meter?"
+            Pupster: "I love this game!"
+            Pupster calls functions:
+            immediate_stop()
+            queue_move(forward_backward_velocity=0.0, right_left_velocity=-0.3, turning_velocity=0.0, duration=3.33)
+            queue_move(forward_backward_velocity=0.0, right_left_velocity=0.3, turning_velocity=0.0, duration=3.33)
+
+            User: "Stop!"
+            Pupster calls functions:
+            immediate_stop()
+            Pupster: "Stopped"
+
+            User: "Spin in a circle"
+            Pupster calls functions:
+            immediate_stop()
+            queue_move(forward_backward_velocity=0, right_left_velocity=0, turning_velocity=90, duration=4)
+            Pupster: I love spinning!
+            ```
 
         Invalid commands:
-            Small movements such as queue_move(vx=0.1, vy=0.0, wz=0.0, duration=2.0) are invalid and will be ignored because the real robot
+            Small movements such as queue_move(forward_backward_velocity=0.1, right_left_velocity=0.0, turning_velocity=0.0, duration=2.0) are invalid and will be ignored because the real robot
             is not responsive to small velocities. Use 0 or a velocity above the threshold.
         """
-        logger.info(f"FUNCTION CALL: queue_move(vx={vx}, vy={vy}, wz={wz}, duration={duration})")
-        return await self.tool_impl.queue_move_for_time(vx, vy, wz, duration)
+        logger.info(f"FUNCTION CALL: queue_move(forward_backward_velocity={forward_backward_velocity}, right_left_velocity={right_left_velocity}, turning_velocity={turning_velocity}, duration={duration})")
+
+        return await self.tool_impl.queue_move_for_time(vx=forward_backward_velocity, vy=-right_left_velocity, wz=-turning_velocity, duration=duration)
 
     @function_tool
     async def queue_stop(self, context: RunContext):
-        """Use this tool to queue a Stop command (vx=0, vy=0, wz=0) at the end of the command queue."""
+        """Use this tool to queue a Stop command (zero all velocity) at the end of the command queue."""
         logger.info("FUNCTION CALL: queue_stop()")
         return await self.tool_impl.queue_stop()
 
@@ -359,37 +392,30 @@ Example:
 
     @function_tool
     async def immediate_stop(self, context: RunContext):
-        """Clears the command queue. Then interrupts and stops the executing command whatever it may be. Finanlly sends a Stop command (vx=0, vy=0, wz=0)."""
+        """Clears the command queue. Then interrupts and stops the executing command whatever it may be. Finanlly sends a Stop command (all velocities zero)."""
         logger.info(f"FUNCTION CALL: immediate_stop()")
 
         return await self.tool_impl.immediate_stop()
 
     @function_tool
     async def analyze_camera_image(self, prompt: str, context: RunContext):
-        """Analyze the current camera image and return a description or status.
+        """Analyze the current camera image and return a description of objects in the scene.
 
-                You can navigate using visual information by using the analyze_camera_image tool.
-                For example, if you want to go to the kitchen, call analyze_camera_image and
-                set the prompt argument to "Point where I should go to reach the kitchen.
-                If kitchen is not visible, point out where I should go in order to
-                explore to find the kitchen"
+        Examples: 
+        User asks: "Where I could find a banana"
+        Call analyze_camera_image(prompt="Locate all bananas, or areas that could have bananas like kitchens or dining tables")
 
-                Args:
-                    prompt (str): A textual prompt to guide the analysis.
+        User asks: "Where's the bathroom"
+        Call analyze_camera_image(prompt="Locate the bathroom or any signs indicating its location")
 
-                Returns:
-                    Either a text description or a JSON string of identified objects e.g.
-                    ```json
-        [
-          {"point": [540, 248], "label": "black box on the wall"},
-          {"point": [603, 303], "label": "path to reach black box on the wall"}
-        ]
+        User asks: "Describe the scene generally"
+        Call analyze_camera_image(prompt="Provide a detailed description of all visible objects, their positions, and any notable features")
 
-        In the above example. The x coordinate of the black box on the wall is 248 and the y coordinate is 540. This means
-        the black box on the wall is significantly to the left of the image since the center is 500.
-        ```
+        Args:
+            prompt (str): A textual prompt to guide the analysis.
 
-                The coordinates for points are in [y, x] format.
+        Returns:
+            A text description of the world including objects and their elevation (+ is above camera, - is below camera) and heading (+ is to the right, - is to the left).
         """
         logger.info(f"FUNCTION CALL: analyze_camera_image(prompt={prompt})")
 

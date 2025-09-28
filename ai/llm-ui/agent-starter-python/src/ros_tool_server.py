@@ -523,28 +523,38 @@ class RosToolServer(ToolServer):
         return True, "Immediate stop completed: robot stopped and queue cleared"
 
     async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
-        self.node.get_logger().info("Analyzing camera image with Gemini")
+        self.node.get_logger().info(f"FUNCTION CALLED `analyze_camera_image(prompt={prompt})`")
 
         # Get image from queue
         image_msg = self.latest_image_queue.get_nowait()
         image = Image.open(io.BytesIO(image_msg.data)).convert("RGB")
 
+        self.node.get_logger().info("loaded image")
+
         # Convert fisheye to equirectangular
         camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
         equirect_image, equirect_width, equirect_height, h_fov_deg = fisheye_utils.fisheye_to_equirectangular(image, camera_params_path)
 
+        self.node.get_logger().info("converted to equirectangular")
+
         # Analyze with Gemini
         text = gemini_interface.analyze_camera_image(prompt, equirect_image)
-        boxes = gemini_utils.parse_bounding_boxes(text)
+        self.node.get_logger().info(f"Gemini raw text: {text}")
 
-        # Convert bounding box centroids to lat/lon coordinates
-        objects_with_latlon = fisheye_utils.convert_boxes_to_latlon(boxes, equirect_width, equirect_height, h_fov_deg)
+        boxes = gemini_utils.parse_bounding_boxes(text)
+        boxes_pixels = [gemini_utils.transform_to_pixels(box, 1400, 1050, 1000) for box in boxes]
+        self.node.get_logger().info("parsed bounding boxes")
+
+        # Convert bounding box centroids to elevation/heading coordinates
+        objects_with_elevation_heading = fisheye_utils.convert_boxes_to_elevation_heading(boxes_pixels, equirect_width, equirect_height, h_fov_deg)
+
+        self.node.get_logger().info("converted boxes to elevation/heading")
 
         # Log object positions
-        for obj in objects_with_latlon:
+        for obj in objects_with_elevation_heading:
             self.node.get_logger().info(
-                f"Object: {obj['label']} (conf: {obj['confidence']:.2f}) - "
-                f"Lat: {obj['lat_deg']:.2f}°, Lon: {obj['lon_deg']:.2f}°"
+                f"Object: {obj['label']}  - "
+                f"Elevation: {obj['elevation_deg']:.2f}°, Heading: {obj['heading_deg']:.2f}°"
             )
 
         # Publish annotated image
@@ -552,13 +562,15 @@ class RosToolServer(ToolServer):
         annotated_img_msg = ros_image_utils.pil_to_compressed_msg(annotated_img)
         self.gemini_annotated_image_publisher.publish(annotated_img_msg)
 
-        # Create response with lat/lon information
+        self.node.get_logger().info("published annotated image")
+
+        # Create response with elevation/heading information
         response_parts = [text]
-        if objects_with_latlon:
-            response_parts.append("\n\nObject positions (lat/lon):")
-            for obj in objects_with_latlon:
+        if objects_with_elevation_heading:
+            response_parts.append("\n\nObject positions (elevation/heading):")
+            for obj in objects_with_elevation_heading:
                 response_parts.append(
-                    f"- {obj['label']}: lat={obj['lat_deg']:.2f}°, lon={obj['lon_deg']:.2f}°"
+                    f"- {obj['label']}: elevation={obj['elevation_deg']:.2f}°, heading={obj['heading_deg']:.2f}°"
                 )
 
         response = "\n".join(response_parts)

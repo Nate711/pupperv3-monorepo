@@ -34,7 +34,8 @@ Output:
 ```
 """
 
-MODEL_NAME = "gemini-robotics-er-1.5-preview"
+# MODEL_NAME = "gemini-robotics-er-1.5-preview"
+MODEL_NAME = "gemini-2.5-flash"
 THINKING_BUDGET = 0
 
 client = genai.Client(api_key=GOOGLE_API_KEY)

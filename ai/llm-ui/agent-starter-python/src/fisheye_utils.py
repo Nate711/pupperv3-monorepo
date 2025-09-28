@@ -179,8 +179,8 @@ def equirectangular_pixel_to_ray(u, v, width, height, h_fov_deg=220.0):
     return x, y, z
 
 
-def equirectangular_pixel_to_latlon(u, v, width, height, h_fov_deg=220.0):
-    """Convert equirectangular image pixel to latitude/longitude in degrees
+def equirectangular_pixel_to_elevation_heading(u, v, width, height, h_fov_deg=220.0):
+    """Convert equirectangular image pixel to elevation/heading in degrees
 
     Args:
         u: pixel x coordinate (or array)
@@ -190,19 +190,19 @@ def equirectangular_pixel_to_latlon(u, v, width, height, h_fov_deg=220.0):
         h_fov_deg: horizontal field of view in degrees
 
     Returns:
-        lat_deg, lon_deg: latitude and longitude in degrees
+        elevation_deg, heading_deg: elevation and heading in degrees
     """
     h_fov_rad = np.deg2rad(h_fov_deg)
 
     # Convert pixel coordinates to longitude/latitude in radians
-    lon_rad = (u / (width - 1)) * h_fov_rad - (h_fov_rad / 2)
-    lat_rad = (v / (height - 1)) * np.pi - (np.pi / 2)
+    heading_rad = (u / (width - 1)) * h_fov_rad - (h_fov_rad / 2)
+    elevation_rad = (v / (height - 1)) * np.pi - (np.pi / 2)
 
     # Convert to degrees
-    lat_deg = np.rad2deg(lat_rad)
-    lon_deg = np.rad2deg(lon_rad)
+    elevation_deg = np.rad2deg(elevation_rad)
+    heading_deg = np.rad2deg(heading_rad)
 
-    return lat_deg, lon_deg
+    return elevation_deg, heading_deg
 
 
 def bounding_box_to_rays(box_corners, equirect_width, equirect_height, h_fov_deg=220.0):
@@ -257,63 +257,38 @@ def fisheye_to_equirectangular(
     return equirect_image, equirect_width, equirect_height, h_fov_deg
 
 
-def convert_boxes_to_rays(
+def convert_boxes_to_elevation_heading(
     boxes: List[Any], equirect_width: int, equirect_height: int, h_fov_deg: float
 ) -> List[Dict[str, Any]]:
-    """Convert bounding boxes to 3D ray directions.
+    """Convert bounding box centroids to elevation/heading coordinates.
 
     Args:
-        boxes: List of bounding box objects with xmin, ymin, xmax, ymax, label, confidence
+        boxes: List of bounding box objects with x1, y1, x2, y2, label
         equirect_width: Width of equirectangular image
         equirect_height: Height of equirectangular image
         h_fov_deg: Horizontal field of view in degrees
 
     Returns:
-        List of dictionaries containing label, confidence, corners, and rays
-    """
-    rays_list = []
-    for box in boxes:
-        corners = [
-            (box.xmin, box.ymin),  # top-left
-            (box.xmax, box.ymin),  # top-right
-            (box.xmax, box.ymax),  # bottom-right
-            (box.xmin, box.ymax),  # bottom-left
-        ]
-        rays = bounding_box_to_rays(corners, equirect_width, equirect_height, h_fov_deg)
-        rays_list.append({"label": box.label, "confidence": box.confidence, "corners": corners, "rays": rays})
-    return rays_list
-
-
-def convert_boxes_to_latlon(
-    boxes: List[Any], equirect_width: int, equirect_height: int, h_fov_deg: float
-) -> List[Dict[str, Any]]:
-    """Convert bounding box centroids to latitude/longitude coordinates.
-
-    Args:
-        boxes: List of bounding box objects with xmin, ymin, xmax, ymax, label, confidence
-        equirect_width: Width of equirectangular image
-        equirect_height: Height of equirectangular image
-        h_fov_deg: Horizontal field of view in degrees
-
-    Returns:
-        List of dictionaries containing label, confidence, centroid, lat_deg, lon_deg
+        List of dictionaries containing label, centroid, lat_deg, lon_deg
     """
     objects_list = []
     for box in boxes:
         # Calculate centroid
-        centroid_u = (box.xmin + box.xmax) / 2.0
-        centroid_v = (box.ymin + box.ymax) / 2.0
+        centroid_u = (box.x1 + box.x2) / 2.0
+        centroid_v = (box.y1 + box.y2) / 2.0
 
-        # Convert to lat/lon
-        lat_deg, lon_deg = equirectangular_pixel_to_latlon(
+        print(f"Centroid (u, v): ({centroid_u}, {centroid_v})")
+
+        # Convert to elevation/heading
+        elevation_deg, heading_deg = equirectangular_pixel_to_elevation_heading(
             centroid_u, centroid_v, equirect_width, equirect_height, h_fov_deg
         )
 
+        print(f"Elevation/Heading: ({elevation_deg}, {heading_deg})")
         objects_list.append({
             "label": box.label,
-            "confidence": box.confidence,
             "centroid": (centroid_u, centroid_v),
-            "lat_deg": lat_deg,
-            "lon_deg": lon_deg
+            "elevation_deg": elevation_deg,
+            "heading_deg": heading_deg
         })
     return objects_list
