@@ -110,6 +110,11 @@ pip install pandas
 
 ############################### Build everything #############################################
 
+# Checkout an older version of rosx_introspection to prevent GTest errors
+cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common/rosx_introspection
+git config --global --add safe.directory /home/pi/pupperv3-monorepo/ros2_ws/src/common/rosx_introspection
+git checkout 3922e2c
+
 # Build monorepo ros2 code
 bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
 
