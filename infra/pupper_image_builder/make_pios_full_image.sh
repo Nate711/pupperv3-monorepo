@@ -48,11 +48,21 @@ fi
 
 run_packer_container build "${PACKER_BUILD_ARGS[@]}" pios_full_arm64.pkr.hcl
 
+# !Packer cannot properly handle symlink images as source images!
 # Rename the output image to include git commit hash and create symlink
+# if [ -f "pupOS_pios_full.img" ]; then
+#   mv -f "pupOS_pios_full.img" "pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
+#   echo "Image saved as pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
+#   # Create symlink for next build step
+#   ln -sf "pupOS_pios_full_${GIT_COMMIT_SHORT}.img" "pupOS_pios_full.img"
+#   echo "Created symlink pupOS_pios_full.img -> pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
+# fi
+
+# Add a metadata file to indicate git commit
 if [ -f "pupOS_pios_full.img" ]; then
-  mv -f "pupOS_pios_full.img" "pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
-  echo "Image saved as pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
-  # Create symlink for next build step
-  ln -sf "pupOS_pios_full_${GIT_COMMIT_SHORT}.img" "pupOS_pios_full.img"
-  echo "Created symlink pupOS_pios_full.img -> pupOS_pios_full_${GIT_COMMIT_SHORT}.img"
+  DATE_SUFFIX=$(date +"%Y%m%d%H%M%S")
+  # Remove old metadata files
+  find . -maxdepth 1 -type f -name 'pupOS_pios_full_*' ! -name '*.*' -exec rm -f {} +
+  # Add new metadata file
+  touch "pupOS_pios_full_${GIT_COMMIT_SHORT}_${DATE_SUFFIX}"
 fi
