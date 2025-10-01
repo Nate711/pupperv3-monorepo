@@ -81,11 +81,12 @@ run_packer_container build -only="$PACKER_ONLY" "${PACKER_BUILD_ARGS[@]}" pios_a
 
 # Rename the output image to include git commit hash
 if [ -f "pupOS_pios_ai.img" ]; then
+  DATE_SUFFIX=$(date +"%Y%m%d%H%M%S")
   if [ "$INCLUDE_KEYS" = true ]; then
-    mv -f "pupOS_pios_ai.img" "pupOS_pios_ai_WITH_SECRETS_${GIT_COMMIT_SHORT}.img"
-    echo "Image saved as pupOS_pios_ai_WITH_SECRETS_${GIT_COMMIT_SHORT}.img because --include-keys was used"
+    mv -f "pupOS_pios_ai.img" "pupOS_pios_ai_WITH_SECRETS_${GIT_COMMIT_SHORT}_${DATE_SUFFIX}.img"
+    echo "Image saved as pupOS_pios_ai_WITH_SECRETS_${GIT_COMMIT_SHORT}_${DATE_SUFFIX}.img because --include-keys was used"
   else
-    mv -f "pupOS_pios_ai.img" "pupOS_pios_ai_${GIT_COMMIT_SHORT}.img"
-    echo "Image saved as pupOS_pios_ai_${GIT_COMMIT_SHORT}.img"
+    mv -f "pupOS_pios_ai.img" "pupOS_pios_ai_${GIT_COMMIT_SHORT}_${DATE_SUFFIX}.img"
+    echo "Image saved as pupOS_pios_ai_${GIT_COMMIT_SHORT}_${DATE_SUFFIX}.img"
   fi
 fi

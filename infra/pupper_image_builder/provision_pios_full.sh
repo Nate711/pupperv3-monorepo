@@ -138,6 +138,11 @@ for repo in "${repos[@]}"; do
     retry_command "git clone $repo --recurse-submodules"
 done
 
+# Checkout an older version of rosx_introspection to prevent GTest errors
+git config --global --add safe.directory /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common/rosx_introspection
+cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common/rosx_introspection
+git checkout 3922e2c
+
 # Clone topic_tools with jazzy branch
 retry_command "git clone https://github.com/ros-tooling/topic_tools.git --branch jazzy --recurse-submodules"
 
