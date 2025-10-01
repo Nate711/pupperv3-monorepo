@@ -297,7 +297,9 @@ class RosToolServer(ToolServer):
             1,
         )
 
-        self.gemini_annotated_image_publisher = self.node.create_publisher(CompressedImage, "/gemini/annotated_image", 10)
+        self.gemini_annotated_image_publisher = self.node.create_publisher(
+            CompressedImage, "/gemini/annotated_image", 10
+        )
 
         # Start ROS executor in a background thread
         self.executor = SingleThreadedExecutor()
@@ -313,6 +315,7 @@ class RosToolServer(ToolServer):
 
     async def get_camera_image(self, context: Any) -> Dict[str, Any]:
         from livekit.agents.llm import ImageContent
+
         self.node.get_logger().info("FUNCTION CALL: get_camera_image")
 
         latest_ros_compressed_img_msg = self.latest_image_queue.get_nowait()
@@ -416,7 +419,9 @@ class RosToolServer(ToolServer):
 
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
         """Queue a move_for_time operation as a single command"""
-        self.node.get_logger().info(f"FUNCTION CALL:  queue_move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}")
+        self.node.get_logger().info(
+            f"FUNCTION CALL:  queue_move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}"
+        )
 
         # Ensure walking controller is active before moving
         await self.queue_activate_walking()
@@ -479,6 +484,7 @@ class RosToolServer(ToolServer):
     async def _interrupt_and_stop(self) -> Tuple[bool, str]:
         """Interrupt current command and immediately stop the robot"""
         self.node.get_logger().info("_interrupt_and_stop: Interrupting current command and stopping robot")
+        start_time = time.time()
 
         # Cancel the currently executing command if any
         if self.current_command_task and not self.current_command_task.done():
@@ -496,6 +502,9 @@ class RosToolServer(ToolServer):
             stop_cmd = StopCommand()
             await stop_cmd.execute(self)
 
+        self.node.get_logger().info(
+            f"RosToolServer: _interrupt_and_stop done. Took: {time.time() - start_time:0.3f} seconds"
+        )
         return True, "Current command interrupted and robot stopped"
 
     async def clear_queue(self) -> Tuple[bool, str]:
@@ -515,6 +524,7 @@ class RosToolServer(ToolServer):
     async def immediate_stop(self) -> Tuple[bool, str]:
         """Immediate stop: interrupt current command, stop robot, and clear queue"""
         self.node.get_logger().warning("IMMEDIATE STOP initiated")
+        start_time = time.time()
 
         # Then clear the queue
         await self.clear_queue()
@@ -522,11 +532,12 @@ class RosToolServer(ToolServer):
         # First interrupt and stop
         await self._interrupt_and_stop()
 
-        self.node.get_logger().warning("IMMEDIATE STOP completed")
+        self.node.get_logger().warning(f"IMMEDIATE STOP completed. Took: {time.time() - start_time:0.3f} seconds")
         return True, "Immediate stop completed: robot stopped and queue cleared"
 
     async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
         self.node.get_logger().info(f"FUNCTION CALLED: analyze_camera_image(prompt={prompt})")
+        start_time = time.time()
 
         # Get image from queue
         image_msg = self.latest_image_queue.get_nowait()
@@ -536,7 +547,9 @@ class RosToolServer(ToolServer):
 
         # Convert fisheye to equirectangular
         camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
-        equirect_image, equirect_width, equirect_height, h_fov_deg = fisheye_utils.fisheye_to_equirectangular(image, camera_params_path)
+        equirect_image, equirect_width, equirect_height, h_fov_deg = fisheye_utils.fisheye_to_equirectangular(
+            image, camera_params_path
+        )
 
         self.node.get_logger().info("converted to equirectangular")
 
@@ -549,7 +562,9 @@ class RosToolServer(ToolServer):
         self.node.get_logger().info("parsed bounding boxes")
 
         # Convert bounding box centroids to elevation/heading coordinates
-        objects_with_elevation_heading = fisheye_utils.convert_boxes_to_elevation_heading(boxes_pixels, equirect_width, equirect_height, h_fov_deg)
+        objects_with_elevation_heading = fisheye_utils.convert_boxes_to_elevation_heading(
+            boxes_pixels, equirect_width, equirect_height, h_fov_deg
+        )
 
         self.node.get_logger().info("converted boxes to elevation/heading")
 
@@ -578,4 +593,6 @@ class RosToolServer(ToolServer):
 
         response = "\n".join(response_parts)
         self.node.get_logger().info(f"Published annotated equirectangular image with {len(boxes)} bounding boxes")
+        self.node.get_logger().info(f"analyze_camera_image response: {response}")
+        self.node.get_logger().info(f"analyze_camera_image took: {time.time() - start_time:0.3f} seconds")
         return True, response
