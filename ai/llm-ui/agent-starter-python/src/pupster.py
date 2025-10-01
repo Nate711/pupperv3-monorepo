@@ -12,6 +12,7 @@ import logging
 
 from livekit.plugins import cartesia, openai, google, deepgram, silero
 from livekit.agents import UserInputTranscribedEvent
+from openai.types.beta.realtime.session import TurnDetection
 
 
 logger = logging.getLogger("agent")
@@ -169,7 +170,18 @@ def openairealtime_session():
 
 def openairealtime_cartesia_session():
     return AgentSession(
-        llm=openai.realtime.RealtimeModel(modalities=["text"], model="gpt-realtime"),
+        llm=openai.realtime.RealtimeModel(
+            modalities=["text"],
+            model="gpt-realtime",
+            turn_detection=TurnDetection(
+                type="server_vad",
+                threshold=0.5,
+                prefix_padding_ms=200,
+                silence_duration_ms=100,
+                create_response=True,
+                interrupt_response=True,
+            ),
+        ),
         tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-2"),
     )
 
@@ -265,13 +277,20 @@ class PupsterAgent(Agent):
         """
         logger.info(f"FUNCTION CALL: queue_move_in_direction(heading={heading}, speed={speed}, duration={duration})")
         turn_velocity = 90.0
-        wz = - turn_velocity * (1 if heading > 0 else -1)
+        wz = -turn_velocity * (1 if heading > 0 else -1)
         turn_duration = abs(heading / turn_velocity)
         await self.tool_impl.queue_move_for_time(vx=0.0, vy=0.0, wz=wz, duration=turn_duration)
         await self.tool_impl.queue_move_for_time(vx=speed, vy=0.0, wz=0.0, duration=duration)
 
     @function_tool
-    async def queue_move(self, context: RunContext, forward_backward_velocity: float, right_left_velocity: float, turning_velocity: float, duration: float):
+    async def queue_move(
+        self,
+        context: RunContext,
+        forward_backward_velocity: float,
+        right_left_velocity: float,
+        turning_velocity: float,
+        duration: float,
+    ):
         """Use this tool to queue up a move command which makes the robot walk with a certain body velocity for a certain amount of time.
         This puts a move request at the end of the command queue to be executed as soon as the other commands are done.
         You can queue up multiple moves to accomplish complex movement like a dance.
@@ -327,9 +346,13 @@ class PupsterAgent(Agent):
             Small movements such as queue_move(forward_backward_velocity=0.1, right_left_velocity=0.0, turning_velocity=0.0, duration=2.0) are invalid and will be ignored because the real robot
             is not responsive to small velocities. Use 0 or a velocity above the threshold.
         """
-        logger.info(f"FUNCTION CALL: queue_move(forward_backward_velocity={forward_backward_velocity}, right_left_velocity={right_left_velocity}, turning_velocity={turning_velocity}, duration={duration})")
+        logger.info(
+            f"FUNCTION CALL: queue_move(forward_backward_velocity={forward_backward_velocity}, right_left_velocity={right_left_velocity}, turning_velocity={turning_velocity}, duration={duration})"
+        )
 
-        return await self.tool_impl.queue_move_for_time(vx=forward_backward_velocity, vy=-right_left_velocity, wz=-turning_velocity, duration=duration)
+        return await self.tool_impl.queue_move_for_time(
+            vx=forward_backward_velocity, vy=-right_left_velocity, wz=-turning_velocity, duration=duration
+        )
 
     @function_tool
     async def queue_stop(self, context: RunContext):
@@ -401,7 +424,7 @@ Example:
     async def analyze_camera_image(self, prompt: str, context: RunContext):
         """Analyze the current camera image and return a description of objects in the scene.
 
-        Examples: 
+        Examples:
         User asks: "Where I could find a banana"
         Call analyze_camera_image(prompt="Locate all bananas, or areas that could have bananas like kitchens or dining tables")
 
