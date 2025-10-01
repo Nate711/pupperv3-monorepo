@@ -198,9 +198,7 @@ class HailoAsyncInference:
             }
         else:
             output_buffers = {
-                name: np.empty(
-                    self.infer_model.output(name).shape, dtype=(getattr(np, self.output_type[name].lower()))
-                )
+                name: np.empty(self.infer_model.output(name).shape, dtype=(getattr(np, self.output_type[name].lower())))
                 for name in self.output_type
             }
         return configured_infer_model.create_bindings(output_buffers=output_buffers)
@@ -242,9 +240,7 @@ def validate_images(images: List[Image.Image], batch_size: int) -> None:
         raise ValueError("The number of input images should be divisible by the batch size " "without any remainder.")
 
 
-def divide_list_to_batches(
-    images_list: List[Image.Image], batch_size: int
-) -> Generator[List[Image.Image], None, None]:
+def divide_list_to_batches(images_list: List[Image.Image], batch_size: int) -> Generator[List[Image.Image], None, None]:
     """
     Divide the list of images into batches.
 

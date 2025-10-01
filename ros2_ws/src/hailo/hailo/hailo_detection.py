@@ -122,6 +122,8 @@ class HailoDetectionNode(Node):
         frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         video_h, video_w = frame.shape[:2]
 
+        self.get_logger().info(f"Received image of size: {video_w}x{video_h}")
+
         # Rotate 180 degrees
         # ONLY UNCOMMENT IF YOUR CAMERA IS UPSIDE DOWN
         # frame = cv2.rotate(frame, cv2.ROTATE_180)
@@ -175,9 +177,7 @@ class HailoDetectionNode(Node):
         annotated_msg.header = msg.header
         self.annotated_pub.publish(annotated_msg)
 
-    def preprocess_frame(
-        self, frame: np.ndarray, model_h: int, model_w: int, video_h: int, video_w: int
-    ) -> np.ndarray:
+    def preprocess_frame(self, frame: np.ndarray, model_h: int, model_w: int, video_h: int, video_w: int) -> np.ndarray:
         if model_h != video_h or model_w != video_w:
             frame = cv2.resize(frame, (model_w, model_h))
         return frame
