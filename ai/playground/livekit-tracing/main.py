@@ -10,7 +10,7 @@ from livekit.agents import Agent, AgentSession, JobContext, RunContext, WorkerOp
 from livekit.agents.llm import function_tool
 from livekit.agents.telemetry import set_tracer_provider
 from livekit.agents.voice import MetricsCollectedEvent
-from livekit.plugins import openai, cartesia
+from livekit.plugins import openai, cartesia, google
 
 logger = logging.getLogger("langfuse-trace-example")
 
@@ -77,13 +77,28 @@ class Kelly(Agent):
                     create_response=True,
                     interrupt_response=True,
                 ),
-                # turn_detection=TurnDetection(
-                #     type="semantic_vad",
-                #     eagerness="high",
-                #     create_response=True,
-                #     interrupt_response=True,
-                # ),
             ),
+            # turn_detection=TurnDetection(
+            #     type="semantic_vad",
+            #     eagerness="high",
+            #     create_response=True,
+            #     interrupt_response=True,
+            # ),
+            # ),
+            # llm=google.beta.realtime.RealtimeModel(
+            #     model="gemini-2.5-flash-native-audio-preview-09-2025",
+            #     voice="Puck",
+            #     temperature=0.8,
+            #     instructions="",
+            #     # modalities=["TEXT"],
+            # ),
+            # llm=google.beta.realtime.RealtimeModel(
+            #     model="gemini-live-2.5-flash-preview",
+            #     voice="Puck",
+            #     temperature=0.8,
+            #     instructions="",
+            #     modalities=["text"],
+            # ),
             # stt=deepgram.STT(model="nova-3", language="multi"),
             tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-2"),
             # turn_detection=MultilingualModel(),
