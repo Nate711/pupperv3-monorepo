@@ -267,8 +267,8 @@ class PupsterAgent(Agent):
         This function first queues a turn to the specified heading, then moves forward at the specified speed for the given duration.
 
         Examples:
-            To move at a NW heading for 1 meter, call queue_move_in_direction(heading=-45, speed=0.5, duration=2)
-            To move at a SE heading for 0.5 meters, call queue_move_in_direction(heading=135, speed=0.25, duration=2)
+            To move at a NW heading for 1 meter, call immediate_stop() and then queue_move_in_direction(heading=-45, speed=0.5, duration=2)
+            To move at a SE heading for 0.5 meters, call immediate_stop() and then queue_move_in_direction(heading=135, speed=0.25, duration=2)
 
         Args:
             heading (float): The direction in which the robot should move, in degrees. 0 degrees is forward, 90 is right, -90 is left, and 180/-180 is backward.
