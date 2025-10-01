@@ -420,8 +420,9 @@ class RosToolServer(ToolServer):
     async def queue_move_for_time(self, vx: float, vy: float, wz: float, duration: float) -> Tuple[bool, str]:
         """Queue a move_for_time operation as a single command"""
         self.node.get_logger().info(
-            f"FUNCTION CALL:  queue_move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}"
+            f"FUNCTION CALL: queue_move_for_time command: vx={vx}, vy={vy}, wz={wz}, duration={duration}"
         )
+        start_time = time.time()
 
         # Ensure walking controller is active before moving
         await self.queue_activate_walking()
@@ -432,6 +433,7 @@ class RosToolServer(ToolServer):
             self.node.get_logger().warning(f"Invalid parameters for move_for_time: {e}")
             return False, str(e)
         await self.add_command(move_for_time_cmd)
+        self.node.get_logger().info(f"FUNCTION CALL: queue_move_for_time command took: {time.time() - start_time:.2f}s")
         return True, f"Queued move_for_time: vx={vx}, vy={vy}, wz={wz} for {duration}s"
 
     async def queue_activate_walking(self):
