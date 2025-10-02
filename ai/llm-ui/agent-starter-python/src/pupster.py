@@ -13,6 +13,7 @@ import logging
 from livekit.plugins import cartesia, openai, google, deepgram, silero
 from livekit.agents import UserInputTranscribedEvent
 from openai.types.beta.realtime.session import TurnDetection
+import subprocess
 
 
 logger = logging.getLogger("agent")
@@ -443,3 +444,28 @@ Example:
         logger.info(f"FUNCTION CALL: analyze_camera_image(prompt={prompt})")
 
         return await self.tool_impl.analyze_camera_image(prompt, context)
+
+    @function_tool
+    async def set_speaker_volume(self, volume: int, context: RunContext):
+        """Set the speaker volume to specific level
+        Args:
+            volume (int): Volume level between 0 and 150. Only set below 50 if specified to be silent/off.
+
+        Volume guidelines:
+        * off: volume=0
+        * very quiet: volume=50
+        * quiet: volume=75
+        * normal: volume=100
+        * loud: volume=125
+        * very loud: volume=150
+        """
+        logger.info(f"FUNCTION CALL: set_speaker_volume()")
+        try:
+            # Convert volume (0-150) to level (0.0-1.5)
+            level = max(0.0, min(volume / 150 * 1.5, 1.5))
+            logger.info(f"Setting speaker volume to {level} (input volume {volume})")
+            subprocess.run(["wpctl", "set-volume", "@DEFAULT_SINK@", str(level)], check=True)
+            return f"Speaker volume set to {volume}%."
+        except Exception as e:
+            logger.error(f"Failed to set speaker volume: {e}")
+            return f"Failed to set speaker volume: {e}"
