@@ -8,3 +8,5 @@ ros2_ws/install/
 *.pyc
 
 untracked_bags
+
+*.wav
