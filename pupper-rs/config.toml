@@ -22,7 +22,7 @@ poll_interval_secs = 1.0
 
 [blink]
 # Interval between blinks in seconds
-interval_secs = 4.0
+interval_secs = 3.0
 # Duration of each blink in seconds
 duration_secs = 0.25
 # Delay between left and right eye blinks in seconds
