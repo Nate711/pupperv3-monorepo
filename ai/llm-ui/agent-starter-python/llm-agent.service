@@ -1,6 +1,7 @@
 [Unit]
 Description=LLM Voice Agent Service
-After=network-online.target time-sync.target sound.target
+After=network-online.target time-sync.target sound.target user@1000.service
+Requires=user@1000.service
 
 [Service]
 Type=simple
@@ -14,6 +15,8 @@ StandardOutput=journal
 StandardError=journal
 Environment="PATH=/usr/bin:/usr/local/bin"
 Environment="HOME=/home/pi"
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 Environment="PULSE_RUNTIME_PATH=/run/user/1000/pulse"
 SupplementaryGroups=audio
 PrivateDevices=no
