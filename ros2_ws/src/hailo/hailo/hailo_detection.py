@@ -67,7 +67,9 @@ class HailoDetectionNode(Node):
         self.detection_pub = self.create_publisher(Detection2DArray, "detections", 10)
         self.annotated_pub = self.create_publisher(CompressedImage, "annotated_image", 10)
         self.marker_pub = self.create_publisher(MarkerArray, "detection_markers", 10)
-        self.image_sub = self.create_subscription(Image, "/camera/image_raw", self.image_callback, 10)
+        self.image_sub = self.create_subscription(
+            CompressedImage, "/camera/image_raw/compressed", self.image_callback, 10
+        )
 
         # Initialize tracking and annotation
         self.box_annotator = sv.RoundBoxAnnotator()
@@ -84,7 +86,7 @@ class HailoDetectionNode(Node):
         camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
         fisheye_model = fisheye_utils.create_fisheye_model_from_params(camera_params_path, 1400, 1050)
         self.projector = fisheye_utils.FisheyeToEquirectangular(
-            out_width=800, out_height=400, h_fov_deg=180.0, v_fov_deg=90.0, fisheye_model=fisheye_model
+            out_width=800, out_height=800, h_fov_deg=180.0, v_fov_deg=180.0, fisheye_model=fisheye_model
         )
 
         # Initialize model based on mode
@@ -116,6 +118,7 @@ class HailoDetectionNode(Node):
                 output_queue=self.output_queue,
             )
             self.model_h, self.model_w, _ = self.hailo_inference.get_input_shape()
+            self.get_logger().info(f"Hailo model input shape: {self.model_w}x{self.model_h}")
 
             # Load class names from file
             with open(self.labels_path, "r", encoding="utf-8") as f:
@@ -127,11 +130,11 @@ class HailoDetectionNode(Node):
 
     def image_callback(self, msg):
         # Convert ROS Image to CV2
-        frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        frame = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
         video_h, video_w = frame.shape[:2]
         # breakpoint()
 
-        self.get_logger().info(f"Received image of size: {video_w}x{video_h}")
+        self.get_logger().info(f"Received /camera/image_raw/compressed image of size: {video_w}x{video_h}")
 
         # Rotate 180 degrees
         # ONLY UNCOMMENT IF YOUR CAMERA IS UPSIDE DOWN
@@ -141,7 +144,13 @@ class HailoDetectionNode(Node):
         equirect_frame = self.projector.project(frame)
         equirect_frame_h = equirect_frame.shape[0]
         equirect_frame_w = equirect_frame.shape[1]
-        self.get_logger().info(f"Projection time: {time.time() - start:.3f} seconds")
+        self.get_logger().info(f"Projection to equirect took: {time.time() - start:.3f} seconds")
+        self.get_logger().info(f"Equirectangular image size: {equirect_frame_w}x{equirect_frame_h}")
+
+        # If you want to skip fisheye to equirect projection for testing purposes,
+        # equirect_frame = frame
+        # equirect_frame_h = equirect_frame.shape[0]
+        # equirect_frame_w = equirect_frame.shape[1]
 
         if self.sim_mode:
             # Run YOLOv8 inference
