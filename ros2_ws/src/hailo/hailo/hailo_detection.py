@@ -23,6 +23,7 @@ import json
 import time
 from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
+from hailo import fisheye_utils
 
 # Conditional imports based on sim mode
 try:
@@ -46,9 +47,9 @@ class HailoDetectionNode(Node):
 
         # Declare and get parameters
         self.declare_parameter("sim", False)
-        self.declare_parameter("model_name", "yolov8m.hef")
-        self.declare_parameter("yolo_model", "yolov8m.pt")  # For sim mode
-        self.declare_parameter("labels_path", "coco.txt")
+        self.declare_parameter("model_name", "../config/yolov8m.hef")
+        self.declare_parameter("yolo_model", "../config/yolov8m.pt")  # For sim mode
+        self.declare_parameter("labels_path", "../config/coco.txt")
         self.declare_parameter("score_threshold", 0.5)
 
         self.sim_mode = self.get_parameter("sim").value
@@ -78,6 +79,13 @@ class HailoDetectionNode(Node):
         self.zmq_socket = self.zmq_context.socket(zmq.PUB)
         self.zmq_socket.bind("tcp://*:5556")
         self.get_logger().info("ZMQ publisher bound to tcp://*:5556")
+
+        # Initialize fisheye projector
+        camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
+        fisheye_model = fisheye_utils.create_fisheye_model_from_params(camera_params_path, 1400, 1050)
+        self.projector = fisheye_utils.FisheyeToEquirectangular(
+            out_width=800, out_height=400, h_fov_deg=180.0, v_fov_deg=90.0, fisheye_model=fisheye_model
+        )
 
         # Initialize model based on mode
         if self.sim_mode:
@@ -121,6 +129,7 @@ class HailoDetectionNode(Node):
         # Convert ROS Image to CV2
         frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         video_h, video_w = frame.shape[:2]
+        # breakpoint()
 
         self.get_logger().info(f"Received image of size: {video_w}x{video_h}")
 
@@ -128,15 +137,23 @@ class HailoDetectionNode(Node):
         # ONLY UNCOMMENT IF YOUR CAMERA IS UPSIDE DOWN
         # frame = cv2.rotate(frame, cv2.ROTATE_180)
 
+        start = time.time()
+        equirect_frame = self.projector.project(frame)
+        equirect_frame_h = equirect_frame.shape[0]
+        equirect_frame_w = equirect_frame.shape[1]
+        self.get_logger().info(f"Projection time: {time.time() - start:.3f} seconds")
+
         if self.sim_mode:
             # Run YOLOv8 inference
-            results = self.yolo_model(frame, conf=self.score_threshold, verbose=False)
+            results = self.yolo_model(equirect_frame, conf=self.score_threshold, verbose=False)
 
             # Convert YOLOv8 results to our detection format
             detections = self.extract_yolo_detections(results[0])
         else:
             # Preprocess frame
-            preprocessed_frame = self.preprocess_frame(frame, self.model_h, self.model_w, video_h, video_w)
+            preprocessed_frame = self.preprocess_frame(
+                equirect_frame, self.model_h, self.model_w, equirect_frame_h, equirect_frame_w
+            )
 
             # Run Hailo inference
             self.input_queue.put([preprocessed_frame])
@@ -146,7 +163,7 @@ class HailoDetectionNode(Node):
                 results = results[0]
 
             # Process Hailo detections
-            detections = self.extract_detections(results, video_h, video_w, self.score_threshold)
+            detections = self.extract_detections(results, equirect_frame_h, equirect_frame_w, self.score_threshold)
 
         self.get_logger().info(f"Detections: {detections}")
 
@@ -163,14 +180,14 @@ class HailoDetectionNode(Node):
         # Create and publish annotated image
         if detections["num_detections"]:
             annotated_frame = self.postprocess_detections(
-                frame, detections, self.class_names, self.tracker, self.box_annotator, self.label_annotator
+                equirect_frame, detections, self.class_names, self.tracker, self.box_annotator, self.label_annotator
             )
             _, jpg_buffer = cv2.imencode(".jpg", annotated_frame)
             annotated_msg = CompressedImage()
             annotated_msg.format = "jpeg"
             annotated_msg.data = jpg_buffer.tobytes()
         else:
-            _, jpg_buffer = cv2.imencode(".jpg", frame)
+            _, jpg_buffer = cv2.imencode(".jpg", equirect_frame)
             annotated_msg = CompressedImage()
             annotated_msg.format = "jpeg"
             annotated_msg.data = jpg_buffer.tobytes()
