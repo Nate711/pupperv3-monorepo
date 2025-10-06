@@ -196,7 +196,7 @@ def equirectangular_pixel_to_elevation_heading(u, v, width, height, h_fov_deg=22
 
     # Convert pixel coordinates to longitude/latitude in radians
     heading_rad = (u / (width - 1)) * h_fov_rad - (h_fov_rad / 2)
-    elevation_rad = (v / (height - 1)) * np.pi - (np.pi / 2)
+    elevation_rad = (1.0 - v / (height - 1)) * np.pi - (np.pi / 2)
 
     # Convert to degrees
     elevation_deg = np.rad2deg(elevation_rad)
@@ -285,10 +285,12 @@ def convert_boxes_to_elevation_heading(
         )
 
         print(f"Elevation/Heading: ({elevation_deg}, {heading_deg})")
-        objects_list.append({
-            "label": box.label,
-            "centroid": (centroid_u, centroid_v),
-            "elevation_deg": elevation_deg,
-            "heading_deg": heading_deg
-        })
+        objects_list.append(
+            {
+                "label": box.label,
+                "centroid": (centroid_u, centroid_v),
+                "elevation_deg": elevation_deg,
+                "heading_deg": heading_deg,
+            }
+        )
     return objects_list
