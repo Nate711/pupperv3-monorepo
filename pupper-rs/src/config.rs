@@ -73,7 +73,7 @@ pub enum EyeTrackingMode {
 #[serde(rename_all = "snake_case")]
 pub enum EyeTrackingSource {
     Mouse,
-    Person,  // Track the largest detected person
+    Person, // Track the largest detected person
 }
 
 impl Default for Config {

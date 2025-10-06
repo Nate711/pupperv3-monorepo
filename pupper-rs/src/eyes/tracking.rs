@@ -20,7 +20,12 @@ impl EyeTracker {
         }
     }
 
-    pub fn update(&mut self, ctx: &egui::Context, window_rect: egui::Rect, people: Option<Vec<PersonLocation>>) {
+    pub fn update(
+        &mut self,
+        ctx: &egui::Context,
+        window_rect: egui::Rect,
+        people: Option<Vec<PersonLocation>>,
+    ) {
         self.window_center = Some(window_rect.center());
         self.window_size = window_rect.size();
         self.latest_people = people;
@@ -33,11 +38,14 @@ impl EyeTracker {
     fn get_largest_person(&self) -> Option<PersonLocation> {
         if let Some(ref people) = self.latest_people {
             // Find the person with the largest bounding box area
-            people.iter()
+            people
+                .iter()
                 .max_by(|a, b| {
                     let area_a = a.width * a.height;
                     let area_b = b.width * b.height;
-                    area_a.partial_cmp(&area_b).unwrap_or(std::cmp::Ordering::Equal)
+                    area_a
+                        .partial_cmp(&area_b)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .cloned()
         } else {
@@ -53,13 +61,8 @@ impl EyeTracker {
                     // Convert normalized coordinates (0-1) to window coordinates
                     // Person detection gives us center of bounding box
                     if let Some(window_center) = self.window_center {
-                        let window_left = window_center.x - self.window_size.x / 2.0;
-                        let window_top = window_center.y - self.window_size.y / 2.0;
-
-                        // Calculate center of person bounding box
                         let eye_offset_x = person.heading / 90.0 * (self.window_size.x / 2.0); // Assuming heading is in degrees
                         let eye_offset_y = person.elevation / 90.0 * (self.window_size.y / 2.0); // Assuming elevation is in degrees
-                        // Convert to window coordinates
                         Some(Pos2::new(
                             window_center.x + eye_offset_x,
                             window_center.y + eye_offset_y,
@@ -80,7 +83,9 @@ impl EyeTracker {
             return Vec2::ZERO;
         }
 
-        if let (Some(tracking_pos), Some(window_center)) = (self.get_tracking_position(config), self.window_center) {
+        if let (Some(tracking_pos), Some(window_center)) =
+            (self.get_tracking_position(config), self.window_center)
+        {
             // Calculate direction from window center to tracking position
             let direction = tracking_pos - window_center;
 
