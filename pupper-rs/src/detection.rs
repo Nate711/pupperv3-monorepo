@@ -9,6 +9,8 @@ pub struct PersonLocation {
     pub y: f32,      // Normalized y position (0.0 - 1.0)
     pub width: f32,  // Normalized width (0.0 - 1.0)
     pub height: f32, // Normalized height (0.0 - 1.0)
+    pub heading: f32, // Heading angle in degrees
+    pub elevation: f32, // Elevation angle in degrees
     pub id: i32,     // Tracker ID
 }
 

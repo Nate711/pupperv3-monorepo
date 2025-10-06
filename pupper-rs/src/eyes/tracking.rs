@@ -57,13 +57,12 @@ impl EyeTracker {
                         let window_top = window_center.y - self.window_size.y / 2.0;
 
                         // Calculate center of person bounding box
-                        let person_center_x = person.x + person.width / 2.0;
-                        let person_center_y = person.y + person.height / 2.0;
-
+                        let eye_offset_x = person.heading / 90.0 * (self.window_size.x / 2.0); // Assuming heading is in degrees
+                        let eye_offset_y = person.elevation / 90.0 * (self.window_size.y / 2.0); // Assuming elevation is in degrees
                         // Convert to window coordinates
                         Some(Pos2::new(
-                            window_left + person_center_x * self.window_size.x,
-                            window_top + person_center_y * self.window_size.y,
+                            window_center.x + eye_offset_x,
+                            window_center.y + eye_offset_y,
                         ))
                     } else {
                         None
