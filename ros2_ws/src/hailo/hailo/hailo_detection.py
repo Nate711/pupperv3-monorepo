@@ -305,6 +305,7 @@ class HailoDetectionNode(Node):
             tracker_id = i  # Default fallback
             # Note: If we had tracker IDs from the tracker, we'd use those instead
 
+            # in degrees
             elevation, heading = fisheye_utils.equirectangular_pixel_to_elevation_heading(
                 center_x, center_y, image_width, image_height, h_fov_deg=self.h_fov_deg, v_fov_deg=self.v_fov_deg
             )
