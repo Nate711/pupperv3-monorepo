@@ -180,7 +180,7 @@ joy_util_node:
   ros__parameters:
     estop_index: 12
     estop_release_index: 9
-    controller_names: ["neural_controller", "neural_controller_three_legged"]
+    controller_names: ["neural_controller", "neural_controller_three_legged", "forward_kp_controller", "forward_kd_controller", "forward_position_controller"]
     switch_button_indices: [0, 1]
 
 # Forward command controllers for animation system
