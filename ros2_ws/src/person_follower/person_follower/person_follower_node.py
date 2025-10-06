@@ -17,7 +17,7 @@ class PersonFollowerNode(Node):
         super().__init__("person_follower_node")
 
         # Declare parameters
-        self.declare_parameter("kp_angular", 4.0)
+        self.declare_parameter("kp_angular", 1.0)
         self.declare_parameter("kp_linear", 0.0)
         self.declare_parameter("target_bbox_area", 0.3)
         self.declare_parameter("max_linear_vel", 0.5)
@@ -49,7 +49,7 @@ class PersonFollowerNode(Node):
         self.image_height = 640  # Default, will be updated
 
         # Publishers
-        self.cmd_vel_pub = self.create_publisher(Twist, "/person_following_cmd_vel", 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, "/TEST", 10)
 
         # Subscribers
         self.detection_sub = self.create_subscription(Detection2DArray, "/detections", self.detection_callback, 10)
