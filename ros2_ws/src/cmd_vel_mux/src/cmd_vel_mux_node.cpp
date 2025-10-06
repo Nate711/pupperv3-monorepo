@@ -15,12 +15,12 @@ public:
         this->declare_parameter("deadband", 0.05);
         this->declare_parameter("timeout_ms", 500);
 
-        // Declare input sources as a vector of vectors [topic, priority]
-        // Default configuration with priorities (lower number = higher priority)
-        std::vector<std::vector<std::string>> default_inputs = {
-            {"/teleop_cmd_vel", "1"},
-            {"/llm_cmd_vel", "2"},
-            {"/person_following_cmd_vel", "3"}
+        // Declare input sources as a list in priority order
+        // First in list = highest priority
+        std::vector<std::string> default_inputs = {
+            "/teleop_cmd_vel",
+            "/llm_cmd_vel",
+            "/person_following_cmd_vel"
         };
 
         this->declare_parameter("inputs", default_inputs);
@@ -30,35 +30,32 @@ public:
 
         auto input_config = this->get_parameter("inputs").as_string_array();
 
-        // Parse input configuration (expects pairs of [topic, priority])
-        for (size_t i = 0; i < input_config.size(); i += 2)
+        // Parse input configuration - order in list determines priority
+        for (size_t i = 0; i < input_config.size(); i++)
         {
-            if (i + 1 < input_config.size())
-            {
-                std::string topic = input_config[i];
-                int priority = std::stoi(input_config[i + 1]);
+            std::string topic = input_config[i];
+            int priority = static_cast<int>(i);  // Index is priority (0 = highest)
 
-                // Create input source
-                InputSource source;
-                source.topic = topic;
-                source.priority = priority;
-                source.active = false;
-                source.received = false;
-                source.last_activity = this->now();
-                source.cmd_vel = geometry_msgs::msg::Twist();
+            // Create input source
+            InputSource source;
+            source.topic = topic;
+            source.priority = priority;
+            source.active = false;
+            source.received = false;
+            source.last_activity = this->now();
+            source.cmd_vel = geometry_msgs::msg::Twist();
 
-                // Create subscriber
-                source.subscriber = this->create_subscription<geometry_msgs::msg::Twist>(
-                    topic, 10,
-                    [this, topic](const geometry_msgs::msg::Twist::SharedPtr msg) {
-                        this->cmdVelCallback(topic, msg);
-                    });
+            // Create subscriber
+            source.subscriber = this->create_subscription<geometry_msgs::msg::Twist>(
+                topic, 10,
+                [this, topic](const geometry_msgs::msg::Twist::SharedPtr msg) {
+                    this->cmdVelCallback(topic, msg);
+                });
 
-                input_sources_[topic] = source;
+            input_sources_[topic] = source;
 
-                RCLCPP_INFO(this->get_logger(), "Added input: %s with priority %d",
-                            topic.c_str(), priority);
-            }
+            RCLCPP_INFO(this->get_logger(), "Added input: %s with priority %d",
+                        topic.c_str(), priority);
         }
 
         // Publishers
