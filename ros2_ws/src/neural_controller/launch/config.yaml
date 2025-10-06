@@ -269,7 +269,7 @@ joint_state_throttler:
 
 camera:
   ros__parameters:
-    FrameDurationLimits: [100000, 100000] # 10fps
+    FrameDurationLimits: [200000, 200000] # 20fps
     format: "RGB888"
     width: 1400
     height: 1050
