@@ -17,8 +17,8 @@ class PersonFollowerNode(Node):
         super().__init__("person_follower_node")
 
         # Declare parameters
-        self.declare_parameter("kp_angular", 1.0)
-        self.declare_parameter("kp_linear", 0.5)
+        self.declare_parameter("kp_angular", 4.0)
+        self.declare_parameter("kp_linear", 0.0)
         self.declare_parameter("target_bbox_area", 0.3)
         self.declare_parameter("max_linear_vel", 0.5)
         self.declare_parameter("max_angular_vel", 1.0)
@@ -52,31 +52,15 @@ class PersonFollowerNode(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, "/llm_cmd_vel", 10)
 
         # Subscribers
-        self.detection_sub = self.create_subscription(
-            Detection2DArray,
-            "/detections",
-            self.detection_callback,
-            10
-        )
+        self.detection_sub = self.create_subscription(Detection2DArray, "/detections", self.detection_callback, 10)
 
         # Services
-        self.activate_srv = self.create_service(
-            Trigger,
-            "activate_person_following",
-            self.activate_callback
-        )
+        self.activate_srv = self.create_service(Trigger, "activate_person_following", self.activate_callback)
 
-        self.deactivate_srv = self.create_service(
-            Trigger,
-            "deactivate_person_following",
-            self.deactivate_callback
-        )
+        self.deactivate_srv = self.create_service(Trigger, "deactivate_person_following", self.deactivate_callback)
 
         # Control timer
-        self.control_timer = self.create_timer(
-            1.0 / self.publish_rate,
-            self.control_loop
-        )
+        self.control_timer = self.create_timer(1.0 / self.publish_rate, self.control_loop)
 
         self.get_logger().info("Person follower node initialized")
 
@@ -191,9 +175,8 @@ class PersonFollowerNode(Node):
 
         # Log control info periodically
         self.get_logger().info(
-            f"Control: vx={vx:.2f}, wz={wz:.2f}, bbox_area={bbox_area:.3f}, "
-            f"angular_error={angular_error:.3f}",
-            throttle_duration_sec=1.0
+            f"Control: vx={vx:.2f}, wz={wz:.2f}, bbox_area={bbox_area:.3f}, " f"angular_error={angular_error:.3f}",
+            # throttle_duration_sec=1.0
         )
 
     def stop_robot(self):
