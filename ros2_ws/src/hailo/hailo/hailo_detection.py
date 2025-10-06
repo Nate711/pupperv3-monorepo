@@ -198,7 +198,7 @@ class HailoDetectionNode(Node):
         self.marker_pub.publish(marker_array)
 
         # Publish ZMQ messages with bounding box positions and IDs
-        self.publish_zmq_detections(detections, video_w, video_h)
+        self.publish_zmq_detections(detections, self.model_w, self.model_h)
 
         # Create and publish annotated image
         if detections["num_detections"]:
