@@ -50,7 +50,15 @@ class HailoDetectionNode(Node):
         self.declare_parameter("model_name", "../config/yolov8m.hef")
         self.declare_parameter("yolo_model", "../config/yolov8m.pt")  # For sim mode
         self.declare_parameter("labels_path", "../config/coco.txt")
-        self.declare_parameter("score_threshold", 0.5)
+        self.declare_parameter("score_threshold", 0.2)
+
+        # For storing model input size
+        self.model_h = None
+        self.model_w = None
+
+        # Equirectangular projection parameters
+        self.h_fov_deg = self.declare_parameter("equirect_h_fov_deg", 180.0).value
+        self.v_fov_deg = self.declare_parameter("equirect_v_fov_deg", 180.0).value
 
         self.sim_mode = self.get_parameter("sim").value
 
@@ -85,9 +93,6 @@ class HailoDetectionNode(Node):
         # Initialize fisheye projector
         camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
         fisheye_model = fisheye_utils.create_fisheye_model_from_params(camera_params_path, 1400, 1050)
-        self.projector = fisheye_utils.FisheyeToEquirectangular(
-            out_width=800, out_height=800, h_fov_deg=180.0, v_fov_deg=180.0, fisheye_model=fisheye_model
-        )
 
         # Initialize model based on mode
         if self.sim_mode:
@@ -124,6 +129,16 @@ class HailoDetectionNode(Node):
             with open(self.labels_path, "r", encoding="utf-8") as f:
                 self.class_names = f.read().splitlines()
 
+        # Initialize fisheye to equirectangular projector
+        self.projector = fisheye_utils.FisheyeToEquirectangular(
+            out_width=self.model_w,
+            out_height=self.model_h,
+            h_fov_deg=self.h_fov_deg,
+            v_fov_deg=self.v_fov_deg,
+            fisheye_model=fisheye_model,
+        )
+
+        if not self.sim_mode:
             # Start inference thread
             self.inference_thread = threading.Thread(target=self.hailo_inference.run)
             self.inference_thread.start()
@@ -132,7 +147,6 @@ class HailoDetectionNode(Node):
         # Convert ROS Image to CV2
         frame = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
         video_h, video_w = frame.shape[:2]
-        # breakpoint()
 
         self.get_logger().info(f"Received /camera/image_raw/compressed image of size: {video_w}x{video_h}")
 
@@ -291,18 +305,25 @@ class HailoDetectionNode(Node):
             tracker_id = i  # Default fallback
             # Note: If we had tracker IDs from the tracker, we'd use those instead
 
+            elevation, heading = fisheye_utils.equirectangular_pixel_to_elevation_heading(
+                center_x, center_y, image_width, image_height, h_fov_deg=self.h_fov_deg, v_fov_deg=self.v_fov_deg
+            )
+
             people_locations.append(
                 {
                     "x": normalized_x,
                     "y": normalized_y,
                     "width": normalized_width,
                     "height": normalized_height,
+                    "heading": heading,
+                    "elevation": elevation,
                     "id": tracker_id,
                 }
             )
 
         # Create the message in the expected format
         zmq_message = {"people": people_locations, "timestamp": time.time()}
+        self.get_logger().info(f"Publishing ZMQ message: {zmq_message}")
 
         # Send JSON message over ZMQ
         json_str = json.dumps(zmq_message)

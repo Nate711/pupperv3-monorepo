@@ -205,7 +205,7 @@ def equirectangular_pixel_to_ray(u, v, width, height, h_fov_deg=220.0):
     return x, y, z
 
 
-def equirectangular_pixel_to_elevation_heading(u, v, width, height, h_fov_deg=220.0):
+def equirectangular_pixel_to_elevation_heading(u, v, width, height, h_fov_deg, v_fov_deg):
     """Convert equirectangular image pixel to elevation/heading in degrees
 
     Args:
@@ -219,10 +219,11 @@ def equirectangular_pixel_to_elevation_heading(u, v, width, height, h_fov_deg=22
         elevation_deg, heading_deg: elevation and heading in degrees
     """
     h_fov_rad = np.deg2rad(h_fov_deg)
+    v_fov_rad = np.deg2rad(v_fov_deg)
 
     # Convert pixel coordinates to longitude/latitude in radians
     heading_rad = (u / (width - 1)) * h_fov_rad - (h_fov_rad / 2)
-    elevation_rad = (v / (height - 1)) * np.pi - (np.pi / 2)
+    elevation_rad = (1.0 - v / (height - 1)) * v_fov_rad - (v_fov_rad / 2)
 
     # Convert to degrees
     elevation_deg = np.rad2deg(elevation_rad)
