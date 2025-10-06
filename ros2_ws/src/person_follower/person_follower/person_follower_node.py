@@ -49,7 +49,7 @@ class PersonFollowerNode(Node):
         self.image_height = 640  # Default, will be updated
 
         # Publishers
-        self.cmd_vel_pub = self.create_publisher(Twist, "/llm_cmd_vel", 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, "/person_following_cmd_vel", 10)
 
         # Subscribers
         self.detection_sub = self.create_subscription(Detection2DArray, "/detections", self.detection_callback, 10)
