@@ -446,6 +446,16 @@ Example:
         return await self.tool_impl.analyze_camera_image(prompt, context)
 
     @function_tool
+    async def activate_person_following(self, context: RunContext):
+        """Activate the person following behavior."""
+        return await self.tool_impl.activate_person_following(context)
+
+    @function_tool
+    async def deactivate_person_following(self, context: RunContext):
+        """Deactivate the person following behavior."""
+        return await self.tool_impl.deactivate_person_following(context)
+
+    @function_tool
     async def set_speaker_volume(self, volume: int, context: RunContext):
         """Set the speaker volume to specific level
         Args:

@@ -49,7 +49,10 @@ class HailoDetectionNode(Node):
         self.declare_parameter("sim", False)
         self.declare_parameter("model_name", "../config/yolov8m.hef")
         self.declare_parameter("yolo_model", "../config/yolov8m.pt")  # For sim mode
-        self.declare_parameter("labels_path", "../config/coco.txt")
+
+        package_dir = Path(get_package_share_directory("hailo"))
+        default_labels_path = (package_dir / "config" / "coco.txt").as_posix()
+        self.declare_parameter("labels_path", default_labels_path)
         self.declare_parameter("score_threshold", 0.2)
 
         # For storing model input size
@@ -62,7 +65,6 @@ class HailoDetectionNode(Node):
 
         self.sim_mode = self.get_parameter("sim").value
 
-        package_dir = Path(get_package_share_directory("hailo"))
         self.model_path = (package_dir / "config" / self.get_parameter("model_name").value).as_posix()
         self.yolo_model_name = self.get_parameter("yolo_model").value
         self.labels_path = self.get_parameter("labels_path").value

@@ -271,6 +271,20 @@ def generate_launch_description():
         output="both",
     )
 
+    hailo_detection_node = Node(
+        package="hailo",
+        executable="hailo_detection",
+        output="both",
+        parameters=[node_parameters],
+    )
+
+    person_following_node = Node(
+        package="person_follower",
+        executable="person_follower_node",
+        output="both",
+        parameters=[node_parameters],
+    )
+
     #
     # 7. Put them all together
     #
@@ -297,6 +311,10 @@ def generate_launch_description():
         imu_to_tf_node,
         animation_controller_py_node,
         joint_state_throttler,
+        # Detection
+        hailo_detection_node,
+        # Person following
+        person_following_node,
     ]
 
     #

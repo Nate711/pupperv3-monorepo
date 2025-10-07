@@ -10,6 +10,7 @@ from rclpy.node import Node
 from rclpy.executors import SingleThreadedExecutor
 import logging
 from controller_manager_msgs.srv import SwitchController, ListControllers
+from std_srvs.srv import Trigger
 from dataclasses import dataclass, field
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import CompressedImage
@@ -275,6 +276,9 @@ class RosToolServer(ToolServer):
         self.list_controllers_client = self.node.create_client(ListControllers, "/controller_manager/list_controllers")
         self.current_walking_controller = "neural_controller"  # default walking controller
 
+        self.activate_person_following_client = self.node.create_client(Trigger, "activate_person_following")
+        self.deactivate_person_following_client = self.node.create_client(Trigger, "deactivate_person_following")
+
         # Initialize command queue
         self.command_queue = asyncio.Queue()
         self.queue_running = False
@@ -536,6 +540,22 @@ class RosToolServer(ToolServer):
 
         self.node.get_logger().warning(f"IMMEDIATE STOP completed. Took: {time.time() - start_time:0.3f} seconds")
         return True, "Immediate stop completed: robot stopped and queue cleared"
+
+    async def activate_person_following(self, context: Any) -> Tuple[bool, str]:
+        fut = self.activate_person_following_client.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self.node, fut)
+        if fut.result() is not None:
+            return fut.result().success, fut.result().message
+        else:
+            return False, "Failed to call activate_person_following service"
+
+    async def deactivate_person_following(self, context: Any) -> Tuple[bool, str]:
+        fut = self.deactivate_person_following_client.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self.node, fut)
+        if fut.result() is not None:
+            return fut.result().success, fut.result().message
+        else:
+            return False, "Failed to call deactivate_person_following service"
 
     async def analyze_camera_image(self, prompt: str, context: Any) -> Tuple[bool, str]:
         self.node.get_logger().info(f"FUNCTION CALLED: analyze_camera_image(prompt={prompt})")

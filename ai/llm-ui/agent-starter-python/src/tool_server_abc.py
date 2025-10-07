@@ -70,3 +70,11 @@ class ToolServer(ABC):
             context: Additional context or metadata for analysis
         """
         raise NotImplementedError
+
+    @abstractmethod
+    async def activate_person_following(self, context: Any) -> Tuple[bool, str]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def deactivate_person_following(self, context: Any) -> Tuple[bool, str]:
+        raise NotImplementedError
