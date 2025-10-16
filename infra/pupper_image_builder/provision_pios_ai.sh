@@ -123,8 +123,8 @@ if ! bash "/home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh" 2>&1 | tee "$
     exit 1
 fi
 
-if grep -q 'Failed' "$tmpfile"; then
-    echo "ros2 build script output contains 'Failed'" >&2
+if grep -qi 'failed' "$tmpfile"; then
+    echo "ros2 build script output contains 'failed'" >&2
     rm -f "$tmpfile"
     exit 1
 fi

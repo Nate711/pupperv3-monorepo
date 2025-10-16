@@ -129,7 +129,7 @@ pip install empy==3.3.4
 
 repos=(
     "https://github.com/facontidavide/rosx_introspection.git"
-    "https://github.com/foxglove/ros-foxglove-bridge.git"
+    "https://github.com/foxglove/foxglove-sdk.git"
     "https://github.com/christianrauch/camera_ros.git"
     "https://github.com/ros-perception/vision_msgs.git"
 )
@@ -156,7 +156,20 @@ fi
 
 # Build monorepo ros2 code
 cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws
-bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
+
+# Build monorepo ros2 code
+tmpfile=$(mktemp /tmp/ros2-build-output.XXXXXX)
+if ! bash "/home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh" 2>&1 | tee "$tmpfile"; then
+    echo "ros2 build script exited with non-zero status" >&2
+    rm -f "$tmpfile"
+    exit 1
+fi
+
+if grep -qi 'failed' "$tmpfile"; then
+    echo "ros2 build script output contains 'failed'" >&2
+    rm -f "$tmpfile"
+    exit 1
+fi
 
 ############### AUTOMATICALLY SOURCE ROS2 WORKSPACE IN BASHRC ################################
 echo "source /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/install/setup.bash" >> /home/$DEFAULT_USER/.bashrc
