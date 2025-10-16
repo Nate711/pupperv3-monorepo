@@ -144,6 +144,7 @@ cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common/rosx_introspection
 git checkout 3922e2c
 
 # Clone topic_tools with jazzy branch
+cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common
 retry_command "git clone https://github.com/ros-tooling/topic_tools.git --branch jazzy --recurse-submodules"
 
 if [ "$GITHUB_TOKEN_CONFIGURED" = true ]; then
@@ -154,6 +155,7 @@ fi
 ############################### Build everything #############################################
 
 # Build monorepo ros2 code
+cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws
 bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
 
 ############### AUTOMATICALLY SOURCE ROS2 WORKSPACE IN BASHRC ################################
