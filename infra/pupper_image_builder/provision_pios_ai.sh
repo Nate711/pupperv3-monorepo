@@ -116,7 +116,20 @@ git config --global --add safe.directory /home/pi/pupperv3-monorepo/ros2_ws/src/
 git checkout 3922e2c
 
 # Build monorepo ros2 code
-bash /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh
+tmpfile=$(mktemp /tmp/ros2-build-output.XXXXXX)
+if ! bash "/home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/build.sh" 2>&1 | tee "$tmpfile"; then
+    echo "ros2 build script exited with non-zero status" >&2
+    rm -f "$tmpfile"
+    exit 1
+fi
+
+if grep -q 'Failed' "$tmpfile"; then
+    echo "ros2 build script output contains 'Failed'" >&2
+    rm -f "$tmpfile"
+    exit 1
+fi
+
+rm -f "$tmpfile"
 
 # Build Rust GUI
 cd /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs
