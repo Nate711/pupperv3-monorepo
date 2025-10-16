@@ -102,8 +102,9 @@ rustup target add aarch64-unknown-linux-gnu
 
 
 ############################### Install LLM deps ###########################
+# Note: livekit 1.0.16 is incompatible with RPi OS due to glibc>=2.38 requirement
 rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
-pip install "livekit-agents[cartesia,google,openai,deepgram,silero,turn-detector]~=1.2"
+pip install "livekit==1.0.13" "livekit-agents[cartesia,google,openai,deepgram,silero,turn-detector]==1.2.15"
 pip install "python-dotenv"
 pip install pandas
 
