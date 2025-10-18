@@ -107,6 +107,8 @@ apt-get install -y hailo-all
 # Source ros2
 source /opt/ros/jazzy/setup.bash
 
+################################ HAILO python deps ###########################
+pip install "numpy<2" "opencv-python" "pyzmq"
 
 ############################## Install ros2 deps from source ##################################
 

@@ -108,6 +108,9 @@ pip install "livekit==1.0.13" "livekit-agents[cartesia,google,openai,deepgram,si
 pip install "python-dotenv"
 pip install pandas
 
+################################ HAILO DEPS ###########################
+pip install "numpy<2" "opencv-python" "pyzmq"
+
 
 ############################### Build everything #############################################
 
