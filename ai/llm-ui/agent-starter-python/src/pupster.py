@@ -448,12 +448,12 @@ Example:
     @function_tool
     async def activate_person_following(self, context: RunContext):
         """Activate the person following behavior."""
-        return await self.tool_impl.activate_person_following(context)
+        return await self.tool_impl.activate_person_following()
 
     @function_tool
     async def deactivate_person_following(self, context: RunContext):
         """Deactivate the person following behavior."""
-        return await self.tool_impl.deactivate_person_following(context)
+        return await self.tool_impl.deactivate_person_following()
 
     @function_tool
     async def set_speaker_volume(self, volume: int, context: RunContext):
@@ -479,3 +479,11 @@ Example:
         except Exception as e:
             logger.error(f"Failed to set speaker volume: {e}")
             return f"Failed to set speaker volume: {e}"
+
+    @function_tool
+    async def check_mode(self, context:RunContext):
+        """Determines if we are in Walking/Following mode, Animation mode, or Idle mode.
+        
+        Note that walking mode and following mode are not discernible from each other via this function.
+        """
+        return await self.tool_impl.check_mode()

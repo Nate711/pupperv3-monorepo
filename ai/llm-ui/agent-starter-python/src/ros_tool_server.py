@@ -3,7 +3,6 @@ import random
 from typing import Tuple, Optional, Any, Dict
 import threading
 import queue
-from tool_server_abc import ToolServer
 from pupster import ANIMATION_NAMES
 import rclpy
 from rclpy.node import Node
@@ -168,6 +167,16 @@ class MoveForTimeCommand(Command):
         )
 
 
+def list_controllers(server: "RosToolServer") -> Optional[Dict[str, str]]:
+    list_req = ListControllers.Request()
+    list_future = server.list_controllers_client.call_async(list_req)
+    rclpy.spin_until_future_complete(server.node, list_future, timeout_sec=2.0)
+
+    if list_future.done() and list_future.result():
+        controllers = list_future.result().controller
+        return controllers
+    return None
+
 def is_controller_active(server: "RosToolServer", controller_name: str) -> bool:
     """Check if a specific controller is currently active.
 
@@ -178,12 +187,8 @@ def is_controller_active(server: "RosToolServer", controller_name: str) -> bool:
     Returns:
         True if the controller is active, False otherwise
     """
-    list_req = ListControllers.Request()
-    list_future = server.list_controllers_client.call_async(list_req)
-    rclpy.spin_until_future_complete(server.node, list_future, timeout_sec=2.0)
-
-    if list_future.done() and list_future.result():
-        controllers = list_future.result().controller
+    controllers = list_controllers(server)
+    if controllers is not None:
         for controller in controllers:
             if controller.name == controller_name and controller.state == "active":
                 return True
@@ -265,7 +270,7 @@ class AnimationCommand(Command):
             return False, f"Failed to start animation '{self.animation_csv_name}': {e}"
 
 
-class RosToolServer(ToolServer):
+class RosToolServer():
     def __init__(self, cfg=DEFAULT_CFG):
         self.cfg = cfg
         rclpy.init()
@@ -278,6 +283,7 @@ class RosToolServer(ToolServer):
 
         self.activate_person_following_client = self.node.create_client(Trigger, "activate_person_following")
         self.deactivate_person_following_client = self.node.create_client(Trigger, "deactivate_person_following")
+        self.following_mode_status = "inactive"
 
         # Initialize command queue
         self.command_queue = asyncio.Queue()
@@ -467,6 +473,7 @@ class RosToolServer(ToolServer):
     async def queue_stop(self):
         """Queue a stop command"""
         self.node.get_logger().info("FUNCTION CALL: queue_stop")
+        await self.deactivate_person_following()
         await self.add_command(StopCommand())
         return True, "Stop command queued"
 
@@ -505,6 +512,7 @@ class RosToolServer(ToolServer):
                 pass
         else:
             # No command running, just stop the robot directly
+            await self.deactivate_person_following()
             stop_cmd = StopCommand()
             await stop_cmd.execute(self)
 
@@ -541,18 +549,22 @@ class RosToolServer(ToolServer):
         self.node.get_logger().warning(f"IMMEDIATE STOP completed. Took: {time.time() - start_time:0.3f} seconds")
         return True, "Immediate stop completed: robot stopped and queue cleared"
 
-    async def activate_person_following(self, context: Any) -> Tuple[bool, str]:
+    async def activate_person_following(self) -> Tuple[bool, str]:
+        self.node.get_logger().info("Activating person following...")
         fut = self.activate_person_following_client.call_async(Trigger.Request())
         rclpy.spin_until_future_complete(self.node, fut)
         if fut.result() is not None:
+            self.following_mode_status = "active"
             return fut.result().success, fut.result().message
         else:
             return False, "Failed to call activate_person_following service"
 
-    async def deactivate_person_following(self, context: Any) -> Tuple[bool, str]:
+    async def deactivate_person_following(self) -> Tuple[bool, str]:
+        self.node.get_logger().info("Deactivating person following...")
         fut = self.deactivate_person_following_client.call_async(Trigger.Request())
         rclpy.spin_until_future_complete(self.node, fut)
         if fut.result() is not None:
+            self.following_mode_status = "inactive"
             return fut.result().success, fut.result().message
         else:
             return False, "Failed to call deactivate_person_following service"
@@ -618,3 +630,13 @@ class RosToolServer(ToolServer):
         self.node.get_logger().info(f"analyze_camera_image response: {response}")
         self.node.get_logger().info(f"analyze_camera_image took: {time.time() - start_time:0.3f} seconds")
         return True, response
+
+    async def check_mode(self) -> Tuple[bool, str]:
+        controller_statuses = list_controllers(self)
+        animation_mode = any(c.name == "forward_position_controller" and c.state=="active" for c in controller_statuses)
+        walking_mode = any(c.name == "neural_controller" and c.state=="active" for c in controller_statuses)
+        following_mode = self.following_mode_status == "active"
+        idle_mode = not (animation_mode or walking_mode or following_mode)
+        result_str = f"Animation mode: {animation_mode}, Walking mode: {walking_mode}, Following mode: {following_mode}, Idle mode: {idle_mode}"
+        self.node.get_logger().info(f"check_mode result: {result_str}")
+        return True, result_str

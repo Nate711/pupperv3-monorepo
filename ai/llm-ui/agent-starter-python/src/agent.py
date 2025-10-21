@@ -23,6 +23,7 @@ from livekit.agents import (
 from livekit.agents import UserInputTranscribedEvent
 
 from pupster import PupsterAgent, get_pupster_session
+from ros_tool_server import RosToolServer
 
 load_dotenv(".env.local")
 
@@ -95,26 +96,8 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(log_usage)
 
-    # Start the session, which initializes the voice pipeline and warms up the models
-    preferred = os.getenv("PUPSTER_TOOL_SERVER")  # 'ros' | 'nop' | None
-    tool_impl = None
-
-    if preferred == "nop":
-        from nop_tool_server import NopToolServer
-
-        logger.info("Using NopToolServer as requested via env")
-        tool_impl = NopToolServer()
-    elif preferred == "ros":
-        try:
-            from ros_tool_server import RosToolServer
-        except ImportError as e:
-            logger.error("Failed to import RosToolServer. Ensure ROS environment is set up correctly.")
-            raise e
-
-        logger.info("Using RosToolServer as requested via env")
-        tool_impl = RosToolServer()
-    else:
-        raise ValueError("Must set PUPSTER_TOOL_SERVER env to 'ros' or 'nop'")
+    logger.info("Using RosToolServer")
+    tool_impl = RosToolServer()
 
     await session.start(
         agent=PupsterAgent(tool_impl=tool_impl),
