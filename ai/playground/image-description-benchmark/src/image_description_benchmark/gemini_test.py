@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 # Import our visualization functions and types
 from image_description_benchmark.bbox_types import BoundingBox, transform_to_pixels
 from image_description_benchmark.visualization import parse_bounding_boxes, draw_bounding_boxes
+import time
 
 load_dotenv(".env.local", override=True)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -44,7 +45,8 @@ image_path = Path(
     # "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/609abd4bfd29a369ec80dd82_RoomSketcher-Kitchen-Layout-Ideas-3D-Floor-Plan.jpeg"
     # "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/IMG_5907 Medium.jpeg"
     # "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/equirect_ds.jpg"
-    "/Users/nathankau/pupperv3-monorepo/ai/playground/undistory/output.jpg"
+    # "/Users/nathankau/pupperv3-monorepo/ai/playground/undistory/output.jpg"
+    "/Users/nathankau/pupperv3-monorepo/ai/playground/image-description-benchmark/src/image_description_benchmark/images/gemini_annotated_image-0-000000000-EVA.png"
 )
 
 # Load image
@@ -56,6 +58,8 @@ model_name = "gemini-robotics-er-1.5-preview"
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # Run model to find bounding boxes
+print("Calling model...")
+start_ns = time.perf_counter_ns()
 response = client.models.generate_content(
     model=model_name,
     contents=[im, prompt],
@@ -65,6 +69,9 @@ response = client.models.generate_content(
         # thinking_config=types.ThinkingConfig(thinking_budget=1024),
     ),
 )
+end_ns = time.perf_counter_ns()
+elapsed_ms = (end_ns - start_ns) / 1_000_000
+print(f"Model call elapsed: {elapsed_ms:.2f} ms")
 
 # Check output
 print("Raw response:")
