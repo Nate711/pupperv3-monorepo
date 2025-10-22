@@ -176,7 +176,7 @@ def openairealtime_cartesia_session():
             model="gpt-realtime",
             turn_detection=TurnDetection(
                 type="server_vad",
-                threshold=0.5,
+                threshold=0.7,
                 prefix_padding_ms=200,
                 silence_duration_ms=100,
                 create_response=True,
@@ -481,9 +481,9 @@ Example:
             return f"Failed to set speaker volume: {e}"
 
     @function_tool
-    async def check_mode(self, context:RunContext):
+    async def check_mode(self, context: RunContext):
         """Determines if we are in Walking/Following mode, Animation mode, or Idle mode.
-        
+
         Note that walking mode and following mode are not discernible from each other via this function.
         """
         return await self.tool_impl.check_mode()
