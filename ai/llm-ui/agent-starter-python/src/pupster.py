@@ -33,18 +33,18 @@ ANIMATION_NAMES = {
         "csv_name": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
         "description": "From standing, sits down, shakes body, sits, then stands back up",
     },
-    "stand_sit_stand": {
-        "csv_name": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
-        "description": "From standing position, sits down and then stands back up",
-    },
+    # "stand_sit_stand": {
+    #     "csv_name": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
+    #     "description": "From standing position, sits down and then stands back up",
+    # },
     "lie_downward_dog": {
         "csv_name": "lie_downward_dog_recording_2025-09-04_16-08-00_0",
         "description": "From lying position, moves into a downward dog yoga pose",
     },
-    "stand_downward_dog": {
-        "csv_name": "stand_downward_dog_recording_2025-09-04_16-09-51_0",
-        "description": "From standing position, moves into a downward dog yoga pose",
-    },
+    # "stand_downward_dog": {
+    #     "csv_name": "stand_downward_dog_recording_2025-09-04_16-09-51_0",
+    #     "description": "From standing position, moves into a downward dog yoga pose",
+    # },
     "push_up": {
         "csv_name": "push_up_recording_2025-09-04_16-11-34_0",
         "description": "From standing position, performs a push-up motion by lowering and raising the body",
