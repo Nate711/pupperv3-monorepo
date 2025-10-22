@@ -45,10 +45,10 @@ ANIMATION_NAMES = {
     #     "csv_name": "stand_downward_dog_recording_2025-09-04_16-09-51_0",
     #     "description": "From standing position, moves into a downward dog yoga pose",
     # },
-    "push_up": {
-        "csv_name": "push_up_recording_2025-09-04_16-11-34_0",
-        "description": "From standing position, performs a push-up motion by lowering and raising the body",
-    },
+    # "push_up": {
+    #     "csv_name": "push_up_recording_2025-09-04_16-11-34_0",
+    #     "description": "From standing position, performs a push-up motion by lowering and raising the body",
+    # },
     "sneeze": {
         "csv_name": "sneeze_recording_2025-09-04_16-13-54_0",
         "description": "From standing position, mimics a sneezing motion with head and body movement",
