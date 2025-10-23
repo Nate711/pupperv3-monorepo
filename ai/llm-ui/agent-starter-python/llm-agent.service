@@ -18,6 +18,7 @@ Environment="HOME=/home/pi"
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 Environment="PULSE_RUNTIME_PATH=/run/user/1000/pulse"
+Environment="ROS_LOCALHOST_ONLY=1"
 SupplementaryGroups=audio
 PrivateDevices=no
 DeviceAllow=/dev/snd/* rw
