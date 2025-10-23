@@ -393,9 +393,11 @@ Available animations:
 Args:
     animation_name (str): The name of the animation to play. Must be one of: {", ".join([f'"{name}"' for name in ANIMATION_NAMES.keys()])}
 
+    If doing the pee animation, make sure you activate walking before and after to avoid falling over!
+
 Example:
     To make the robot twerk: queue_animation(animation_name="twerk")
-    To make the robot do a downward dog: queue_animation(animation_name="stand_downward_dog")
+    To make the robot do a downward dog from lying position: queue_animation(animation_name="lie_downward_dog")
 """
     )
     async def queue_animation(self, context: RunContext, animation_name: str):
