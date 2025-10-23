@@ -9,7 +9,6 @@ ExecStart=/home/pi/pupperv3-monorepo/robot/utils/robot.sh
 CapabilityBoundingSet=CAP_SYS_NICE
 LimitRTPRIO=infinity
 LimitCPU=infinity
-PrivateNetwork=yes
 
 [Install]
 WantedBy=multi-user.target
