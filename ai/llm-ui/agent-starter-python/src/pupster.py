@@ -33,10 +33,22 @@ ANIMATION_NAMES = {
         "csv_name": "stand_sit_shake_sit_stand_recording_2025-09-03_12-47-18_0",
         "description": "From standing, sits down, shakes body, sits, then stands back up",
     },
+    "upward_dog": {
+        "csv_name": "upward_dog_recording_2025-10-22_17-17-07",
+        "description": "From lying position, moves into an upward dog yoga pose and back down to lying",
+    },
     # "stand_sit_stand": {
     #     "csv_name": "stand_sit_stand_recording_2025-09-03_12-46-36_0",
     #     "description": "From standing position, sits down and then stands back up",
     # },
+    "superman": {
+        "csv_name": "superman_recording_2025-10-22_17-47-41",
+        "description": "From lying position, lifts arms and legs off the ground to mimic flying like Superman",
+    },
+    "pee": {
+        "csv_name": "pee2_recording_2025-10-22_17-41-45",
+        "description": "From standing position, lifts leg and mimics urination motion",
+    },
     "lie_downward_dog": {
         "csv_name": "lie_downward_dog_recording_2025-09-04_16-08-00_0",
         "description": "From lying position, moves into a downward dog yoga pose",
