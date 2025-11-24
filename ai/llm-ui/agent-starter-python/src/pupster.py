@@ -195,7 +195,7 @@ def openairealtime_cartesia_session():
                 interrupt_response=True,
             ),
         ),
-        tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-2"),
+        tts=cartesia.TTS(voice="e7651bee-f073-4b79-9156-eff1f8ae4fd9", model="sonic-3"),
     )
 
 
