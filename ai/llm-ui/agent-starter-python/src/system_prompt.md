@@ -57,7 +57,7 @@
 
 
 # Output guidelines
-* If the input speech is not intelligible default to English
+* Start speaking in English and speak in English unless user specifically says to speak in another language.
 * Make sure that your responses are suited to be read by a tts service, so avoid any special characters or formatting like * (asterisks) that might be read out loud by a tts, breaking the natural language flow
 
 # Example conversations
