@@ -1,0 +1,1 @@
+pi ALL=(root) NOPASSWD: /usr/local/bin/pupper-pairing

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" class="uk-height-1-1">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Comitup - Saved Networks</title>
+    <link rel="icon" href="img/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="css/uikit.css">
+</head>
+<body class="uk-height-1-1">
+<div class="uk-flex uk-flex-center uk-flex-middle">
+    <div class="uk-width-large uk-padding-small">
+        <div class="uk-width-1-1 uk-text-center">
+            <span uk-icon="icon: list; ratio: 4"></span>
+            <p class="uk-text-large">Saved Networks</p>
+            <p class="uk-text-small uk-text-muted">
+                Top of the list is preferred. When several are in range,
+                Pupper joins the one highest here.
+            </p>
+        </div>
+
+        {% if saved %}
+        <div class="uk-alert-success" uk-alert>
+            <p>Priority order saved.</p>
+        </div>
+        {% endif %}
+
+        {% if networks %}
+        <form action="/known/save" method="post" onsubmit="serializeOrder()">
+            <input type="hidden" name="order" id="order">
+            <ul class="uk-list uk-list-divider" id="netlist">
+                {% for net in networks %}
+                <li data-uuid="{{ net.uuid }}">
+                    <div class="uk-grid uk-grid-small uk-flex-middle" uk-grid>
+                        <div class="uk-width-expand" style="word-break: break-all;">
+                            {% if not net.autoconnect %}
+                                <span uk-icon="icon: ban"
+                                      title="autoconnect off"></span>
+                            {% endif %}
+                            {{ net.name }}
+                        </div>
+                        <div class="uk-width-auto">
+                            <button type="button" class="uk-button uk-button-default uk-button-small"
+                                    onclick="move(this, -1)">&#9650;</button>
+                            <button type="button" class="uk-button uk-button-default uk-button-small"
+                                    onclick="move(this, 1)">&#9660;</button>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            <button type="submit"
+                    class="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top">
+                Save priority order
+            </button>
+        </form>
+        {% else %}
+        <p class="uk-text-center uk-text-muted">No saved networks yet.</p>
+        {% endif %}
+
+        <a href="/" class="uk-button uk-button-default uk-width-1-1 uk-margin-small-top">
+            &larr; Back to WiFi setup
+        </a>
+    </div>
+</div>
+
+<script src="js/uikit"></script>
+<script src="js/uikit-icons"></script>
+<script>
+    function move(btn, dir) {
+        var li = btn.closest('li');
+        var list = document.getElementById('netlist');
+        if (dir < 0 && li.previousElementSibling) {
+            list.insertBefore(li, li.previousElementSibling);
+        } else if (dir > 0 && li.nextElementSibling) {
+            list.insertBefore(li.nextElementSibling, li);
+        }
+    }
+    function serializeOrder() {
+        var uuids = [].map.call(
+            document.querySelectorAll('#netlist li'),
+            function (li) { return li.getAttribute('data-uuid'); }
+        );
+        document.getElementById('order').value = uuids.join(',');
+    }
+</script>
+</body>
+</html>

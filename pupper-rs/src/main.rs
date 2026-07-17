@@ -1,6 +1,6 @@
 use clap::Parser;
 use eframe::{App, egui};
-use egui::{Color32, Vec2};
+use egui::{Color32, RichText, Vec2};
 use tracing::debug;
 
 mod config;
@@ -13,8 +13,8 @@ use config::{Config, load_config, print_config_info};
 use detection::DetectionReceiver;
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
 use system::{
-    BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor, LlmServiceMonitor,
-    ServiceMonitor,
+    set_pairing, BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor,
+    LlmServiceMonitor, PairingMode, PairingMonitor, ServiceMonitor,
 };
 use ui::{
     SimpleStatus, draw_battery_indicator, draw_cpu_stats, draw_fullscreen_button, draw_status_badge,
@@ -38,6 +38,7 @@ struct ImageApp {
     service_monitor: ServiceMonitor,
     llm_service_monitor: LlmServiceMonitor,
     internet_monitor: InternetMonitor,
+    pairing_monitor: PairingMonitor,
     eye_tracker: EyeTracker,
     detection_receiver: DetectionReceiver,
     is_fullscreen: bool,
@@ -62,6 +63,7 @@ impl ImageApp {
             service_monitor: ServiceMonitor::new(),
             llm_service_monitor: LlmServiceMonitor::new(),
             internet_monitor: InternetMonitor::new(),
+            pairing_monitor: PairingMonitor::new(),
             eye_tracker: EyeTracker::new(),
             detection_receiver: DetectionReceiver::new(),
             is_fullscreen,
@@ -173,27 +175,61 @@ impl ImageApp {
                         "ROS",
                         SimpleStatus::from(self.service_monitor.get_status()),
                     );
-                    ui.add_space(5.0);
+                    ui.add_space(3.0);
                     draw_status_badge(
                         ui,
                         "LLM",
                         SimpleStatus::from(self.llm_service_monitor.get_status()),
                     );
-                    ui.add_space(5.0);
+                    ui.add_space(3.0);
                     draw_status_badge(
                         ui,
                         "NET",
                         SimpleStatus::from(self.internet_monitor.get_status()),
                     );
-                    ui.add_space(5.0);
+                    ui.add_space(3.0);
                     draw_status_badge(
                         ui,
                         "BAG",
                         SimpleStatus::from(self.bag_recorder_monitor.get_status()),
                     );
 
+                    // WiFi pairing-mode dropdown (compact; pairing state shown by color)
+                    ui.add_space(4.0);
+                    let mode = self.pairing_monitor.get_mode();
+                    let wifi_color = match mode {
+                        PairingMode::Hotspot => Color32::from_rgb(251, 191, 36), // amber = pairing
+                        PairingMode::Disconnected => Color32::from_rgb(239, 68, 68), // red = offline
+                        _ => Color32::WHITE,
+                    };
+                    ui.menu_button(RichText::new("WiFi").size(16.0).color(wifi_color), |ui| {
+                        ui.set_min_width(250.0);
+                        match mode {
+                            PairingMode::Hotspot => {
+                                ui.label("Pairing mode is ACTIVE.");
+                                ui.label("On your phone, join 'Pupper-Setup-…',");
+                                ui.label("then open http://10.41.0.1");
+                                ui.separator();
+                                if ui.button("Exit pairing / reconnect").clicked() {
+                                    set_pairing(false);
+                                    ui.close_menu();
+                                }
+                            }
+                            _ => {
+                                ui.label("Broadcast the Pupper setup hotspot so");
+                                ui.label("you can join a new WiFi from your phone.");
+                                ui.label("(The current WiFi connection will drop.)");
+                                ui.separator();
+                                if ui.button("Enter pairing mode").clicked() {
+                                    set_pairing(true);
+                                    ui.close_menu();
+                                }
+                            }
+                        }
+                    });
+
                     // Fullscreen button at the far right
-                    ui.add_space(8.0);
+                    ui.add_space(5.0);
                     if draw_fullscreen_button(ui) {
                         self.is_fullscreen = !self.is_fullscreen;
                         if self.is_fullscreen {
@@ -239,6 +275,7 @@ impl App for ImageApp {
         self.service_monitor.update(&self.config.service);
         self.llm_service_monitor.update(&self.config.service);
         self.internet_monitor.update(&self.config.service);
+        self.pairing_monitor.update();
         self.blink_state.update(&self.config.blink);
 
         // Draw UI
