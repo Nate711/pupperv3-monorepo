@@ -10,16 +10,25 @@ source-of-truth for the Pupper-specific pieces plus an installer.
 
 ## Install
 
+**Easiest — one command** (updates a pupper already running this repo; does the
+system side *and* builds/restarts the GUI):
+
 ```bash
-infra/wifi-pairing/install_wifi_pairing.sh      # run as 'pi'; uses sudo
+./deploy_wifi_pairing.sh        # at the repo root; run as 'pi', uses sudo
 ```
 
-Then build/deploy `pupper-rs` (the GUI ships the on-screen **WiFi** button):
+Fresh images get this automatically via the image builder
+(`infra/pupper_image_builder`), so `deploy_wifi_pairing.sh` is for updating
+puppers already in the field.
+
+<details><summary>Or run the two halves manually</summary>
 
 ```bash
+infra/wifi-pairing/install_wifi_pairing.sh                     # system side
 cd pupper-rs && cargo build --release --target aarch64-unknown-linux-gnu
-pupper-rs/install_service.sh && sudo systemctl restart pupper-gui
+pupper-rs/install_service.sh && sudo systemctl restart pupper-gui   # GUI button
 ```
+</details>
 
 ## Contents
 
