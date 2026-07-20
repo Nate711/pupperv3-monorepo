@@ -6,12 +6,16 @@ use tracing::debug;
 mod config;
 mod detection;
 mod eyes;
+mod qr;
 mod system;
 mod ui;
 
 use config::{Config, load_config, print_config_info};
 use detection::DetectionReceiver;
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
+use qr::{FrameReceiver, ScanStatus};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use system::{
     set_pairing, BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor,
     LlmServiceMonitor, PairingMode, PairingMonitor, ServiceMonitor,
@@ -19,6 +23,14 @@ use system::{
 use ui::{
     SimpleStatus, draw_battery_indicator, draw_cpu_stats, draw_fullscreen_button, draw_status_badge,
 };
+
+/// Which WiFi overlay (if any) is showing over the eyes.
+#[derive(PartialEq, Clone, Copy)]
+enum WifiView {
+    None,
+    PhoneQr,
+    Scan,
+}
 
 /// Pupper robot GUI application
 #[derive(Parser, Debug)]
@@ -43,6 +55,14 @@ struct ImageApp {
     detection_receiver: DetectionReceiver,
     is_fullscreen: bool,
     show_topbar: bool,
+    // QR WiFi pairing overlay
+    wifi_view: WifiView,
+    frame_receiver: Option<FrameReceiver>,
+    scan_status: Arc<Mutex<ScanStatus>>,
+    scan_connected_at: Option<Instant>,
+    last_scan_proc: Option<Instant>,
+    qifi_tex: Option<egui::TextureHandle>,
+    camera_tex: Option<egui::TextureHandle>,
 }
 
 impl ImageApp {
@@ -68,6 +88,13 @@ impl ImageApp {
             detection_receiver: DetectionReceiver::new(),
             is_fullscreen,
             show_topbar: true,
+            wifi_view: WifiView::None,
+            frame_receiver: None,
+            scan_status: Arc::new(Mutex::new(ScanStatus::Scanning)),
+            scan_connected_at: None,
+            last_scan_proc: None,
+            qifi_tex: None,
+            camera_tex: None,
         })
     }
 
@@ -204,6 +231,15 @@ impl ImageApp {
                     };
                     ui.menu_button(RichText::new("WiFi").size(16.0).color(wifi_color), |ui| {
                         ui.set_min_width(250.0);
+                        if ui.button("Scan WiFi QR code").clicked() {
+                            self.wifi_view = WifiView::Scan;
+                            ui.close_menu();
+                        }
+                        if ui.button("Show QR for my phone").clicked() {
+                            self.wifi_view = WifiView::PhoneQr;
+                            ui.close_menu();
+                        }
+                        ui.separator();
                         match mode {
                             PairingMode::Hotspot => {
                                 ui.label("Pairing mode is ACTIVE.");
@@ -262,6 +298,202 @@ impl ImageApp {
                 });
             });
     }
+
+    /// Start/stop the camera frame stream to match the current view.
+    fn sync_wifi_view(&mut self) {
+        match self.wifi_view {
+            WifiView::Scan => {
+                if self.frame_receiver.is_none() {
+                    self.frame_receiver = Some(FrameReceiver::start());
+                    if let Ok(mut s) = self.scan_status.lock() {
+                        *s = ScanStatus::Scanning;
+                    }
+                    self.scan_connected_at = None;
+                    self.last_scan_proc = None;
+                }
+            }
+            _ => {
+                if self.frame_receiver.is_some() {
+                    self.frame_receiver = None; // Drop stops the ZMQ thread
+                    self.camera_tex = None;
+                }
+            }
+        }
+    }
+
+    fn draw_wifi_overlay(&mut self, ctx: &egui::Context) {
+        let screen = ctx.screen_rect();
+        egui::Area::new(egui::Id::new("wifi_overlay"))
+            .order(egui::Order::Foreground)
+            .fixed_pos(screen.min)
+            .show(ctx, |ui| {
+                ui.painter()
+                    .rect_filled(screen, 0.0, Color32::from_black_alpha(238));
+                ui.set_min_size(screen.size());
+                ui.vertical_centered(|ui| match self.wifi_view {
+                    WifiView::PhoneQr => self.draw_phone_qr(ui),
+                    WifiView::Scan => self.draw_scan(ui, ctx),
+                    WifiView::None => {}
+                });
+            });
+    }
+
+    fn draw_phone_qr(&mut self, ui: &mut egui::Ui) {
+        ui.add_space(28.0);
+        ui.label(
+            RichText::new("Open the WiFi QR generator")
+                .size(22.0)
+                .color(Color32::WHITE),
+        );
+        ui.label(
+            RichText::new("Scan this with your phone (qifi.org)")
+                .size(15.0)
+                .color(Color32::GRAY),
+        );
+        ui.add_space(16.0);
+        if self.qifi_tex.is_none() {
+            if let Some(img) = qr::qr_color_image("https://qifi.org/", 8, 4) {
+                self.qifi_tex =
+                    Some(ui.ctx().load_texture("qifi_qr", img, egui::TextureOptions::NEAREST));
+            }
+        }
+        if let Some(tex) = &self.qifi_tex {
+            ui.add(egui::Image::from_texture(egui::load::SizedTexture::new(
+                tex.id(),
+                egui::vec2(300.0, 300.0),
+            )));
+        }
+        ui.add_space(14.0);
+        ui.label(
+            RichText::new("Generate a WiFi QR there, then choose")
+                .size(15.0)
+                .color(Color32::LIGHT_GRAY),
+        );
+        ui.label(
+            RichText::new("\"Scan WiFi QR code\" to show it to Pupper.")
+                .size(15.0)
+                .color(Color32::LIGHT_GRAY),
+        );
+        ui.add_space(18.0);
+        if ui
+            .add(egui::Button::new(RichText::new("Close").size(18.0)).min_size(egui::vec2(150.0, 42.0)))
+            .clicked()
+        {
+            self.wifi_view = WifiView::None;
+        }
+    }
+
+    fn draw_scan(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        // Throttle the heavy work (JPEG decode + QR detect) to ~10 Hz.
+        let due = self
+            .last_scan_proc
+            .map_or(true, |t| t.elapsed() > Duration::from_millis(100));
+        if due {
+            self.last_scan_proc = Some(Instant::now());
+            let frame = self.frame_receiver.as_ref().and_then(|r| r.latest());
+            if let Some(jpeg) = &frame {
+                if let Some(img) = qr::jpeg_to_color_image(jpeg) {
+                    if let Some(tex) = &mut self.camera_tex {
+                        tex.set(img, egui::TextureOptions::LINEAR);
+                    } else {
+                        self.camera_tex =
+                            Some(ctx.load_texture("camera", img, egui::TextureOptions::LINEAR));
+                    }
+                }
+                let scanning = matches!(
+                    self.scan_status.lock().map(|s| s.clone()),
+                    Ok(ScanStatus::Scanning)
+                );
+                if scanning {
+                    if let Some(creds) = qr::decode_wifi_from_jpeg(jpeg) {
+                        qr::connect_async(creds, Arc::clone(&self.scan_status));
+                    }
+                }
+            }
+        }
+
+        let status = self
+            .scan_status
+            .lock()
+            .map(|s| s.clone())
+            .unwrap_or(ScanStatus::Scanning);
+
+        ui.add_space(10.0);
+        ui.label(
+            RichText::new("Hold the WiFi QR code up to the camera")
+                .size(19.0)
+                .color(Color32::WHITE),
+        );
+        ui.add_space(8.0);
+        if let Some(tex) = &self.camera_tex {
+            let w = ui.available_width().min(540.0);
+            let size = tex.size_vec2();
+            let aspect = if size.x > 0.0 { size.y / size.x } else { 0.66 };
+            ui.add(egui::Image::from_texture(egui::load::SizedTexture::new(
+                tex.id(),
+                egui::vec2(w, w * aspect),
+            )));
+        } else {
+            ui.label(
+                RichText::new("Waiting for camera…")
+                    .size(16.0)
+                    .color(Color32::GRAY),
+            );
+        }
+        ui.add_space(10.0);
+        match &status {
+            ScanStatus::Scanning => {
+                ui.label(RichText::new("Scanning…").size(18.0).color(Color32::LIGHT_GRAY));
+            }
+            ScanStatus::Connecting(ssid) => {
+                ui.label(
+                    RichText::new(format!("Connecting to {ssid}…"))
+                        .size(18.0)
+                        .color(Color32::from_rgb(251, 191, 36)),
+                );
+            }
+            ScanStatus::Connected(ssid) => {
+                ui.label(
+                    RichText::new(format!("Connected to {ssid}"))
+                        .size(20.0)
+                        .color(Color32::from_rgb(34, 197, 94)),
+                );
+                if self.scan_connected_at.is_none() {
+                    self.scan_connected_at = Some(Instant::now());
+                }
+            }
+            ScanStatus::Failed(e) => {
+                ui.label(
+                    RichText::new("Couldn't connect")
+                        .size(18.0)
+                        .color(Color32::from_rgb(239, 68, 68)),
+                );
+                if !e.is_empty() {
+                    ui.label(RichText::new(e).size(12.0).color(Color32::GRAY));
+                }
+                if ui.button("Try again").clicked() {
+                    if let Ok(mut s) = self.scan_status.lock() {
+                        *s = ScanStatus::Scanning;
+                    }
+                }
+            }
+        }
+
+        // Auto-close shortly after a successful connect.
+        if let Some(t) = self.scan_connected_at {
+            if t.elapsed() > Duration::from_secs(2) {
+                self.wifi_view = WifiView::None;
+            }
+        }
+
+        ui.add_space(10.0);
+        if ui
+            .add(egui::Button::new(RichText::new("Cancel").size(18.0)).min_size(egui::vec2(150.0, 42.0)))
+            .clicked()
+        {
+            self.wifi_view = WifiView::None;
+        }
+    }
 }
 
 impl App for ImageApp {
@@ -281,6 +513,12 @@ impl App for ImageApp {
         // Draw UI
         self.draw_main_ui(ctx);
         self.draw_status_ui(ctx);
+
+        // QR WiFi pairing overlay (drawn over the eyes when active)
+        self.sync_wifi_view();
+        if self.wifi_view != WifiView::None {
+            self.draw_wifi_overlay(ctx);
+        }
     }
 }
 

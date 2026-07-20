@@ -92,6 +92,15 @@ class HailoDetectionNode(Node):
         self.zmq_socket.bind("tcp://*:5556")
         self.get_logger().info("ZMQ publisher bound to tcp://*:5556")
 
+        # Second publisher: forward the raw camera JPEG frames so the GUI can
+        # show a live view for QR-code WiFi pairing. Uses CONFLATE so slow
+        # subscribers only ever see the newest frame (no backlog), and does not
+        # re-encode (forwards the CompressedImage bytes as-is).
+        self.frame_zmq_socket = self.zmq_context.socket(zmq.PUB)
+        self.frame_zmq_socket.setsockopt(zmq.CONFLATE, 1)
+        self.frame_zmq_socket.bind("tcp://*:5557")
+        self.get_logger().info("ZMQ frame publisher bound to tcp://*:5557")
+
         # Initialize fisheye projector
         camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
         fisheye_model = fisheye_utils.create_fisheye_model_from_params(camera_params_path, 1400, 1050)
@@ -146,6 +155,10 @@ class HailoDetectionNode(Node):
             self.inference_thread.start()
 
     def image_callback(self, msg):
+        # Forward the raw JPEG to the GUI's frame stream (for QR WiFi pairing).
+        # msg.data is already-compressed JPEG bytes, so this is nearly free.
+        self.frame_zmq_socket.send(bytes(msg.data))
+
         # Convert ROS Image to CV2
         frame = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
         video_h, video_w = frame.shape[:2]

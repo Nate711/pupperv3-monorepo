@@ -33,6 +33,24 @@ case "$cmd" in
         nmcli device connect "$DEV"
         echo "pairing-off: reconnecting $DEV to best saved network"
         ;;
+    add)
+        # Join (and save) a network from scanned QR credentials.
+        #   pupper-pairing add "<ssid>" "<psk>"           # WPA/WPA2
+        #   pupper-pairing add "<ssid>" ""                # open network
+        #   pupper-pairing add "<ssid>" "<psk>" hidden    # hidden SSID
+        ssid="${2:-}"; psk="${3:-}"; hidden="${4:-}"
+        if [ -z "$ssid" ]; then
+            echo "usage: pupper-pairing add <ssid> [psk] [hidden]" >&2
+            exit 2
+        fi
+        # nmcli switches wlan0 to station mode if needed, connects, and saves
+        # the connection for autoconnect next time. Empty psk => open network.
+        args=(device wifi connect "$ssid")
+        [ -n "$psk" ] && args+=(password "$psk")
+        [ "$hidden" = "hidden" ] && args+=(hidden yes)
+        nmcli "${args[@]}"
+        echo "pairing-add: connected wlan0 to '$ssid'"
+        ;;
     status)
         conn="$(active_conn || true)"
         if [ -z "$conn" ]; then
@@ -50,7 +68,7 @@ case "$cmd" in
         fi
         ;;
     *)
-        echo "usage: pupper-pairing {on|off|status}" >&2
+        echo "usage: pupper-pairing {on|off|status|add <ssid> [psk] [nopass]}" >&2
         exit 2
         ;;
 esac
