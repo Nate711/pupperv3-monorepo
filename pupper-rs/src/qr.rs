@@ -4,6 +4,7 @@
 //! the qifi.org generator so a phone can be aimed at Pupper's screen.
 
 use eframe::egui::ColorImage;
+use serde::Deserialize;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -102,18 +103,81 @@ pub fn jpeg_to_color_image(jpeg: &[u8]) -> Option<ColorImage> {
     ))
 }
 
-/// Try to decode a WiFi QR code from a JPEG frame.
-pub fn decode_wifi_from_jpeg(jpeg: &[u8]) -> Option<WifiCreds> {
-    let gray = image::load_from_memory(jpeg).ok()?.to_luma8();
-    let mut prepared = rqrr::PreparedImage::prepare(gray);
-    for grid in prepared.detect_grids() {
-        if let Ok((_meta, content)) = grid.decode() {
-            if let Some(creds) = parse_wifi_string(&content) {
-                return Some(creds);
+/// QR decode feedback from the detection node (ZMQ 5558). `located` is true
+/// when a QR is seen even if it can't be decoded (e.g. too blurry); `decoded`
+/// holds the `WIFI:...` payload once it's readable.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct QrStatus {
+    pub located: bool,
+    pub sharpness: f32,
+    pub decoded: String,
+}
+
+/// Subscribes to the node's QR status JSON on 5558 while alive.
+pub struct QrStatusReceiver {
+    latest: Arc<Mutex<QrStatus>>,
+    running: Arc<AtomicBool>,
+    handle: Option<thread::JoinHandle<()>>,
+}
+
+impl QrStatusReceiver {
+    pub fn start() -> Self {
+        let latest = Arc::new(Mutex::new(QrStatus::default()));
+        let running = Arc::new(AtomicBool::new(true));
+        let l = Arc::clone(&latest);
+        let r = Arc::clone(&running);
+        let handle = thread::spawn(move || {
+            let ctx = zmq::Context::new();
+            let sock = match ctx.socket(zmq::SUB) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("qr: status socket: {e}");
+                    return;
+                }
+            };
+            if let Err(e) = sock.connect("tcp://127.0.0.1:5558") {
+                eprintln!("qr: connect status 5558: {e}");
+                return;
             }
+            let _ = sock.set_subscribe(b"");
+            let _ = sock.set_rcvtimeo(200);
+            while r.load(Ordering::Relaxed) {
+                match sock.recv_string(0) {
+                    Ok(Ok(msg)) => {
+                        if let Ok(st) = serde_json::from_str::<QrStatus>(&msg) {
+                            if let Ok(mut g) = l.lock() {
+                                *g = st;
+                            }
+                        }
+                    }
+                    Ok(Err(_)) => {}
+                    Err(zmq::Error::EAGAIN) => {}
+                    Err(e) => {
+                        eprintln!("qr: status recv: {e}");
+                        thread::sleep(Duration::from_millis(100));
+                    }
+                }
+            }
+        });
+        Self {
+            latest,
+            running,
+            handle: Some(handle),
         }
     }
-    None
+
+    pub fn latest(&self) -> QrStatus {
+        self.latest.lock().map(|g| g.clone()).unwrap_or_default()
+    }
+}
+
+impl Drop for QrStatusReceiver {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+        if let Some(h) = self.handle.take() {
+            let _ = h.join();
+        }
+    }
 }
 
 /// Render `text` as a QR code, upscaled, into an egui ColorImage (black on white).

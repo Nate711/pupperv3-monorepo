@@ -13,7 +13,7 @@ mod ui;
 use config::{Config, load_config, print_config_info};
 use detection::DetectionReceiver;
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
-use qr::{FrameReceiver, ScanStatus};
+use qr::{FrameReceiver, QrStatusReceiver, ScanStatus};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use system::{
@@ -58,6 +58,7 @@ struct ImageApp {
     // QR WiFi pairing overlay
     wifi_view: WifiView,
     frame_receiver: Option<FrameReceiver>,
+    qr_status_receiver: Option<QrStatusReceiver>,
     scan_status: Arc<Mutex<ScanStatus>>,
     scan_connected_at: Option<Instant>,
     last_scan_proc: Option<Instant>,
@@ -90,6 +91,7 @@ impl ImageApp {
             show_topbar: true,
             wifi_view: WifiView::None,
             frame_receiver: None,
+            qr_status_receiver: None,
             scan_status: Arc::new(Mutex::new(ScanStatus::Scanning)),
             scan_connected_at: None,
             last_scan_proc: None,
@@ -305,6 +307,7 @@ impl ImageApp {
             WifiView::Scan => {
                 if self.frame_receiver.is_none() {
                     self.frame_receiver = Some(FrameReceiver::start());
+                    self.qr_status_receiver = Some(QrStatusReceiver::start());
                     if let Ok(mut s) = self.scan_status.lock() {
                         *s = ScanStatus::Scanning;
                     }
@@ -315,6 +318,7 @@ impl ImageApp {
             _ => {
                 if self.frame_receiver.is_some() {
                     self.frame_receiver = None; // Drop stops the ZMQ thread
+                    self.qr_status_receiver = None;
                     self.camera_tex = None;
                 }
             }
@@ -384,15 +388,14 @@ impl ImageApp {
     }
 
     fn draw_scan(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
-        // Throttle the heavy work (JPEG decode + QR detect) to ~10 Hz.
+        // Update the camera texture for display (throttled ~15 Hz).
         let due = self
             .last_scan_proc
-            .map_or(true, |t| t.elapsed() > Duration::from_millis(100));
+            .map_or(true, |t| t.elapsed() > Duration::from_millis(66));
         if due {
             self.last_scan_proc = Some(Instant::now());
-            let frame = self.frame_receiver.as_ref().and_then(|r| r.latest());
-            if let Some(jpeg) = &frame {
-                if let Some(img) = qr::jpeg_to_color_image(jpeg) {
+            if let Some(jpeg) = self.frame_receiver.as_ref().and_then(|r| r.latest()) {
+                if let Some(img) = qr::jpeg_to_color_image(&jpeg) {
                     if let Some(tex) = &mut self.camera_tex {
                         tex.set(img, egui::TextureOptions::LINEAR);
                     } else {
@@ -400,23 +403,28 @@ impl ImageApp {
                             Some(ctx.load_texture("camera", img, egui::TextureOptions::LINEAR));
                     }
                 }
-                let scanning = matches!(
-                    self.scan_status.lock().map(|s| s.clone()),
-                    Ok(ScanStatus::Scanning)
-                );
-                if scanning {
-                    if let Some(creds) = qr::decode_wifi_from_jpeg(jpeg) {
-                        qr::connect_async(creds, Arc::clone(&self.scan_status));
-                    }
-                }
             }
         }
+
+        // Decode feedback comes from the detection node (zbar, over ZMQ 5558).
+        let qr = self
+            .qr_status_receiver
+            .as_ref()
+            .map(|r| r.latest())
+            .unwrap_or_default();
 
         let status = self
             .scan_status
             .lock()
             .map(|s| s.clone())
             .unwrap_or(ScanStatus::Scanning);
+
+        // Start connecting the moment the node decodes a WiFi QR.
+        if matches!(status, ScanStatus::Scanning) && qr.decoded.starts_with("WIFI:") {
+            if let Some(creds) = qr::parse_wifi_string(&qr.decoded) {
+                qr::connect_async(creds, Arc::clone(&self.scan_status));
+            }
+        }
 
         ui.add_space(10.0);
         ui.label(
@@ -443,7 +451,17 @@ impl ImageApp {
         ui.add_space(10.0);
         match &status {
             ScanStatus::Scanning => {
-                ui.label(RichText::new("Scanning…").size(18.0).color(Color32::LIGHT_GRAY));
+                let (txt, col) = if !qr.located {
+                    ("Searching for a QR code…", Color32::LIGHT_GRAY)
+                } else if qr.sharpness < 40.0 {
+                    (
+                        "QR detected but too blurry — move back & hold steady",
+                        Color32::from_rgb(251, 191, 36),
+                    )
+                } else {
+                    ("QR detected — reading…", Color32::from_rgb(120, 200, 255))
+                };
+                ui.label(RichText::new(txt).size(17.0).color(col));
             }
             ScanStatus::Connecting(ssid) => {
                 ui.label(

@@ -13,5 +13,4 @@ toml = "0.8"
 tracing = "0.1.41"
 zmq = "0.10"
 image = "0.25"
-rqrr = "0.7"
 qrcode = { version = "0.14", default-features = false }

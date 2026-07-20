@@ -25,6 +25,17 @@ from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 from hailo import fisheye_utils
 
+# Optional: QR decoding for WiFi pairing. Kept optional so a missing zbar does
+# not break person detection; we warn instead.
+try:
+    from pyzbar.pyzbar import decode as zbar_decode
+    ZBAR_AVAILABLE = True
+    _ZBAR_IMPORT_ERR = None
+except Exception as _e:  # noqa: BLE001 - report and degrade, don't crash detection
+    zbar_decode = None
+    ZBAR_AVAILABLE = False
+    _ZBAR_IMPORT_ERR = _e
+
 # Conditional imports based on sim mode
 try:
     from ultralytics import YOLO
@@ -109,6 +120,17 @@ class HailoDetectionNode(Node):
         self.qr_undistort = fisheye_utils.FisheyeToPinhole(720, 720, 100.0, fisheye_model)
         self.get_logger().info("ZMQ QR frame publisher bound to tcp://*:5557")
 
+        # QR decode status for the GUI: {"located": bool, "sharpness": float,
+        # "decoded": "WIFI:..."} published on 5558 while the GUI is scanning.
+        self.qr_status_socket = self.zmq_context.socket(zmq.PUB)
+        self.qr_status_socket.bind("tcp://*:5558")
+        self.qr_locator = cv2.QRCodeDetector()
+        if not ZBAR_AVAILABLE:
+            self.get_logger().warning(
+                "pyzbar not available (%s) - QR WiFi pairing decode disabled; "
+                "install libzbar0 + pyzbar" % _ZBAR_IMPORT_ERR
+            )
+
         # Initialize model based on mode
         if self.sim_mode:
             self.get_logger().info("Running in simulation mode with YOLOv8")
@@ -179,6 +201,33 @@ class HailoDetectionNode(Node):
         ok, jpg = cv2.imencode(".jpg", rectified)
         if ok:
             self.frame_zmq_socket.send(jpg.tobytes())
+        self.publish_qr_status(rectified)
+
+    def publish_qr_status(self, rectified):
+        """Decode the rectified view and publish feedback for the GUI: whether a
+        QR is located, how sharp the view is, and any decoded WiFi payload."""
+        gray = cv2.cvtColor(rectified, cv2.COLOR_BGR2GRAY)
+        sharpness = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        located = False
+        decoded = ""
+        if ZBAR_AVAILABLE:
+            # Illumination-normalize to fight phone-screen glare, then decode.
+            bg = cv2.GaussianBlur(gray, (0, 0), 25)
+            norm = cv2.normalize(
+                cv2.divide(gray, bg, scale=180), None, 0, 255, cv2.NORM_MINMAX
+            ).astype(np.uint8)
+            results = zbar_decode(norm) or zbar_decode(gray)
+            for r in results:
+                located = True
+                s = r.data.decode("utf-8", "ignore")
+                if s.startswith("WIFI:"):
+                    decoded = s
+                    break
+        if not located:
+            # cv2 can still *locate* a QR it can't decode -> "detected but blurry".
+            located = bool(self.qr_locator.detect(gray)[0])
+        status = {"located": located, "sharpness": sharpness, "decoded": decoded}
+        self.qr_status_socket.send_string(json.dumps(status))
 
     def image_callback(self, msg):
         # Convert ROS Image to CV2
