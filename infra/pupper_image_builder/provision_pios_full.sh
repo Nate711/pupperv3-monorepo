@@ -131,9 +131,7 @@ pip install empy==3.3.4
 
 repos=(
     "https://github.com/facontidavide/rosx_introspection.git"
-    "https://github.com/foxglove/foxglove-sdk.git"
     "https://github.com/christianrauch/camera_ros.git"
-    "https://github.com/ros-perception/vision_msgs.git"
 )
 
 for repo in "${repos[@]}"; do
@@ -148,6 +146,13 @@ git checkout 3922e2c
 # Clone topic_tools with jazzy branch
 cd /home/$DEFAULT_USER/pupperv3-monorepo/ros2_ws/src/common
 retry_command "git clone https://github.com/ros-tooling/topic_tools.git --branch jazzy --recurse-submodules"
+
+# Clone vision_msgs with jazzy branch (default ros2 branch tracks Rolling's chrono-based rviz API)
+retry_command "git clone https://github.com/ros-perception/vision_msgs.git --branch jazzy --recurse-submodules"
+
+# Pin foxglove-sdk to the last release whose foxglove_bridge builds on Jazzy
+# (ros-v3.2.5+ includes ament_index_cpp/version.h, which Jazzy's ament_index_cpp lacks)
+retry_command "git clone https://github.com/foxglove/foxglove-sdk.git --branch ros-v3.2.4 --recurse-submodules"
 
 if [ "$GITHUB_TOKEN_CONFIGURED" = true ]; then
     cleanup_github_credentials

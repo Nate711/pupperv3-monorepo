@@ -30,13 +30,25 @@ load_env_if_present ".env.local"
 # Get shortened git commit hash
 GIT_COMMIT_SHORT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
-# Check if the base image exists (either as symlink or actual file)
+# Check if the base image exists
 if [ ! -e "pupOS_pios_base.img" ]; then
   echo "Base image not found. Running make_pios_base_image.sh..."
   ./make_pios_base_image.sh
 else
   echo "Base image found. Skipping base image creation."
 fi
+
+# Packer's local-file fetch mishandles symlinks: with a symlinked source, the
+# output "copy" is itself a symlink, so provisioning writes through it and
+# corrupts the base image. Refuse to build from a symlink.
+if [ -L "pupOS_pios_base.img" ]; then
+  echo "ERROR: pupOS_pios_base.img is a symlink; building would corrupt its target." >&2
+  echo "Replace it with a real file: cp <versioned base image> pupOS_pios_base.img" >&2
+  exit 1
+fi
+
+# Remove any stale output image so a leftover symlink can't redirect writes
+rm -f pupOS_pios_full.img
 
 docker pull mkaczanowski/packer-builder-arm:latest
 run_packer_container init pios_full_arm64.pkr.hcl
