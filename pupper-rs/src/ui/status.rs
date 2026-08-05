@@ -62,10 +62,10 @@ pub fn draw_status_badge(ui: &mut egui::Ui, label: &str, status: SimpleStatus) {
         SimpleStatus::Unknown => egui::include_image!("../status_unknown.svg"),
     };
 
-    let icon_size = Vec2::new(30.0, 30.0);
+    let icon_size = Vec2::new(26.0, 26.0);
     ui.add(egui::Image::from(svg_path).fit_to_exact_size(icon_size));
     ui.add_space(1.0);
-    ui.label(RichText::new(label).color(Color32::WHITE).size(21.0));
+    ui.label(RichText::new(label).color(Color32::WHITE).size(18.0));
 }
 
 // Draw a fullscreen button and return true if clicked
@@ -110,7 +110,7 @@ pub fn draw_battery_indicator(
             ui.label(
                 RichText::new(format!("{}%", percentage))
                     .color(text_color)
-                    .size(21.0),
+                    .size(18.0),
             );
 
             ui.add_space(6.0);
@@ -170,7 +170,7 @@ pub fn draw_battery_indicator(
             ui.label(
                 RichText::new("Battery: Unkown")
                     .color(Color32::GRAY)
-                    .size(21.0),
+                    .size(18.0),
             );
         }
     });

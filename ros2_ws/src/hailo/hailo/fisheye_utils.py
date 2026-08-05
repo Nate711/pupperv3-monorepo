@@ -124,6 +124,44 @@ class FisheyeToEquirectangular:
         return pano
 
 
+class FisheyeToPinhole:
+    """Remap a fisheye image to a rectilinear (pinhole) view looking straight
+    ahead. Straight lines stay straight, so QR finder patterns are undistorted
+    and can be decoded. `h_fov_deg` sets how wide the virtual camera sees;
+    ~90-110 keeps a held-up QR large and sharp near the center.
+    """
+
+    def __init__(self, out_width, out_height, h_fov_deg, fisheye_model):
+        # Virtual pinhole intrinsics for the output image.
+        fx = (out_width / 2.0) / np.tan(np.deg2rad(h_fov_deg) / 2.0)
+        fy = fx
+        cx = out_width / 2.0
+        cy = out_height / 2.0
+        pinhole = PinholeModel(cx, cy, fx, fy, out_width, out_height)
+
+        us, vs = np.meshgrid(np.arange(out_width), np.arange(out_height))
+        # Output pixel -> ray -> source fisheye pixel.
+        x, y, z = pinhole.unproject(us.astype(np.float64), vs.astype(np.float64))
+        u, v, self.valid = fisheye_model.project(x, y, z)
+        self.map_x = u.astype(np.float32)
+        self.map_y = v.astype(np.float32)
+
+    def project(self, img):
+        out = cv2.remap(
+            img,
+            self.map_x,
+            self.map_y,
+            interpolation=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=(0, 0, 0),
+        )
+        if out.ndim == 3:
+            out[~self.valid] = (0, 0, 0)
+        else:
+            out[~self.valid] = 0
+        return out
+
+
 def project_to_equirectangular(img, model, out_width, out_height=None, h_fov_deg=220.0):
     if out_height is None:
         out_height = out_width // 2

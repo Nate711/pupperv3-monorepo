@@ -1,0 +1,74 @@
+#!/bin/bash
+#
+# pupper-pairing — manually toggle comitup WiFi "pairing mode" on Pupper.
+#
+#   on     Drop the current WiFi so comitup raises the Pupper-Setup-<nnn>
+#          hotspot. Saved networks are kept, and NetworkManager will NOT
+#          auto-reconnect until 'off' (nmcli device disconnect blocks
+#          autoconnect until manual reactivation). comitup holds the hotspot
+#          while a phone is connected to it.
+#   off    Reconnect wlan0 to the best available saved network.
+#   status Print a machine-readable MODE= line for the GUI, plus a human line.
+#
+# Installed as a local customization for the Pupper GUI "pairing mode" button.
+#
+set -euo pipefail
+
+DEV=wlan0
+cmd="${1:-status}"
+
+active_conn() {
+    nmcli -t -f NAME,DEVICE connection show --active \
+        | awk -F: -v d="$DEV" '$2==d{print $1; exit}'
+}
+
+case "$cmd" in
+    on)
+        nmcli device disconnect "$DEV"
+        echo "pairing-on: $DEV disconnected; comitup will start the setup hotspot"
+        ;;
+    off)
+        # Reconnect; NetworkManager picks the highest-priority saved network
+        # that is in range and re-enables autoconnect on the device.
+        nmcli device connect "$DEV"
+        echo "pairing-off: reconnecting $DEV to best saved network"
+        ;;
+    add)
+        # Join (and save) a network from scanned QR credentials.
+        #   pupper-pairing add "<ssid>" "<psk>"           # WPA/WPA2
+        #   pupper-pairing add "<ssid>" ""                # open network
+        #   pupper-pairing add "<ssid>" "<psk>" hidden    # hidden SSID
+        ssid="${2:-}"; psk="${3:-}"; hidden="${4:-}"
+        if [ -z "$ssid" ]; then
+            echo "usage: pupper-pairing add <ssid> [psk] [hidden]" >&2
+            exit 2
+        fi
+        # nmcli switches wlan0 to station mode if needed, connects, and saves
+        # the connection for autoconnect next time. Empty psk => open network.
+        args=(device wifi connect "$ssid")
+        [ -n "$psk" ] && args+=(password "$psk")
+        [ "$hidden" = "hidden" ] && args+=(hidden yes)
+        nmcli "${args[@]}"
+        echo "pairing-add: connected wlan0 to '$ssid'"
+        ;;
+    status)
+        conn="$(active_conn || true)"
+        if [ -z "$conn" ]; then
+            echo "MODE=disconnected"
+            echo "wlan0: not connected"
+        else
+            mode="$(nmcli -g 802-11-wireless.mode connection show "$conn" 2>/dev/null || true)"
+            if [ "$mode" = "ap" ]; then
+                echo "MODE=hotspot"
+                echo "wlan0: pairing hotspot active ($conn)"
+            else
+                echo "MODE=connected"
+                echo "wlan0: connected to $conn"
+            fi
+        fi
+        ;;
+    *)
+        echo "usage: pupper-pairing {on|off|status|add <ssid> [psk] [nopass]}" >&2
+        exit 2
+        ;;
+esac

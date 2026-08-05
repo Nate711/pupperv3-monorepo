@@ -25,6 +25,17 @@ from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 from hailo import fisheye_utils
 
+# Optional: QR decoding for WiFi pairing. Kept optional so a missing zbar does
+# not break person detection; we warn instead.
+try:
+    from pyzbar.pyzbar import decode as zbar_decode
+    ZBAR_AVAILABLE = True
+    _ZBAR_IMPORT_ERR = None
+except Exception as _e:  # noqa: BLE001 - report and degrade, don't crash detection
+    zbar_decode = None
+    ZBAR_AVAILABLE = False
+    _ZBAR_IMPORT_ERR = _e
+
 # Conditional imports based on sim mode
 try:
     from ultralytics import YOLO
@@ -92,9 +103,33 @@ class HailoDetectionNode(Node):
         self.zmq_socket.bind("tcp://*:5556")
         self.get_logger().info("ZMQ publisher bound to tcp://*:5556")
 
-        # Initialize fisheye projector
+        # Fisheye camera model (shared by the detection projection below and the
+        # QR-pairing view).
         camera_params_path = os.path.join(os.path.dirname(__file__), "camera_params.yaml")
         fisheye_model = fisheye_utils.create_fisheye_model_from_params(camera_params_path, 1400, 1050)
+
+        # Second publisher: a live camera view for QR-code WiFi pairing. The
+        # camera is a fisheye, so instead of the raw (barrel-distorted) frame we
+        # publish a rectified, forward-looking pinhole view where straight lines
+        # stay straight and QR finder patterns are decodable. XPUB lets us only
+        # pay the remap + JPEG-encode cost while the GUI is subscribed (scanning).
+        self.frame_zmq_socket = self.zmq_context.socket(zmq.XPUB)
+        self.frame_zmq_socket.setsockopt(zmq.XPUB_VERBOSE, 1)
+        self.frame_zmq_socket.bind("tcp://*:5557")
+        self.frame_subscribers = 0
+        self.qr_undistort = fisheye_utils.FisheyeToPinhole(720, 720, 100.0, fisheye_model)
+        self.get_logger().info("ZMQ QR frame publisher bound to tcp://*:5557")
+
+        # QR decode status for the GUI: {"located": bool, "sharpness": float,
+        # "decoded": "WIFI:..."} published on 5558 while the GUI is scanning.
+        self.qr_status_socket = self.zmq_context.socket(zmq.PUB)
+        self.qr_status_socket.bind("tcp://*:5558")
+        self.qr_locator = cv2.QRCodeDetector()
+        if not ZBAR_AVAILABLE:
+            self.get_logger().warning(
+                "pyzbar not available (%s) - QR WiFi pairing decode disabled; "
+                "install libzbar0 + pyzbar" % _ZBAR_IMPORT_ERR
+            )
 
         # Initialize model based on mode
         if self.sim_mode:
@@ -145,10 +180,62 @@ class HailoDetectionNode(Node):
             self.inference_thread = threading.Thread(target=self.hailo_inference.run)
             self.inference_thread.start()
 
+    def publish_qr_frame(self, frame):
+        """Publish a rectified (de-fisheyed) camera view for QR WiFi pairing,
+        but only while the GUI is subscribed, so there is no cost normally."""
+        # Drain XPUB (un)subscribe events to know if anyone is watching.
+        while True:
+            try:
+                event = self.frame_zmq_socket.recv(zmq.NOBLOCK)
+            except zmq.Again:
+                break
+            if event and event[0] == 1:
+                self.frame_subscribers += 1
+            elif event and event[0] == 0:
+                self.frame_subscribers = max(0, self.frame_subscribers - 1)
+
+        if self.frame_subscribers <= 0:
+            return
+
+        rectified = self.qr_undistort.project(frame)
+        ok, jpg = cv2.imencode(".jpg", rectified)
+        if ok:
+            self.frame_zmq_socket.send(jpg.tobytes())
+        self.publish_qr_status(rectified)
+
+    def publish_qr_status(self, rectified):
+        """Decode the rectified view and publish feedback for the GUI: whether a
+        QR is located, how sharp the view is, and any decoded WiFi payload."""
+        gray = cv2.cvtColor(rectified, cv2.COLOR_BGR2GRAY)
+        sharpness = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        located = False
+        decoded = ""
+        if ZBAR_AVAILABLE:
+            # Illumination-normalize to fight phone-screen glare, then decode.
+            bg = cv2.GaussianBlur(gray, (0, 0), 25)
+            norm = cv2.normalize(
+                cv2.divide(gray, bg, scale=180), None, 0, 255, cv2.NORM_MINMAX
+            ).astype(np.uint8)
+            results = zbar_decode(norm) or zbar_decode(gray)
+            for r in results:
+                located = True
+                s = r.data.decode("utf-8", "ignore")
+                if s.startswith("WIFI:"):
+                    decoded = s
+                    break
+        if not located:
+            # cv2 can still *locate* a QR it can't decode -> "detected but blurry".
+            located = bool(self.qr_locator.detect(gray)[0])
+        status = {"located": located, "sharpness": sharpness, "decoded": decoded}
+        self.qr_status_socket.send_string(json.dumps(status))
+
     def image_callback(self, msg):
         # Convert ROS Image to CV2
         frame = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
         video_h, video_w = frame.shape[:2]
+
+        # Rectified live view for QR WiFi pairing (only while GUI is scanning).
+        self.publish_qr_frame(frame)
 
         self.get_logger().info(f"Received /camera/image_raw/compressed image of size: {video_w}x{video_h}")
 
