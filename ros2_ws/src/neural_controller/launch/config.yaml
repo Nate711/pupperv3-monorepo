@@ -83,7 +83,7 @@ neural_controller:
 
     max_body_angle: 1.5
 
-    model_path: "$(find-pkg-share neural_controller)/launch/policy_latest.json"
+    model_path: "$(find-pkg-share neural_controller)/launch/custom_policies/policy_iconic-salad-20.json"
 
 neural_controller_three_legged:
   ros__parameters:
