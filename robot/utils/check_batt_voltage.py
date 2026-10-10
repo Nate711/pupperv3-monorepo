@@ -3,6 +3,7 @@
 import busio
 import board
 import os
+import subprocess
 import sys
 import time
 import argparse
@@ -38,6 +39,18 @@ def get_battery_voltage(i2c, multiplier=0.0013125):
     data = read_from_i2c(i2c, i2c_address, mem_read_addr, bytes_to_read)
     sensor_value = int.from_bytes(data, byteorder="big")
     return sensor_value * multiplier
+
+
+def get_5v_input_voltage():
+    # Pi 5 only: PMIC ADC on the 5V input rail. The firmware flags undervoltage at ~4.63V.
+    out = subprocess.run(
+        ["vcgencmd", "pmic_read_adc", "EXT5V_V"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    # Output looks like: "     EXT5V_V volt(24)=4.94192000V"
+    return float(out.strip().split("=")[1].rstrip("V"))
 
 
 def broadcast_message(message):
@@ -87,22 +100,56 @@ def main():
                 break
 
     if args.service_mode:
+        # 5V rail sag warning threshold, comfortably above the ~4.63V firmware undervoltage flag.
+        # Sudden sags (e.g. motor current spikes) can still reset the Pi faster than this loop polls.
+        INPUT_5V_WARN_VOLTAGE = 4.85
+        INPUT_5V_POLL_PERIOD = 0.5
+        INPUT_5V_WARN_COOLDOWN = 30.0
+        INPUT_5V_LOG_PERIOD = 60.0
+        BATTERY_POLL_PERIOD = 10.0
+
+        shutdown_scheduled = False
+        last_battery_check = 0.0
+        last_5v_warning = -INPUT_5V_WARN_COOLDOWN
+        last_5v_log = time.monotonic()
+        min_5v = float("inf")
+
         while True:
-            time.sleep(10)
+            now = time.monotonic()
 
-            # Less than 5V indicates pi is connected to a wall power supply
-            if bat_voltage < 5.0:
-                continue
+            input_5v = get_5v_input_voltage()
+            min_5v = min(min_5v, input_5v)
+            if (
+                input_5v < INPUT_5V_WARN_VOLTAGE
+                and now - last_5v_warning > INPUT_5V_WARN_COOLDOWN
+            ):
+                broadcast_message(
+                    f"********WARNING: Pi 5V input {input_5v:0.3f}V is below {INPUT_5V_WARN_VOLTAGE}V! Brownout risk, reduce load.********"
+                )
+                last_5v_warning = now
+            if now - last_5v_log > INPUT_5V_LOG_PERIOD:
+                print(f"5V input min over last {INPUT_5V_LOG_PERIOD:.0f}s: {min_5v:0.3f}V", flush=True)
+                min_5v = float("inf")
+                last_5v_log = now
 
-            if bat_voltage < MIN_VOLTAGE:
-                broadcast_message(
-                    f"********WARNING: Battery voltage {bat_voltage:0.2f} is below threshold {MIN_VOLTAGE}!********"
-                )
-            if bat_voltage < SHUTDOWN_VOLTAGE:
-                broadcast_message(
-                    f"********WARNING: Battery voltage {bat_voltage:0.2f} is below threshold {SHUTDOWN_VOLTAGE}! Scheduling a shutdown for 60 seconds from now...********"
-                )
-                os.system("sudo shutdown -h +1")
+            if now - last_battery_check > BATTERY_POLL_PERIOD:
+                last_battery_check = now
+                bat_voltage = get_battery_voltage(i2c)
+
+                # Less than 5V indicates pi is connected to a wall power supply
+                if bat_voltage >= 5.0:
+                    if bat_voltage < MIN_VOLTAGE:
+                        broadcast_message(
+                            f"********WARNING: Battery voltage {bat_voltage:0.2f} is below threshold {MIN_VOLTAGE}!********"
+                        )
+                    if bat_voltage < SHUTDOWN_VOLTAGE and not shutdown_scheduled:
+                        broadcast_message(
+                            f"********WARNING: Battery voltage {bat_voltage:0.2f} is below threshold {SHUTDOWN_VOLTAGE}! Scheduling a shutdown for 60 seconds from now...********"
+                        )
+                        os.system("sudo shutdown -h +1")
+                        shutdown_scheduled = True
+
+            time.sleep(INPUT_5V_POLL_PERIOD)
 
     elif args.percentage_only:
         print(f"{int(cell_percentage)}")
