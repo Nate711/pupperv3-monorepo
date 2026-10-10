@@ -8,7 +8,10 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "anthropic>=1.13.0",
     "numpy>=2.4.6",
+    "pydantic>=2.14.0",
+    "python-dotenv>=1.2.4",
     "sherpa-onnx==1.13.8",
     "sherpa-onnx-core==1.13.8",
     "sounddevice>=0.5.6",
