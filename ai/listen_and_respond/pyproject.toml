@@ -1,0 +1,22 @@
+[project]
+name = "listen-and-respond"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "autonomouscrow", email = "RaggedQuark@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.4.6",
+    "sherpa-onnx==1.13.8",
+    "sherpa-onnx-core==1.13.8",
+    "sounddevice>=0.5.6",
+]
+
+[project.scripts]
+listen-and-respond = "listen_and_respond:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
