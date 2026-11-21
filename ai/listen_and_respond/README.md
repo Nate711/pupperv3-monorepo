@@ -12,7 +12,7 @@ Stages:
    `system_prompt.md`. Commands are appended to `logs/commands.jsonl`;
    conversation replies are printed (spoken once text to speech exists).
 3. **Execution** (`robot.py`): a ROS 2 node that sends each command to the running robot stack.
-   Implemented: `start_walking` (turns on the 4-legged walking policy through
+   Implemented: `stand_up` (turns on the 4-legged walking policy through
    `/controller_manager/switch_controller`, like the joystick's X button). Other actions print
    `not implemented yet`. If a step fails, the remaining steps of that utterance are skipped.
 4. Text to speech: not decided yet.

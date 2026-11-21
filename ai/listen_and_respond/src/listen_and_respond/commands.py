@@ -14,7 +14,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Action = Literal["move", "turn", "stop", "start_walking", "lie_down", "trick"]
+Action = Literal["move", "turn", "stop", "stand_up", "lie_down", "trick"]
 
 # Pre-recorded animations available in the animation controller
 # (CSV files in ros2_ws/src/animation_controller_py/launch/animations).
@@ -48,7 +48,7 @@ ACTION_DESCRIPTIONS = {
     "move": "walk forward, backward, or step sideways left/right, optionally a distance",
     "turn": "rotate in place left or right, optionally by an angle (spin around = 360)",
     "stop": "stop moving immediately and drop any queued commands",
-    "start_walking": "turn on 4-legged walking: stand up and be ready to move (also for stand up, get up, wake up)",
+    "stand_up": "power the legs and stand up in 4-legged walking mode, ready to walk (also for start walking, get up, wake up)",
     "lie_down": "lie down and relax the motors",
     "trick": "play a recorded animation",
 }

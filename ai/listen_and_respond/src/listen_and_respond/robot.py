@@ -4,7 +4,7 @@ Turns Commands from understand.py into ROS 2 calls on the running robot stack
 (robot/utils/robot.sh, i.e. `ros2 launch neural_controller launch.py`). This process is a
 separate ROS 2 node, so ROS has to be sourced in the shell that starts it.
 
-Implemented so far: start_walking. Other actions are reported as not implemented.
+Implemented so far: stand_up. Other actions are reported as not implemented.
 
 Failure modes (all printed, none retried):
 - the robot stack is not running: controller_manager's switch service is missing;
@@ -53,7 +53,7 @@ class Robot:
 
     def execute(self, command: Command) -> tuple[bool, str]:
         """Runs one command. Returns (succeeded, what happened)."""
-        if command.action == "start_walking":
+        if command.action == "stand_up":
             return self.switch_to(WALKING_CONTROLLER, OTHER_CONTROLLERS)
         return False, f"{command.action} is not implemented yet"
 
