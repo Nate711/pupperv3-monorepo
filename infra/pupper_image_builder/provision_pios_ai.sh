@@ -141,7 +141,6 @@ cargo build --release --target aarch64-unknown-linux-gnu
 
 # Install systemctl services
 bash /home/$DEFAULT_USER/pupperv3-monorepo/pupper-rs/install_service.sh
-bash /home/$DEFAULT_USER/pupperv3-monorepo/ai/llm-ui/agent-starter-python/install_service.sh
 sudo systemctl enable systemd-time-wait-sync.service
 
 if [ "$GITHUB_TOKEN_CONFIGURED" = true ]; then

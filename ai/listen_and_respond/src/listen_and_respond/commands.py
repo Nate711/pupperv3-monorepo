@@ -5,7 +5,7 @@ the language model: understand.py turns it into a JSON schema for whichever mode
 and a future executor will turn each Command into /cmd_vel messages or animations.
 
 Movements are described semantically (direction, distance, angle), not as velocities.
-The executor picks speeds within the robot's limits (from the old agent's ros_tool_server):
+The executor picks speeds within the robot's limits (carried over from the removed LiveKit agent):
 forward/backward 0.4-0.75 m/s, sideways 0.4-0.5 m/s, turning 30-120 deg/s; slower is ignored
 by the real robot.
 """
@@ -16,8 +16,8 @@ from pydantic import BaseModel, Field
 
 Action = Literal["move", "turn", "stop", "stand_up", "lie_down", "trick"]
 
-# Pre-recorded animations available in the animation controller (names from
-# ai/llm-ui/agent-starter-python/src/pupster.py ANIMATION_NAMES).
+# Pre-recorded animations available in the animation controller
+# (CSV files in ros2_ws/src/animation_controller_py/launch/animations).
 Trick = Literal[
     "twerk",
     "lie_sit_lie",
