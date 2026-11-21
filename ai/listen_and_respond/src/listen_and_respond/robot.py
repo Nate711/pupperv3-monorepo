@@ -25,6 +25,7 @@ from listen_and_respond.commands import Command
 
 SWITCH_SERVICE = "/controller_manager/switch_controller"
 SWITCH_TIMEOUT_S = 5
+STARTUP_DISCOVERY_S = 6
 
 # The 4-legged walking policy. Activating it runs its stand-up sequence (init_duration then
 # fade_in_duration in ros2_ws/src/neural_controller/launch/config.yaml) before it walks.
@@ -44,7 +45,9 @@ class Robot:
         rclpy.init()
         self.node = rclpy.create_node("listen_and_respond")
         self.switch_client = self.node.create_client(SwitchController, SWITCH_SERVICE)
-        if not self.switch_client.wait_for_service(timeout_sec=2.0):
+        # DDS discovery of the stack's services can take several seconds while the Pi is busy
+        # (camera, Hailo, 500 Hz control loop); 2 s gave a false "not found" in the live test.
+        if not self.switch_client.wait_for_service(timeout_sec=STARTUP_DISCOVERY_S):
             print(
                 f"WARNING: {SWITCH_SERVICE} not found. Start the robot stack (robot/utils/robot.sh); "
                 "commands will fail until it is up.",
