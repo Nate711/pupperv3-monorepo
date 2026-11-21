@@ -2,7 +2,7 @@
 
 This file is the single source of truth for the command vocabulary. It is independent of
 the language model: understand.py turns it into a JSON schema for whichever model is used,
-and a future executor will turn each Command into /cmd_vel messages or animations.
+and robot.py turns each Command into ROS 2 calls on the running robot.
 
 Movements are described semantically (direction, distance, angle), not as velocities.
 The executor picks speeds within the robot's limits (carried over from the removed LiveKit agent):
@@ -14,7 +14,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Action = Literal["move", "turn", "stop", "stand_up", "lie_down", "trick"]
+Action = Literal["move", "turn", "stop", "start_walking", "lie_down", "trick"]
 
 # Pre-recorded animations available in the animation controller
 # (CSV files in ros2_ws/src/animation_controller_py/launch/animations).
@@ -48,7 +48,7 @@ ACTION_DESCRIPTIONS = {
     "move": "walk forward, backward, or step sideways left/right, optionally a distance",
     "turn": "rotate in place left or right, optionally by an angle (spin around = 360)",
     "stop": "stop moving immediately and drop any queued commands",
-    "stand_up": "power the legs and stand up, ready to walk",
+    "start_walking": "turn on 4-legged walking: stand up and be ready to move (also for stand up, get up, wake up)",
     "lie_down": "lie down and relax the motors",
     "trick": "play a recorded animation",
 }

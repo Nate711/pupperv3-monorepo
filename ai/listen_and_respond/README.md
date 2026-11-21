@@ -1,7 +1,7 @@
 # listen_and_respond
 
 ZhuangZi's voice stack: hear speech, decide whether it is a physical command,
-conversation with ZhuangZi, or background talk, then log the command or reply.
+conversation with ZhuangZi, or background talk, then run the command on the robot or reply.
 
 Stages:
 1. **Speech to text** (`stt.py`): Silero VAD + SenseVoice-Small via sherpa-onnx, on the Pi.
@@ -9,9 +9,13 @@ Stages:
 2. **Understanding** (`understand.py`): Claude Haiku 5.5 classifies each utterance as
    `command` / `conversation` / `background` and returns validated JSON. The command
    vocabulary lives in `commands.py` (model-independent); the persona and rules are in
-   `system_prompt.md`. Commands are appended to `logs/commands.jsonl` (not executed yet);
-   conversation replies are printed (spoken once step 3 exists).
-3. Text to speech: not decided yet.
+   `system_prompt.md`. Commands are appended to `logs/commands.jsonl`;
+   conversation replies are printed (spoken once text to speech exists).
+3. **Execution** (`robot.py`): a ROS 2 node that sends each command to the running robot stack.
+   Implemented: `start_walking` (turns on the 4-legged walking policy through
+   `/controller_manager/switch_controller`, like the joystick's X button). Other actions print
+   `not implemented yet`. If a step fails, the remaining steps of that utterance are skipped.
+4. Text to speech: not decided yet.
 
 ## Setup
 
@@ -26,12 +30,20 @@ Audio uses the system default input (the C920 webcam mic through PulseAudio/Pipe
 
 ## Run
 
+Start the robot stack first (`robot/utils/robot.sh`), then in a second terminal:
+
 ```bash
+source /opt/ros/jazzy/setup.bash   # rclpy and the controller_manager messages come from ROS
+cd ai/listen_and_respond
 uv run listen-and-respond
 ```
 
+The voice process is its own ROS 2 node, so it can start before or after the robot stack. If the
+stack is not up it warns at startup, and each command prints `FAILED` until the stack is running.
+
 Options: `--text` types utterances instead of using the mic (prefix `zh:` for Chinese), to test
-classification quickly; `--stt-only` skips understanding (no API key needed).
+classification quickly; `--no-robot` logs commands without sending them (no ROS needed);
+`--stt-only` skips understanding (no API key needed).
 
 Prints one line per utterance with the detected language, decode time, and `CLIPPED` if the
 mic input hit full scale (clipping lowers recognition accuracy; lower the input volume with

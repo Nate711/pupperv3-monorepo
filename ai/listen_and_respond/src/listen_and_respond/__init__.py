@@ -21,7 +21,19 @@ def log_commands(text: str, lang: str, interpretation) -> None:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-def handle(understanding, text: str, lang: str) -> None:
+def execute(robot, commands) -> None:
+    """Runs the steps in order and stops at the first one that fails."""
+    for i, command in enumerate(commands):
+        ok, what = robot.execute(command)
+        if not ok:
+            skipped = len(commands) - i - 1
+            note = f" (skipped the {skipped} remaining step(s))" if skipped else ""
+            print(f"  !! {command.action} FAILED: {what}{note}", flush=True)
+            return
+        print(f"  => {command.action}: {what}", flush=True)
+
+
+def handle(understanding, robot, text: str, lang: str) -> None:
     start = time.monotonic()
     result = understanding.interpret(text, lang)
     took = f"({time.monotonic() - start:.2f}s)"
@@ -29,6 +41,8 @@ def handle(understanding, text: str, lang: str) -> None:
         log_commands(text, lang, result)
         steps = ", ".join(json.dumps(c.model_dump(exclude_none=True)) for c in result.commands)
         print(f"  -> COMMAND {steps} {took}", flush=True)
+        if robot:
+            execute(robot, result.commands)
     elif result.intent == "conversation":
         print(f"  -> REPLY [{result.language}] {result.reply} {took}", flush=True)
     else:
@@ -39,6 +53,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="ZhuangZi listen-and-respond")
     parser.add_argument("--text", action="store_true", help="type utterances instead of using the mic")
     parser.add_argument("--stt-only", action="store_true", help="only transcribe; skip understanding")
+    parser.add_argument("--no-robot", action="store_true", help="log commands without sending them to the robot")
     args = parser.parse_args()
     if args.text and args.stt_only:
         parser.error("--text needs understanding; drop --stt-only")
@@ -49,6 +64,12 @@ def main() -> None:
         from listen_and_respond.understand import Understanding
 
         understanding = Understanding()
+
+    robot = None
+    if understanding and not args.no_robot:
+        from listen_and_respond.robot import Robot
+
+        robot = Robot()
 
     try:
         if args.text:
@@ -61,7 +82,7 @@ def main() -> None:
                 if not line:
                     continue
                 lang, text = ("zh", line[3:].strip()) if line.startswith("zh:") else ("en", line)
-                handle(understanding, text, lang)
+                handle(understanding, robot, text, lang)
             return
 
         from listen_and_respond.stt import SpeechToText
@@ -77,6 +98,9 @@ def main() -> None:
                 flush=True,
             )
             if understanding:
-                handle(understanding, u.text, u.lang)
+                handle(understanding, robot, u.text, u.lang)
     except KeyboardInterrupt:
         print("Stopped.")
+    finally:
+        if robot:
+            robot.close()

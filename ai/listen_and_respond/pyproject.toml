@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=2.4.6",
     "pydantic>=2.14.0",
     "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.4",  # rclpy, which comes from /opt/ros/jazzy, imports yaml
     "sherpa-onnx==1.13.8",
     "sherpa-onnx-core==1.13.8",
     "sounddevice>=0.5.6",
