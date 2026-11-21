@@ -31,22 +31,29 @@ Trick = Literal[
 
 class Command(BaseModel):
     action: Action
-    direction: Literal["forward", "backward", "left", "right"] | None = Field(
-        description="move: which way to walk (left/right = sideways step). turn: left or right. Otherwise null."
+    heading_deg: float | None = Field(
+        description="move: direction of travel in degrees clockwise from straight ahead, without turning: "
+        "0 forward, 45 forward-right, 90 right, 135 back-right, 180 backward, 225 back-left, 270 left, "
+        "315 forward-left. Null if the speaker gave none (forward). Otherwise null."
     )
     distance_m: float | None = Field(
         description="move: distance in meters, null if the speaker gave none. Otherwise null."
     )
+    rotation: Literal["clockwise", "counterclockwise"] | None = Field(
+        description="turn: clockwise for right, counterclockwise for left; null if the speaker gave no "
+        "direction (the robot turns clockwise). Otherwise null."
+    )
     angle_deg: float | None = Field(
-        description="turn: angle in degrees (a full spin is 360), null if the speaker gave none. Otherwise null."
+        description="turn: how far to rotate in degrees (a full spin is 360), null if the speaker gave none "
+        "(90). Otherwise null."
     )
     trick: Trick | None = Field(description="trick: which animation. Otherwise null.")
 
 
 # Shown to the model in the system prompt, one line per action.
 ACTION_DESCRIPTIONS = {
-    "move": "walk forward, backward, or step sideways left/right, optionally a distance",
-    "turn": "rotate in place left or right, optionally by an angle (spin around = 360)",
+    "move": "walk toward any direction (forward, back, left, right, or diagonal) without turning, optionally a distance (default 0.5 m, at most 3 m)",
+    "turn": "rotate in place, clockwise (right) or counterclockwise (left), by an angle (default clockwise 90 degrees; turn around = 180, spin around = 360)",
     "stop": "stop moving immediately and drop any queued commands",
     "stand_up": "power the legs and stand up in 4-legged walking mode, ready to walk (also for start walking, get up, wake up)",
     "lie_down": "lie down and relax the motors",

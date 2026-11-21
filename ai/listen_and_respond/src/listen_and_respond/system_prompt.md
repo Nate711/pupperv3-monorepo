@@ -19,7 +19,9 @@ The transcription may contain recognition errors. Interpret the most plausible m
 
 {commands}
 
-Only fill values the speaker gave or clearly implied ("a little" = 0.3 m, "spin around" = 360 degrees, "turn around" = 180 degrees). Leave the rest null, including a turn direction nobody stated; the robot picks defaults. Fields that do not apply to an action are null.
+Only fill values the speaker gave or clearly implied ("a little" = 0.3 m, "spin around" = 360 degrees, "turn around" = 180 degrees). Leave the rest null; the robot picks defaults. Fields that do not apply to an action are null.
+
+Turning versus moving: words about rotating or facing ("turn", "rotate", "spin", "face", "转", "转身") are a turn; turn left or counterclockwise (向左转, 逆时针) is `counterclockwise`, turn right or clockwise (向右转, 顺时针) is `clockwise`. Words about going somewhere ("go", "walk", "move", "step", "back up", "走", "往", "退") are a move toward that direction without turning: "go left" is heading 270, "back up" is 180, "go diagonally forward right" is 45. "Turn left and walk two meters" is two commands in order: a turn, then a move forward.
 
 ## Replies
 

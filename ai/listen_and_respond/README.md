@@ -12,9 +12,20 @@ Stages:
    `system_prompt.md`. Commands are appended to `logs/commands.jsonl`;
    conversation replies are printed (spoken once text to speech exists).
 3. **Execution** (`robot.py`): a ROS 2 node that sends each command to the running robot stack.
-   Implemented: `stand_up` (turns on the 4-legged walking policy through
-   `/controller_manager/switch_controller`, like the joystick's X button). Other actions print
-   `not implemented yet`. If a step fails, the remaining steps of that utterance are skipped.
+   Implemented:
+   - `stand_up`: turns on the 4-legged walking policy through `/controller_manager/switch_controller`,
+     like the joystick's X button.
+   - `move`: walks toward any heading without turning (0 = ahead, 90 = right, 180 = back,
+     270 = left; default 0.5 m, at most 3 m). Open loop on `/llm_cmd_vel`, so distance is
+     approximate (expect 10-30% off).
+   - `turn`: rotates in place, clockwise or counterclockwise (default clockwise 90 degrees, at most
+     720), closed loop on the IMU's yaw rate. Stops and reports a failure if it turns the wrong
+     way, stalls, or loses IMU data.
+   - "Turn left then walk 2 m" comes from Haiku as two commands, a `turn` then a `move`.
+
+   `move` and `turn` need walking on first ("stand up"). Commands block while they run, so speech
+   heard meanwhile is handled afterwards. Other actions print `not implemented yet`. If a step
+   fails, the remaining steps of that utterance are skipped.
 4. Text to speech: not decided yet.
 
 ## Setup
@@ -59,8 +70,8 @@ Example `logs/commands.jsonl` line:
 
 ```json
 {"time": "2026-10-10T16:02:11+0800", "heard": "ZhuangZi, go forward then spin around.", "lang": "en",
- "commands": [{"action": "move", "direction": "forward", "distance_m": null, "angle_deg": null, "trick": null},
-              {"action": "turn", "direction": null, "distance_m": null, "angle_deg": 360, "trick": null}]}
+ "commands": [{"action": "move", "heading_deg": 0, "distance_m": null, "rotation": null, "angle_deg": null, "trick": null},
+              {"action": "turn", "heading_deg": null, "distance_m": null, "rotation": null, "angle_deg": 360, "trick": null}]}
 ```
 
 - API errors (no network, rate limits after the SDK's 2 retries) stop the program rather than
