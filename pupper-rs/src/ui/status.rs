@@ -1,5 +1,5 @@
 use crate::config::BatteryConfig;
-use crate::system::{BagRecorderStatus, InternetStatus, LlmServiceStatus, ServiceStatus};
+use crate::system::{BagRecorderStatus, InternetStatus, ServiceStatus};
 use eframe::egui;
 use egui::{Color32, RichText, Sense, Stroke, Vec2};
 
@@ -7,7 +7,6 @@ use egui::{Color32, RichText, Sense, Stroke, Vec2};
 pub enum SimpleStatus {
     Active,
     Inactive,
-    Loading,
     Unknown,
 }
 
@@ -17,17 +16,6 @@ impl From<&ServiceStatus> for SimpleStatus {
             ServiceStatus::Active => SimpleStatus::Active,
             ServiceStatus::Inactive => SimpleStatus::Inactive,
             ServiceStatus::Unknown => SimpleStatus::Unknown,
-        }
-    }
-}
-
-impl From<&LlmServiceStatus> for SimpleStatus {
-    fn from(s: &LlmServiceStatus) -> Self {
-        match s {
-            LlmServiceStatus::Active => SimpleStatus::Active,
-            LlmServiceStatus::Inactive => SimpleStatus::Inactive,
-            LlmServiceStatus::Loading => SimpleStatus::Loading,
-            LlmServiceStatus::Unknown => SimpleStatus::Unknown,
         }
     }
 }
@@ -58,7 +46,6 @@ pub fn draw_status_badge(ui: &mut egui::Ui, label: &str, status: SimpleStatus) {
     let svg_path = match status {
         SimpleStatus::Active => egui::include_image!("../status_active.svg"),
         SimpleStatus::Inactive => egui::include_image!("../status_inactive.svg"),
-        SimpleStatus::Loading => egui::include_image!("../status_loading.svg"),
         SimpleStatus::Unknown => egui::include_image!("../status_unknown.svg"),
     };
 

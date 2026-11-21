@@ -80,23 +80,23 @@ build {
   provisioner "shell" {
     only   = ["arm.with-keys"]
     inline = [
-      "mkdir -p /home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python",
+      "mkdir -p /home/pi/pupperv3-monorepo/ai/listen_and_respond",
     ]
   }
 
-  # Copy the .env.local file (with-keys only)
+  # Copy the .env.local file to the voice stack's .env (with-keys only)
   provisioner "file" {
     only        = ["arm.with-keys"]
     source      = var.env_file_with_keys
-    destination = "/home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/.env.local"
+    destination = "/home/pi/pupperv3-monorepo/ai/listen_and_respond/.env"
   }
 
   # Set secure permissions and ownership (with-keys only)
   provisioner "shell" {
     only   = ["arm.with-keys"]
     inline = [
-      "sudo chown pi:pi /home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/.env.local",
-      "sudo chmod 600 /home/pi/pupperv3-monorepo/ai/llm-ui/agent-starter-python/.env.local",
+      "sudo chown pi:pi /home/pi/pupperv3-monorepo/ai/listen_and_respond/.env",
+      "sudo chmod 600 /home/pi/pupperv3-monorepo/ai/listen_and_respond/.env",
     ]
   }
 

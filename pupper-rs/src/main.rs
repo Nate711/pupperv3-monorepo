@@ -13,8 +13,7 @@ use config::{Config, load_config, print_config_info};
 use detection::DetectionReceiver;
 use eyes::{BlinkState, EyeTracker, draw_eye, draw_eyebrow};
 use system::{
-    BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor, LlmServiceMonitor,
-    ServiceMonitor,
+    BagRecorderMonitor, BatteryMonitor, CpuMonitor, InternetMonitor, ServiceMonitor,
 };
 use ui::{
     SimpleStatus, draw_battery_indicator, draw_cpu_stats, draw_fullscreen_button, draw_status_badge,
@@ -36,7 +35,6 @@ struct ImageApp {
     battery_monitor: BatteryMonitor,
     cpu_monitor: CpuMonitor,
     service_monitor: ServiceMonitor,
-    llm_service_monitor: LlmServiceMonitor,
     internet_monitor: InternetMonitor,
     eye_tracker: EyeTracker,
     detection_receiver: DetectionReceiver,
@@ -60,7 +58,6 @@ impl ImageApp {
             battery_monitor: BatteryMonitor::new(),
             cpu_monitor: CpuMonitor::new(),
             service_monitor: ServiceMonitor::new(),
-            llm_service_monitor: LlmServiceMonitor::new(),
             internet_monitor: InternetMonitor::new(),
             eye_tracker: EyeTracker::new(),
             detection_receiver: DetectionReceiver::new(),
@@ -167,17 +164,11 @@ impl ImageApp {
                 ui.horizontal(|ui| {
                     // Ensure consistent row height for icon alignment
                     ui.set_height(30.0);
-                    // ROS, LLM, Internet, and Bag Recording — rendered using shared badge code
+                    // ROS, Internet, and Bag Recording — rendered using shared badge code
                     draw_status_badge(
                         ui,
                         "ROS",
                         SimpleStatus::from(self.service_monitor.get_status()),
-                    );
-                    ui.add_space(5.0);
-                    draw_status_badge(
-                        ui,
-                        "LLM",
-                        SimpleStatus::from(self.llm_service_monitor.get_status()),
                     );
                     ui.add_space(5.0);
                     draw_status_badge(
@@ -237,7 +228,6 @@ impl App for ImageApp {
         self.battery_monitor.update(&self.config.battery);
         self.cpu_monitor.update(&self.config.cpu);
         self.service_monitor.update(&self.config.service);
-        self.llm_service_monitor.update(&self.config.service);
         self.internet_monitor.update(&self.config.service);
         self.blink_state.update(&self.config.blink);
 
