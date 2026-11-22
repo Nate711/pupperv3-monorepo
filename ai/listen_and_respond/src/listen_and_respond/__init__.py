@@ -59,6 +59,11 @@ def main() -> None:
     parser.add_argument("--text", action="store_true", help="type utterances instead of using the mic")
     parser.add_argument("--stt-only", action="store_true", help="only transcribe; skip understanding")
     parser.add_argument("--no-robot", action="store_true", help="log commands without sending them to the robot")
+    parser.add_argument(
+        "--fence-cm",
+        type=float,
+        help="testing: refuse moves that could leave a square of this side (cm) around the start position",
+    )
     args = parser.parse_args()
     if args.text and args.stt_only:
         parser.error("--text needs understanding; drop --stt-only")
@@ -75,7 +80,7 @@ def main() -> None:
         from listen_and_respond.robot import Robot
         from listen_and_respond.runner import CommandRunner
 
-        robot = Robot()
+        robot = Robot(fence_side_m=None if args.fence_cm is None else args.fence_cm / 100)
         runner = CommandRunner(robot)
 
     try:

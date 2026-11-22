@@ -91,10 +91,26 @@ WRONG_WAY_ABORT_DEG = 20.0
 PUBLISH_HZ = 20
 STOP_S = 0.5  # zero velocity is sent this long after a move, then the turn result is read
 IMU_MAX_GAP_S = 0.1
+# With a test fence, a move is allowed only if it would stay inside even when it overshoots by
+# this factor: moves are open loop and can be 10-30% off.
+FENCE_OVERSHOOT = 1.3
 
 
 class Robot:
-    def __init__(self):
+    def __init__(self, fence_side_m: float | None = None):
+        """fence_side_m: for testing, refuse any move that could take ZhuangZi outside a square of
+        this side, centered where it stood when the program started. The position is dead
+        reckoning (commanded velocity x time, rotated by the gyro yaw), not a measurement, so
+        drift while turning or slipping is not seen."""
+        self.fence_half_m = None if fence_side_m is None else fence_side_m / 2
+        self._x_m = 0.0  # estimated position in the starting frame: x ahead, y left
+        self._y_m = 0.0
+        if fence_side_m is not None:
+            print(
+                f"Test fence: moves must stay inside a {fence_side_m * 100:.0f} cm square around the start "
+                f"position, even if they overshoot by {FENCE_OVERSHOOT - 1:.0%} (dead reckoning).",
+                flush=True,
+            )
         rclpy.init()
         self.node = rclpy.create_node("listen_and_respond")
         self.switch_client = self.node.create_client(SwitchController, SWITCH_SERVICE)
@@ -204,13 +220,19 @@ class Robot:
         distance = DEFAULT_DISTANCE_M if distance_m is None else distance_m
         if not 0 < distance <= MAX_DISTANCE_M:
             return Outcome.FAILED, f"{distance:g} m is outside the 0-{MAX_DISTANCE_M:g} m limit for one move"
-        if (why := self._require_walking()) is not None:
-            return Outcome.FAILED, why
-
         # Unit vector in the robot frame (x ahead, y left), then the largest speed along it
         # that keeps each axis within its limit.
         ux = math.cos(math.radians(heading))
         uy = -math.sin(math.radians(heading))
+        # The same direction in the starting frame, using the gyro yaw.
+        yaw = math.radians(self._yaw_deg()[0])
+        wx = math.cos(yaw) * ux - math.sin(yaw) * uy
+        wy = math.sin(yaw) * ux + math.cos(yaw) * uy
+        if self.fence_half_m is not None and (why := self._fence_check(wx, wy, distance)) is not None:
+            return Outcome.FAILED, why
+        if (why := self._require_walking()) is not None:
+            return Outcome.FAILED, why
+
         speed = 1 / max(abs(ux) / MAX_VX_MPS, abs(uy) / MAX_VY_MPS)
         vx, vy = round(ux * speed, 3) + 0.0, round(uy * speed, 3) + 0.0  # no -0.0 in the printout
         duration = distance / speed
@@ -220,13 +242,37 @@ class Robot:
             if should_stop():
                 walked = (time.monotonic() - start) * speed
                 self.stop_moving()
-                return Outcome.STOPPED, f"walked about {walked:.2f} of {distance:g} m"
+                self._x_m += wx * walked
+                self._y_m += wy * walked
+                return Outcome.STOPPED, f"walked about {walked:.2f} of {distance:g} m{self._where()}"
             self._send(vx, vy)
             time.sleep(1 / PUBLISH_HZ)
         self.stop_moving()
+        self._x_m += wx * distance
+        self._y_m += wy * distance
         return Outcome.DONE, (
             f"walked about {distance:g} m at heading {heading:g} degrees "
-            f"({duration:.1f} s at vx={vx:.2f}, vy={vy:.2f} m/s, open loop)"
+            f"({duration:.1f} s at vx={vx:.2f}, vy={vy:.2f} m/s, open loop){self._where()}"
+        )
+
+    def _where(self) -> str:
+        return f"; estimated position {self._x_m * 100:+.0f} cm ahead, {self._y_m * 100:+.0f} cm left of start"
+
+    def _fence_check(self, wx: float, wy: float, distance: float) -> str | None:
+        """None if the move stays inside the fence even with FENCE_OVERSHOOT, else why not."""
+        half = self.fence_half_m
+        # Largest t with |position + t * direction| <= half on both axes.
+        allowed = math.inf
+        for pos, d in ((self._x_m, wx), (self._y_m, wy)):
+            if abs(d) > 1e-9:
+                allowed = min(allowed, ((half if d > 0 else -half) - pos) / d)
+        if distance * FENCE_OVERSHOOT <= allowed:
+            return None
+        most = max(allowed / FENCE_OVERSHOOT, 0.0)
+        return (
+            f"{distance:g} m could leave the {half * 200:.0f} cm test square (estimated position "
+            f"{self._x_m * 100:+.0f} cm ahead, {self._y_m * 100:+.0f} cm left of start); "
+            f"at most {most * 100:.0f} cm that way"
         )
 
     # --- turning ---
