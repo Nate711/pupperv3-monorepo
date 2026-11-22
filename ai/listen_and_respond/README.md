@@ -16,10 +16,10 @@ Stages:
    - `stand_up`: turns on the 4-legged walking policy through `/controller_manager/switch_controller`,
      like the joystick's X button.
    - `move`: walks toward any heading without turning (0 = ahead, 90 = right, 180 = back,
-     270 = left; default 0.5 m, at most 3 m). Open loop on `/llm_cmd_vel`, so distance is
+     270 = left; default 0.5 m). Open loop on `/llm_cmd_vel`, so distance is
      approximate (expect 10-30% off).
-   - `turn`: rotates in place, clockwise or counterclockwise (default clockwise 90 degrees, at most
-     720), closed loop on the IMU's yaw rate. Stops and reports a failure if it turns the wrong
+   - `turn`: rotates in place, clockwise or counterclockwise (default clockwise 90 degrees),
+     closed loop on the IMU's yaw rate. Stops and reports a failure if it turns the wrong
      way, stalls, or loses IMU data.
    - "Turn left then walk 2 m" comes from Haiku as two commands, a `turn` then a `move`.
 
@@ -48,7 +48,9 @@ Audio uses the system default input (the C920 webcam mic through PulseAudio/Pipe
 
 ## Run
 
-Start the robot stack first (`robot/utils/robot.sh`), then in a second terminal:
+`robot/utils/start_zhuangzi.sh [options]` starts both stacks in a tmux session (options go to
+listen-and-respond) and `robot/utils/stop_zhuangzi.sh` stops them. To run them by hand, start the
+robot stack first (`robot/utils/robot.sh`), then in a second terminal:
 
 ```bash
 source /opt/ros/jazzy/setup.bash   # rclpy and the controller_manager messages come from ROS
@@ -62,6 +64,13 @@ stack is not up it warns at startup, and each command prints `FAILED` until the 
 Options: `--text` types utterances instead of using the mic (prefix `zh:` for Chinese), to test
 classification quickly; `--no-robot` logs commands without sending them (no ROS needed);
 `--stt-only` skips understanding (no API key needed).
+
+Movement limits, all off by default:
+- `--max-distance-m M`: refuse a single move longer than M meters.
+- `--max-turn-deg D`: refuse a single turn larger than D degrees.
+- `--fence-cm S`: refuse any move that could leave an S cm square around the start position,
+  even with 30% overshoot (dead reckoning from commanded speed and gyro yaw; turning drift and
+  slips are not seen).
 
 Prints one line per utterance with the detected language, decode time, and `CLIPPED` if the
 mic input hit full scale (clipping lowers recognition accuracy; lower the input volume with

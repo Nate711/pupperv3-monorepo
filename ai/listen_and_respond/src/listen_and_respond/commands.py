@@ -52,7 +52,7 @@ class Command(BaseModel):
 
 # Shown to the model in the system prompt, one line per action.
 ACTION_DESCRIPTIONS = {
-    "move": "walk toward any direction (forward, back, left, right, or diagonal) without turning, optionally a distance (default 0.5 m, at most 3 m)",
+    "move": "walk toward any direction (forward, back, left, right, or diagonal) without turning, optionally a distance (default 0.5 m)",
     "turn": "rotate in place, clockwise (right) or counterclockwise (left), by an angle (default clockwise 90 degrees; turn around = 180, spin around = 360)",
     "stop": "stop moving immediately and drop any queued commands",
     "stand_up": "power the legs and stand up in 4-legged walking mode, ready to walk (also for start walking, get up, wake up)",

@@ -83,7 +83,7 @@ neural_controller:
 
     max_body_angle: 1.5
 
-    model_path: "$(find-pkg-share neural_controller)/launch/policy_rich-donkey-233_max_reward_19.16.json"
+    model_path: "$(find-pkg-share neural_controller)/launch/custom_policies/policy_iconic-salad-20.json"
 
 neural_controller_three_legged:
   ros__parameters:

@@ -85,8 +85,6 @@ DEFAULT_DISTANCE_M = 0.5
 DEFAULT_HEADING_DEG = 0.0
 DEFAULT_TURN_DEG = 90.0
 DEFAULT_ROTATION = "clockwise"
-MAX_DISTANCE_M = 3.0
-MAX_TURN_DEG = 720.0
 WRONG_WAY_ABORT_DEG = 20.0
 PUBLISH_HZ = 20
 STOP_S = 0.5  # zero velocity is sent this long after a move, then the turn result is read
@@ -97,12 +95,21 @@ FENCE_OVERSHOOT = 1.3
 
 
 class Robot:
-    def __init__(self, fence_side_m: float | None = None):
-        """fence_side_m: for testing, refuse any move that could take ZhuangZi outside a square of
+    def __init__(
+        self,
+        fence_side_m: float | None = None,
+        max_distance_m: float | None = None,
+        max_turn_deg: float | None = None,
+    ):
+        """max_distance_m / max_turn_deg: refuse a single move / turn bigger than this (None = no limit).
+
+        fence_side_m: for testing, refuse any move that could take ZhuangZi outside a square of
         this side, centered where it stood when the program started. The position is dead
         reckoning (commanded velocity x time, rotated by the gyro yaw), not a measurement, so
         drift while turning or slipping is not seen."""
         self.fence_half_m = None if fence_side_m is None else fence_side_m / 2
+        self.max_distance_m = max_distance_m
+        self.max_turn_deg = max_turn_deg
         self._x_m = 0.0  # estimated position in the starting frame: x ahead, y left
         self._y_m = 0.0
         if fence_side_m is not None:
@@ -222,8 +229,10 @@ class Robot:
         """heading_deg: direction of travel, clockwise from straight ahead (90 = right, 270 = left)."""
         heading = (DEFAULT_HEADING_DEG if heading_deg is None else heading_deg) % 360
         distance = DEFAULT_DISTANCE_M if distance_m is None else distance_m
-        if not 0 < distance <= MAX_DISTANCE_M:
-            return Outcome.FAILED, f"{distance:g} m is outside the 0-{MAX_DISTANCE_M:g} m limit for one move"
+        if distance <= 0:
+            return Outcome.FAILED, f"{distance:g} m is not a distance to walk"
+        if self.max_distance_m is not None and distance > self.max_distance_m:
+            return Outcome.FAILED, f"{distance:g} m is over the {self.max_distance_m:g} m limit for one move (--max-distance-m)"
         # Unit vector in the robot frame (x ahead, y left), then the largest speed along it
         # that keeps each axis within its limit.
         ux = math.cos(math.radians(heading))
@@ -304,8 +313,10 @@ class Robot:
         rotation = rotation or DEFAULT_ROTATION
         sign = -1 if rotation == "clockwise" else +1  # +yaw is counterclockwise seen from above
         angle = DEFAULT_TURN_DEG if angle_deg is None else angle_deg
-        if not 0 < angle <= MAX_TURN_DEG:
-            return Outcome.FAILED, f"{angle:g} degrees is outside the 0-{MAX_TURN_DEG:g} limit for one turn"
+        if angle <= 0:
+            return Outcome.FAILED, f"{angle:g} degrees is not an angle to turn"
+        if self.max_turn_deg is not None and angle > self.max_turn_deg:
+            return Outcome.FAILED, f"{angle:g} degrees is over the {self.max_turn_deg:g} limit for one turn (--max-turn-deg)"
         if (why := self._require_walking()) is not None:
             return Outcome.FAILED, why
         start_yaw, start_gaps, age = self._yaw_deg()

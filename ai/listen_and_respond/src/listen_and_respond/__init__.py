@@ -64,6 +64,8 @@ def main() -> None:
         type=float,
         help="testing: refuse moves that could leave a square of this side (cm) around the start position",
     )
+    parser.add_argument("--max-distance-m", type=float, help="refuse a single move longer than this (default: no limit)")
+    parser.add_argument("--max-turn-deg", type=float, help="refuse a single turn larger than this (default: no limit)")
     args = parser.parse_args()
     if args.text and args.stt_only:
         parser.error("--text needs understanding; drop --stt-only")
@@ -80,7 +82,11 @@ def main() -> None:
         from listen_and_respond.robot import Robot
         from listen_and_respond.runner import CommandRunner
 
-        robot = Robot(fence_side_m=None if args.fence_cm is None else args.fence_cm / 100)
+        robot = Robot(
+            fence_side_m=None if args.fence_cm is None else args.fence_cm / 100,
+            max_distance_m=args.max_distance_m,
+            max_turn_deg=args.max_turn_deg,
+        )
         runner = CommandRunner(robot)
 
     try:
