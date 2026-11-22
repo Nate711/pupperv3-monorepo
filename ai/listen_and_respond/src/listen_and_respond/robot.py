@@ -15,7 +15,8 @@ Implemented: stand_up, move, turn. Other actions are reported as not implemented
 - turn is closed loop on the IMU: the gyro's yaw rate is integrated until the robot has
   turned the requested angle. Clockwise is -yaw (to the right), counterclockwise +yaw.
 - move and turn need the walking policy to be on already ("stand up" first).
-- Commands run one at a time and block, so speech heard during a move is handled after it.
+- Commands run one at a time on runner.py's worker thread while the voice loop keeps listening;
+  should_stop() (a spoken stop) interrupts move and turn within one control step.
 - /llm_cmd_vel is below the joystick in cmd_vel_mux: touching a stick overrides a voice move.
 
 Failure modes (all printed, none retried):
@@ -28,10 +29,12 @@ Failure modes (all printed, none retried):
   loses IMU data. The robot is stopped in each case.
 """
 
+import enum
 import math
 import os
 import threading
 import time
+from collections.abc import Callable
 
 if "AMENT_PREFIX_PATH" not in os.environ:
     raise RuntimeError("ROS 2 is not sourced. Run `source /opt/ros/jazzy/setup.bash` first, or pass --no-robot.")
@@ -44,6 +47,12 @@ from rclpy.executors import SingleThreadedExecutor
 from sensor_msgs.msg import Imu
 
 from listen_and_respond.commands import Command
+
+
+class Outcome(enum.Enum):
+    DONE = "done"
+    FAILED = "failed"
+    STOPPED = "stopped"  # interrupted by a spoken stop
 
 SWITCH_SERVICE = "/controller_manager/switch_controller"
 LIST_SERVICE = "/controller_manager/list_controllers"
@@ -108,22 +117,25 @@ class Robot:
 
         # DDS discovery of the stack's services can take several seconds while the Pi is busy
         # (camera, Hailo, 500 Hz control loop); 2 s gave a false "not found" in the live test.
-        if not self.switch_client.wait_for_service(timeout_sec=STARTUP_DISCOVERY_S):
-            print(
-                f"WARNING: {SWITCH_SERVICE} not found. Start the robot stack (robot/utils/robot.sh); "
-                "commands will fail until it is up.",
-                flush=True,
-            )
+        for client, name in ((self.switch_client, SWITCH_SERVICE), (self.list_client, LIST_SERVICE)):
+            if not client.wait_for_service(timeout_sec=STARTUP_DISCOVERY_S):
+                print(
+                    f"WARNING: {name} not found. Start the robot stack (robot/utils/robot.sh); "
+                    "commands will fail until it is up.",
+                    flush=True,
+                )
+                break
 
-    def execute(self, command: Command) -> tuple[bool, str]:
-        """Runs one command. Returns (succeeded, what happened)."""
+    def execute(self, command: Command, should_stop: Callable[[], bool]) -> tuple[Outcome, str]:
+        """Runs one command. should_stop() turning true interrupts move and turn within one
+        control step (1 / PUBLISH_HZ). Returns the outcome and what happened."""
         if command.action == "stand_up":
             return self.switch_to(WALKING_CONTROLLER, OTHER_CONTROLLERS)
         if command.action == "move":
-            return self.walk(command.heading_deg, command.distance_m)
+            return self.walk(command.heading_deg, command.distance_m, should_stop)
         if command.action == "turn":
-            return self.turn(command.rotation, command.angle_deg)
-        return False, f"{command.action} is not implemented yet"
+            return self.turn(command.rotation, command.angle_deg, should_stop)
+        return Outcome.FAILED, f"{command.action} is not implemented yet"
 
     # --- controller_manager ---
 
@@ -133,9 +145,9 @@ class Robot:
             time.sleep(0.01)
         return future.result() if future.done() else None
 
-    def switch_to(self, controller: str, others: list[str]) -> tuple[bool, str]:
+    def switch_to(self, controller: str, others: list[str]) -> tuple[Outcome, str]:
         if not self.switch_client.wait_for_service(timeout_sec=1.0):
-            return False, f"{SWITCH_SERVICE} not found; is the robot stack running?"
+            return Outcome.FAILED, f"{SWITCH_SERVICE} not found; is the robot stack running?"
         request = SwitchController.Request()
         request.activate_controllers = [controller]
         request.deactivate_controllers = others
@@ -146,10 +158,10 @@ class Robot:
         request.timeout = Duration(sec=SWITCH_TIMEOUT_S)
         result = self._wait(self.switch_client.call_async(request), SWITCH_TIMEOUT_S + 1)
         if result is None:
-            return False, f"controller_manager did not answer within {SWITCH_TIMEOUT_S + 1} s"
+            return Outcome.FAILED, f"controller_manager did not answer within {SWITCH_TIMEOUT_S + 1} s"
         if not result.ok:
-            return False, f"controller_manager refused to activate {controller}; see the robot launch output"
-        return True, f"{controller} active"
+            return Outcome.FAILED, f"controller_manager refused to activate {controller}; see the robot launch output"
+        return Outcome.DONE, f"{controller} active"
 
     def walking_policy_state(self) -> str:
         """The walking controller's state ("active", "inactive", ...) or why it is unknown."""
@@ -184,28 +196,35 @@ class Robot:
             self._send()
             time.sleep(1 / PUBLISH_HZ)
 
-    def walk(self, heading_deg: float | None, distance_m: float | None) -> tuple[bool, str]:
+    def walk(
+        self, heading_deg: float | None, distance_m: float | None, should_stop: Callable[[], bool]
+    ) -> tuple[Outcome, str]:
         """heading_deg: direction of travel, clockwise from straight ahead (90 = right, 270 = left)."""
         heading = (DEFAULT_HEADING_DEG if heading_deg is None else heading_deg) % 360
         distance = DEFAULT_DISTANCE_M if distance_m is None else distance_m
         if not 0 < distance <= MAX_DISTANCE_M:
-            return False, f"{distance:g} m is outside the 0-{MAX_DISTANCE_M:g} m limit for one move"
+            return Outcome.FAILED, f"{distance:g} m is outside the 0-{MAX_DISTANCE_M:g} m limit for one move"
         if (why := self._require_walking()) is not None:
-            return False, why
+            return Outcome.FAILED, why
 
         # Unit vector in the robot frame (x ahead, y left), then the largest speed along it
         # that keeps each axis within its limit.
         ux = math.cos(math.radians(heading))
         uy = -math.sin(math.radians(heading))
         speed = 1 / max(abs(ux) / MAX_VX_MPS, abs(uy) / MAX_VY_MPS)
-        vx, vy = ux * speed + 0.0, uy * speed + 0.0  # + 0.0 turns -0.0 into 0.0 for the printout
+        vx, vy = round(ux * speed, 3) + 0.0, round(uy * speed, 3) + 0.0  # no -0.0 in the printout
         duration = distance / speed
-        end = time.monotonic() + duration
+        start = time.monotonic()
+        end = start + duration
         while time.monotonic() < end:
+            if should_stop():
+                walked = (time.monotonic() - start) * speed
+                self.stop_moving()
+                return Outcome.STOPPED, f"walked about {walked:.2f} of {distance:g} m"
             self._send(vx, vy)
             time.sleep(1 / PUBLISH_HZ)
         self.stop_moving()
-        return True, (
+        return Outcome.DONE, (
             f"walked about {distance:g} m at heading {heading:g} degrees "
             f"({duration:.1f} s at vx={vx:.2f}, vy={vy:.2f} m/s, open loop)"
         )
@@ -229,17 +248,19 @@ class Robot:
         with self._imu_lock:
             return math.degrees(self._yaw_rad), self._imu_gaps, time.monotonic() - self._imu_last_arrival
 
-    def turn(self, rotation: str | None, angle_deg: float | None) -> tuple[bool, str]:
+    def turn(
+        self, rotation: str | None, angle_deg: float | None, should_stop: Callable[[], bool]
+    ) -> tuple[Outcome, str]:
         rotation = rotation or DEFAULT_ROTATION
         sign = -1 if rotation == "clockwise" else +1  # +yaw is counterclockwise seen from above
         angle = DEFAULT_TURN_DEG if angle_deg is None else angle_deg
         if not 0 < angle <= MAX_TURN_DEG:
-            return False, f"{angle:g} degrees is outside the 0-{MAX_TURN_DEG:g} limit for one turn"
+            return Outcome.FAILED, f"{angle:g} degrees is outside the 0-{MAX_TURN_DEG:g} limit for one turn"
         if (why := self._require_walking()) is not None:
-            return False, why
+            return Outcome.FAILED, why
         start_yaw, start_gaps, age = self._yaw_deg()
         if age > IMU_MAX_GAP_S * 5:
-            return False, f"no IMU data on {IMU_TOPIC} for {age:.1f} s"
+            return Outcome.FAILED, f"no IMU data on {IMU_TOPIC} for {age:.1f} s"
 
         timeout = angle / TURN_SPEED_DPS * 2 + 3
         deadline = time.monotonic() + timeout
@@ -249,21 +270,25 @@ class Robot:
             remaining = angle - turned
             if remaining <= 0:
                 break
+            if should_stop():
+                self.stop_moving()
+                final = (self._yaw_deg()[0] - start_yaw) * sign
+                return Outcome.STOPPED, f"turned {rotation} {final:.0f} of {angle:g} degrees"
             if gaps != start_gaps or age > IMU_MAX_GAP_S * 5:
                 self.stop_moving()
-                return False, f"IMU data stopped or skipped during the turn after {turned:.0f} degrees; stopped"
+                return Outcome.FAILED, f"IMU data stopped or skipped during the turn after {turned:.0f} degrees; stopped"
             if turned < -WRONG_WAY_ABORT_DEG:
                 self.stop_moving()
-                return False, f"the IMU says it turned {-turned:.0f} degrees the wrong way; stopped"
+                return Outcome.FAILED, f"the IMU says it turned {-turned:.0f} degrees the wrong way; stopped"
             if time.monotonic() > deadline:
                 self.stop_moving()
-                return False, f"only turned {turned:.0f} of {angle:g} degrees in {timeout:.0f} s; stopped"
+                return Outcome.FAILED, f"only turned {turned:.0f} of {angle:g} degrees in {timeout:.0f} s; stopped"
             speed = TURN_SLOW_DPS if remaining < TURN_SLOW_ZONE_DEG else TURN_SPEED_DPS
             self._send(wz=sign * math.radians(speed))
             time.sleep(1 / PUBLISH_HZ)
         self.stop_moving()
         final = (self._yaw_deg()[0] - start_yaw) * sign
-        return True, f"turned {rotation} {final:.0f} degrees (asked {angle:g})"
+        return Outcome.DONE, f"turned {rotation} {final:.0f} degrees (asked {angle:g})"
 
     def close(self) -> None:
         self.executor.shutdown()

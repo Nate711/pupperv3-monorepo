@@ -21,19 +21,24 @@ def log_commands(text: str, lang: str, interpretation) -> None:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-def execute(robot, commands) -> None:
-    """Runs the steps in order and stops at the first one that fails."""
-    for i, command in enumerate(commands):
-        ok, what = robot.execute(command)
-        if not ok:
-            skipped = len(commands) - i - 1
-            note = f" (skipped the {skipped} remaining step(s))" if skipped else ""
-            print(f"  !! {command.action} FAILED: {what}{note}", flush=True)
-            return
-        print(f"  => {command.action}: {what}", flush=True)
+def dispatch(runner, commands) -> None:
+    """A stop anywhere in the utterance interrupts what is running; steps after the last stop
+    ("stop, then turn left") are queued as usual."""
+    stops = [i for i, c in enumerate(commands) if c.action == "stop"]
+    if stops:
+        runner.stop()
+        commands = commands[stops[-1] + 1 :]
+    if commands:
+        runner.submit(commands)
 
 
-def handle(understanding, robot, text: str, lang: str) -> None:
+def handle(understanding, runner, text: str, lang: str) -> None:
+    if runner:
+        from listen_and_respond.runner import heard_stop_word
+
+        if heard_stop_word(text):
+            runner.stop()
+            print("  -> STOP (stop word heard; halting before understanding)", flush=True)
     start = time.monotonic()
     result = understanding.interpret(text, lang)
     took = f"({time.monotonic() - start:.2f}s)"
@@ -41,8 +46,8 @@ def handle(understanding, robot, text: str, lang: str) -> None:
         log_commands(text, lang, result)
         steps = ", ".join(json.dumps(c.model_dump(exclude_none=True)) for c in result.commands)
         print(f"  -> COMMAND {steps} {took}", flush=True)
-        if robot:
-            execute(robot, result.commands)
+        if runner:
+            dispatch(runner, result.commands)
     elif result.intent == "conversation":
         print(f"  -> REPLY [{result.language}] {result.reply} {took}", flush=True)
     else:
@@ -65,11 +70,13 @@ def main() -> None:
 
         understanding = Understanding()
 
-    robot = None
+    robot = runner = None
     if understanding and not args.no_robot:
         from listen_and_respond.robot import Robot
+        from listen_and_respond.runner import CommandRunner
 
         robot = Robot()
+        runner = CommandRunner(robot)
 
     try:
         if args.text:
@@ -82,7 +89,9 @@ def main() -> None:
                 if not line:
                     continue
                 lang, text = ("zh", line[3:].strip()) if line.startswith("zh:") else ("en", line)
-                handle(understanding, robot, text, lang)
+                handle(understanding, runner, text, lang)
+            if runner:
+                runner.wait_until_idle()  # let typed commands finish before exiting
             return
 
         from listen_and_respond.stt import SpeechToText
@@ -98,9 +107,11 @@ def main() -> None:
                 flush=True,
             )
             if understanding:
-                handle(understanding, robot, u.text, u.lang)
+                handle(understanding, runner, u.text, u.lang)
     except KeyboardInterrupt:
         print("Stopped.")
     finally:
+        if runner:
+            runner.close()
         if robot:
             robot.close()

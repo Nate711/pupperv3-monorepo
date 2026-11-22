@@ -23,9 +23,16 @@ Stages:
      way, stalls, or loses IMU data.
    - "Turn left then walk 2 m" comes from Haiku as two commands, a `turn` then a `move`.
 
-   `move` and `turn` need walking on first ("stand up"). Commands block while they run, so speech
-   heard meanwhile is handled afterwards. Other actions print `not implemented yet`. If a step
-   fails, the remaining steps of that utterance are skipped.
+   - `stop`: interrupts whatever is running within one 50 ms control step, sends zero velocity,
+     and drops queued commands. ZhuangZi stays standing. A stop word in the transcript ("stop",
+     "halt", "freeze", 停, 别动) halts it before Haiku is even asked, about 0.7 s after you finish
+     speaking (0.5 s of silence ends the utterance, then ~0.2 s to decode). It matches any
+     "stop", so "don't stop" stops it too. Steps after a stop in the same sentence ("stop, then
+     turn left") still run.
+
+   Commands run in order on a background thread (`runner.py`), so ZhuangZi keeps listening while
+   it moves. `move` and `turn` need walking on first ("stand up"). Other actions print
+   `not implemented yet`. If a step fails, the remaining steps of that utterance are skipped.
 4. Text to speech: not decided yet.
 
 ## Setup
