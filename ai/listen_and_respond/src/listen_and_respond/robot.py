@@ -177,6 +177,10 @@ class Robot:
             return Outcome.FAILED, f"controller_manager did not answer within {SWITCH_TIMEOUT_S + 1} s"
         if not result.ok:
             return Outcome.FAILED, f"controller_manager refused to activate {controller}; see the robot launch output"
+        # BEST_EFFORT can answer ok while skipping a controller that isn't loaded, so check.
+        state = self.walking_policy_state() if controller == WALKING_CONTROLLER else "active"
+        if state != "active":
+            return Outcome.FAILED, f"switch answered ok but {controller} is {state}; see the robot launch output"
         return Outcome.DONE, f"{controller} active"
 
     def walking_policy_state(self) -> str:

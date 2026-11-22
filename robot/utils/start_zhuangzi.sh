@@ -16,6 +16,18 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   exit 0
 fi
 
+# A second controller_manager (another stack, or a test stand-in) would answer the spawners and
+# the voice commands in place of the real one.
+set +u  # the ROS setup script reads unset variables
+source /opt/ros/jazzy/setup.bash
+set -u
+services=$(ros2 service list 2>/dev/null || true)
+if grep -q "^/controller_manager/" <<<"$services"; then
+  echo "ERROR: a controller_manager is already running on this ROS network; stop it first." >&2
+  ros2 node list 2>/dev/null >&2
+  exit 1
+fi
+
 if ! pactl list short sources | grep -q C920; then
   echo "WARNING: the C920 webcam mic is not connected; voice will listen to the wrong input." >&2
 fi
